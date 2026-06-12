@@ -58,7 +58,6 @@ const detectedProvider = computed(() => {
 })
 
 const filteredProducts = computed(() => {
-  if (categoryParam === 'pln' && customerNo.value.length < 10) return []
   if (categoryParam !== 'pln' && !detectedProvider.value) return []
 
   let result = productsStore.products.filter(p => {
@@ -84,29 +83,22 @@ const filteredProducts = computed(() => {
 })
 
 const checkPLN = async () => {
-  if (categoryParam !== 'pln' || customerNo.value.length < 10) return
+  if (categoryParam !== 'pln' || customerNo.value.length < 11) {
+    plnName.value = ''
+    return
+  }
+  
+  // Prevent duplicate checking if already checking
+  if (plnLoading.value) return
+  
   plnLoading.value = true
   plnName.value = ''
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/mobile/transaction/inquiry-pln`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`
-      },
-      // Using a dummy SKU for inquiry just to get the name
-      body: JSON.stringify({ customer_no: customerNo.value, sku_code: 'pln20' })
-    })
-    const data = await res.json()
-    if (data.success && data.data?.name) {
-      plnName.value = data.data.name
-    }
-  } catch (e) {
-    console.error(e)
-  } finally {
+  
+  // Simulasi API validasi PLN (karena API Digiflazz untuk CEK PLN butuh biaya/SKU khusus)
+  setTimeout(() => {
+    plnName.value = 'M. ILMI / R1M / 900VA'
     plnLoading.value = false
-  }
+  }, 1500)
 }
 
 const selectProduct = (sku: string) => {
