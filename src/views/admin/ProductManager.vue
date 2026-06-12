@@ -42,11 +42,20 @@ onMounted(() => {
 })
 
 const filteredProducts = computed(() => {
-  return products.value.filter(p => {
+  let result = products.value.filter(p => {
     const matchesCategory = categoryFilter.value ? p.category === categoryFilter.value : true
     const matchesBrand = brandFilter.value ? p.brand === brandFilter.value : true
     return matchesCategory && matchesBrand
   })
+  
+  // Sort by brand (provider), then by harga_modal (smallest to largest)
+  result.sort((a, b) => {
+    if (a.brand < b.brand) return -1
+    if (a.brand > b.brand) return 1
+    return (a.harga_modal || 0) - (b.harga_modal || 0)
+  })
+  
+  return result
 })
 
 const availableBrands = computed(() => {

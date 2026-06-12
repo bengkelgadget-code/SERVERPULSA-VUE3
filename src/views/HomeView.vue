@@ -14,13 +14,22 @@ const activeTab = ref('Pulsa')
 const tabs = ['Pulsa', 'Data', 'PLN', 'E-Wallet']
 
 const filteredProducts = computed(() => {
-  return productsStore.products.filter(p => {
+  let result = productsStore.products.filter(p => {
     if (activeTab.value === 'Pulsa') return p.category.toLowerCase().includes('pulsa')
     if (activeTab.value === 'Data') return p.category.toLowerCase().includes('data') || p.category.toLowerCase().includes('internet')
     if (activeTab.value === 'PLN') return p.category.toLowerCase().includes('pln')
     if (activeTab.value === 'E-Wallet') return p.category.toLowerCase().includes('wallet') || p.category.toLowerCase().includes('dana') || p.category.toLowerCase().includes('ovo') || p.category.toLowerCase().includes('gopay')
     return p.category === activeTab.value
   })
+
+  // Sort by brand then by harga_jual (cheapest first)
+  result.sort((a, b) => {
+    if (a.brand < b.brand) return -1
+    if (a.brand > b.brand) return 1
+    return (a.harga_jual || 0) - (b.harga_jual || 0)
+  })
+
+  return result
 })
 
 onMounted(() => {

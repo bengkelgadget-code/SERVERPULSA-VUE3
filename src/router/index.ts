@@ -77,12 +77,24 @@ const router = createRouter({
   ]
 })
 
+let isInitialLoad = true
+
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
   
   if (auth.loading) {
     await auth.initialize()
   }
+
+  // Restore last visited route on initial load if going to root or admin root
+  if (isInitialLoad && (to.path === '/' || to.path === '/admin')) {
+    isInitialLoad = false
+    const lastRoute = localStorage.getItem('lastVisitedAdminRoute')
+    if (lastRoute && lastRoute !== '/' && lastRoute !== '/admin') {
+      return next(lastRoute)
+    }
+  }
+  isInitialLoad = false
   
   if (to.meta.requiresAuth && !auth.user) {
     next('/login')
@@ -112,6 +124,12 @@ router.beforeEach(async (to, _from, next) => {
     }
   } else {
     next()
+  }
+})
+
+router.afterEach((to) => {
+  if (to.path.startsWith('/admin')) {
+    localStorage.setItem('lastVisitedAdminRoute', to.fullPath)
   }
 })
 
