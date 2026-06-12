@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 
@@ -13,6 +13,7 @@ const categoryParam = route.params.type as string
 const customerNo = ref('')
 const plnName = ref('')
 const plnLoading = ref(false)
+let checkTimeout: any = null
 
 const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 
@@ -81,14 +82,11 @@ const filteredProducts = computed(() => {
   return result
 })
 
-const checkPLN = async () => {
-  if (categoryParam !== 'pln' || customerNo.value.length < 11) {
+const checkPLN = async (no: string) => {
+  if (categoryParam !== 'pln' || no.length < 11) {
     plnName.value = ''
     return
   }
-  
-  // Prevent duplicate checking if already checking
-  if (plnLoading.value) return
   
   plnLoading.value = true
   plnName.value = ''
@@ -97,7 +95,7 @@ const checkPLN = async () => {
     const res = await fetch('/api/inquiry-pln', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_no: customerNo.value })
+      body: JSON.stringify({ customer_no: no })
     })
     
     const data = await res.json()
@@ -117,6 +115,22 @@ const checkPLN = async () => {
     plnLoading.value = false
   }
 }
+
+// Watch customerNo for changes
+watch(customerNo, (newVal) => {
+  if (categoryParam !== 'pln') return
+  
+  if (newVal.length < 11) {
+    plnName.value = ''
+    return
+  }
+
+  // Debounce the check
+  if (checkTimeout) clearTimeout(checkTimeout)
+  checkTimeout = setTimeout(() => {
+    checkPLN(newVal)
+  }, 500)
+})
 
 const selectProduct = (sku: string) => {
   // Store customerNo in sessionStorage or pass via query params
@@ -152,7 +166,6 @@ const selectProduct = (sku: string) => {
           inputmode="numeric"
           class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
           :placeholder="categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx'" 
-          @input="categoryParam === 'pln' && customerNo.length >= 11 && checkPLN()"
         />
 
         <!-- Validation PLN -->
