@@ -17,7 +17,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ success: false, error: 'Method Not Allowed' });
   }
 
-  const { customer_no, provider } = req.body;
+  const { customer_no, provider, sku_code } = req.body;
 
   if (!customer_no || !provider) {
     return res.status(400).json({ success: false, error: 'Customer Number and Provider are required' });
@@ -35,18 +35,16 @@ export default async function handler(req, res) {
     const username = process.env.DIGIFLAZZ_USERNAME;
     const apiKey = process.env.DIGIFLAZZ_API_KEY; 
 
-    // Pemetaan SKU Prabayar Cek E-Wallet berdasarkan provider
-    // Anda bisa menyesuaikan kode SKU ini dengan yang tersedia di akun Digiflazz Anda
+    // Pemetaan fallback jika sku_code tidak dikirim dari frontend
     const skuMapping = {
       'DANA': 'CEKDANA',
       'OVO': 'CEKOVO',
       'GOPAY': 'CEKGOPAY',
       'SHOPEEPAY': 'CEKSPAY',
-      'LINKAJA': 'CEKAJA',
-      'CEKAJA': 'CEKAJA' // fallback
+      'LINKAJA': 'CEKAJA'
     };
 
-    const buyerSkuCode = skuMapping[provider.toUpperCase()] || `CEK${provider.toUpperCase()}`;
+    const buyerSkuCode = sku_code || skuMapping[provider.toUpperCase()] || `CEK${provider.toUpperCase()}`;
     const refId = `CEK${provider.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const sign = md5(`${username}${apiKey}${refId}`);
 

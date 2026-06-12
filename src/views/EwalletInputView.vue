@@ -35,6 +35,10 @@ watch(customerNo, (newVal) => {
 const checkEwallet = async () => {
   if (!customerNo.value) return
   
+  // Cari SKU khusus untuk cek nama di dalam daftar produk (biasanya mengandung kata 'cek')
+  const checkProduct = filteredProducts.value.find(p => p.product_name.toLowerCase().includes('cek'))
+  const skuToSend = checkProduct ? checkProduct.sku_code : null
+  
   isChecking.value = true
   ewalletName.value = ''
   
@@ -42,7 +46,11 @@ const checkEwallet = async () => {
     const response = await fetch('/api/inquiry-ewallet', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_no: customerNo.value, provider: selectedProvider.value })
+      body: JSON.stringify({ 
+        customer_no: customerNo.value, 
+        provider: selectedProvider.value,
+        sku_code: skuToSend 
+      })
     })
     
     const data = await response.json()
