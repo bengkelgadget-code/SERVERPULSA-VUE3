@@ -109,10 +109,17 @@ const getStatusColor = (status: string) => {
               <p class="text-[11px] text-neutral-400 mb-0.5">SN / Ref</p>
               <p class="text-xs font-mono text-neutral-600">{{ trx.sn || trx.ref_id }}</p>
             </div>
-            <div class="text-right">
-              <p class="text-[11px] text-neutral-400 mb-0.5">{{ formatDate(trx.created_at) }}</p>
+            <div class="text-right flex flex-col items-end">
               <p class="font-bold text-primary-600">{{ formatRp(trx.harga_jual) }}</p>
+              <p class="text-[11px] text-neutral-400 mt-0.5">{{ formatDate(trx.created_at) }}</p>
             </div>
+          </div>
+          
+          <div v-if="trx.status === 'sukses'" class="mt-4 pt-4 border-t border-neutral-100 flex justify-end">
+            <button @click="alert('Fitur Cetak Struk Bluetooth akan segera hadir!')" class="flex items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Cetak Struk
+            </button>
           </div>
         </div>
       </div>

@@ -12,9 +12,17 @@ const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'curre
 
 const activeTab = ref('Pulsa')
 const tabs = ['Pulsa', 'Data', 'PLN', 'E-Wallet']
+const searchQuery = ref('')
 
 const filteredProducts = computed(() => {
   let result = productsStore.products.filter(p => {
+    // Check search query first if it exists
+    if (searchQuery.value) {
+      return p.product_name.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
+             p.brand.toLowerCase().includes(searchQuery.value.toLowerCase())
+    }
+
+    // Otherwise use tab filters
     if (activeTab.value === 'Pulsa') return p.category.toLowerCase().includes('pulsa')
     if (activeTab.value === 'Data') return p.category.toLowerCase().includes('data') || p.category.toLowerCase().includes('internet')
     if (activeTab.value === 'PLN') return p.category.toLowerCase().includes('pln')
@@ -73,8 +81,19 @@ const doLogout = () => {
         </button>
       </div>
 
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex flex-col gap-3 mb-4">
         <h3 class="font-bold text-lg text-neutral-800">Katalog Produk</h3>
+        <div class="relative flex items-center gap-2">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            class="input-field py-2.5 text-sm flex-1" 
+            placeholder="Cari produk..." 
+          />
+          <button @click="alert('Fitur Voice Search (Speech to Text) akan segera hadir!')" class="p-2.5 bg-neutral-100 text-primary-600 rounded-xl hover:bg-neutral-200 transition-colors border border-neutral-200" title="Voice Search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+          </button>
+        </div>
       </div>
 
       <div v-if="productsStore.loading" class="text-center py-8">
