@@ -19,10 +19,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const supabase = createClient(
-      process.env.VITE_SUPABASE_URL,
-      process.env.VITE_SUPABASE_ANON_KEY 
-    );
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    // Wajib menggunakan SERVICE_ROLE_KEY di backend untuk menembus RLS (Row Level Security)
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const proxyHost = process.env.PROXY_HOST;
     const proxyPort = process.env.PROXY_PORT;
