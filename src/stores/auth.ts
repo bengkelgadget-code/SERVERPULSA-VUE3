@@ -31,15 +31,32 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
+    console.log('Fetching profile for:', userId)
+    const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('id', userId)
       .single()
     
-    if (data) {
-      userProfile.value = data
+    if (error) {
+      console.error('Error fetching user profile:', error)
     }
+    
+    if (data) {
+      console.log('Profile fetched successfully:', data.role)
+      userProfile.value = data
+    } else {
+      console.log('No profile data returned.')
+    }
+  }
+
+  async function ensureProfile() {
+    if (userProfile.value) return userProfile.value
+    if (user.value) {
+      await fetchProfile(user.value.id)
+      return userProfile.value
+    }
+    return null
   }
 
   async function signOut() {
@@ -53,6 +70,7 @@ export const useAuthStore = defineStore('auth', () => {
     userProfile,
     loading,
     initialize,
+    ensureProfile,
     signOut
   }
 })
