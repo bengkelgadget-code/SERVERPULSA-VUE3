@@ -33,6 +33,10 @@ onMounted(() => {
   if (productsStore.products.length === 0) {
     productsStore.fetchProducts()
   }
+  
+  if (route.query.phone) {
+    customerNo.value = route.query.phone as string
+  }
 })
 
 const filteredProducts = computed(() => {
@@ -96,6 +100,11 @@ const selectProduct = (sku: string) => {
           <button @click="showAlert('Ambil dari Kontak segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span class="text-[9px] font-bold">Kontak</span>
+          </button>
+
+          <button @click="router.push(`/favorites/ewallet`)" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span class="text-[9px] font-bold">Favorit</span>
           </button>
         </div>
       </div>
