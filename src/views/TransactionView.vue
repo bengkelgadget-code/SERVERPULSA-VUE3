@@ -10,8 +10,6 @@ const router = useRouter()
 const productsStore = useProductsStore()
 const authStore = useAuthStore()
 
-const showAlert = (msg: string) => window.alert(msg)
-
 const sku = route.params.sku as string
 const customerNo = ref((route.query.phone as string) || '')
 const plnNameQuery = route.query.name as string || ''
@@ -182,7 +180,7 @@ const buyProduct = async () => {
               <div class="flex justify-between items-center">
                 <span class="font-bold text-sm text-neutral-800">{{ method.name }}</span>
                 <span v-if="method.id === 'saldo'" class="text-[10px] font-bold text-primary-600 bg-white px-2 py-0.5 rounded-full border border-primary-200">
-                  Sisa: {{ formatRp(authStore.profile?.balance || 0) }}
+                  Sisa: {{ formatRp(authStore.userProfile?.balance || 0) }}
                 </span>
               </div>
               <p class="text-[10px] text-neutral-500 mt-0.5">{{ method.description }}</p>
