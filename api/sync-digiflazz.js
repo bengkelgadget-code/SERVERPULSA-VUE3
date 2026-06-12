@@ -67,7 +67,7 @@ export default async function handler(req, res) {
         product_name: p.product_name,
         category: p.category,
         brand: p.brand,
-        price: p.price,
+        harga_modal: p.price,
         harga_jual: existing && existing.harga_jual !== undefined ? existing.harga_jual : p.price,
         is_active: existing && existing.is_active !== undefined ? existing.is_active : p.buyer_product_status,
       };

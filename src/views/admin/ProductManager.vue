@@ -122,7 +122,7 @@ const setAutoSama = async () => {
   loading.value = true
   try {
     for (const product of filteredProducts.value) {
-      const newPrice = product.price || 0
+      const newPrice = product.harga_modal || 0
       if (product.harga_jual !== newPrice) {
         await supabase
           .from('products')
@@ -259,7 +259,7 @@ const syncDigiflazz = async () => {
                 <span class="text-[12px] font-bold text-gray-600">{{ product.brand }}</span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
-                <span class="text-[12px] text-gray-500">{{ formatCurrency(product.price) }}</span>
+                <span class="text-[12px] text-gray-500">{{ formatCurrency(product.harga_modal) }}</span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
                 <div class="flex items-center gap-2 relative">
@@ -278,8 +278,8 @@ const syncDigiflazz = async () => {
                 </div>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
-                <span class="text-[12px] font-bold" :class="(product.harga_jual - product.price) > 0 ? 'text-green-500' : (product.harga_jual - product.price) < 0 ? 'text-red-500' : 'text-green-500'">
-                  +{{ formatCurrency(Math.max(0, (product.harga_jual || 0) - (product.price || 0))) }}
+                <span class="text-[12px] font-bold" :class="(product.harga_jual - product.harga_modal) > 0 ? 'text-green-500' : (product.harga_jual - product.harga_modal) < 0 ? 'text-red-500' : 'text-green-500'">
+                  +{{ formatCurrency(Math.max(0, (product.harga_jual || 0) - (product.harga_modal || 0))) }}
                 </span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap text-center">
