@@ -18,6 +18,17 @@ const pageTitle = computed(() => {
   return walletId.charAt(0).toUpperCase() + walletId.slice(1)
 })
 
+const walletInfo = computed(() => {
+  const mapping: Record<string, any> = {
+    dana: { name: 'DANA', icon: 'bg-blue-500 text-white', letter: 'D' },
+    ovo: { name: 'OVO', icon: 'bg-purple-600 text-white', letter: 'O' },
+    gopay: { name: 'GoPay', icon: 'bg-blue-400 text-white', letter: 'G' },
+    shopeepay: { name: 'ShopeePay', icon: 'bg-orange-500 text-white', letter: 'S' },
+    linkaja: { name: 'LinkAja', icon: 'bg-red-600 text-white', letter: 'L' }
+  }
+  return mapping[walletId.toLowerCase()] || { name: pageTitle.value, icon: 'bg-neutral-500 text-white', letter: walletId.charAt(0).toUpperCase() }
+})
+
 onMounted(() => {
   if (productsStore.products.length === 0) {
     productsStore.fetchProducts()
@@ -66,8 +77,8 @@ const selectProduct = (sku: string) => {
           v-model="customerNo" 
           type="text" 
           inputmode="numeric"
-          class="input-field text-xl font-bold tracking-wider py-4 w-full bg-neutral-50 focus:bg-white" 
-          placeholder="0812xxxxxxx" 
+          class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
+          :placeholder="walletInfo.id === 'dana' ? '0812xxxxxxx' : '08xxxxxxx'" 
         />
         
         <!-- 3 Icons (Mic, Barcode, Contacts) -->

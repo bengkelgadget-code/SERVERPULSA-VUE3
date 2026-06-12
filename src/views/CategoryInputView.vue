@@ -2,7 +2,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
-import { supabase } from '@/lib/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,7 +128,7 @@ const selectProduct = (sku: string) => {
           v-model="customerNo" 
           type="text" 
           inputmode="numeric"
-          class="input-field text-lg font-bold tracking-wider py-2 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
+          class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
           :placeholder="categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx'" 
           @input="categoryParam === 'pln' && customerNo.length >= 11 && checkPLN()"
         />
