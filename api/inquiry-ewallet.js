@@ -61,7 +61,29 @@ export default async function handler(req, res) {
       { httpsAgent: proxyAgent }
     );
 
-    const digiflazzData = response.data.data;
+    let digiflazzData = response.data.data;
+    
+    // Polling loop jika status masih Pending (RC 03) untuk mendapatkan SN
+    let attempt = 0;
+    while (digiflazzData && digiflazzData.rc === '03' && attempt < 4) {
+      console.log(`Transaction pending, polling attempt ${attempt + 1}...`);
+      await new Promise(r => setTimeout(r, 2500)); // wait 2.5 seconds
+      
+      const pollResponse = await axios.post(
+        'https://api.digiflazz.com/v1/transaction',
+        {
+          username: username,
+          buyer_sku_code: buyerSkuCode,
+          customer_no: customer_no,
+          ref_id: refId,
+          sign: sign
+        },
+        { httpsAgent: proxyAgent }
+      );
+      
+      digiflazzData = pollResponse.data.data;
+      attempt++;
+    }
     
     if (digiflazzData && digiflazzData.rc && digiflazzData.rc !== '00' && digiflazzData.rc !== '03') {
       return res.status(400).json({ 
@@ -73,6 +95,11 @@ export default async function handler(req, res) {
 
     // Ekstrak nama dari SN atau pesan
     let rawName = digiflazzData.sn || digiflazzData.message || '';
+    
+    if (digiflazzData.rc === '03' && !digiflazzData.sn) {
+      rawName = 'Menunggu Server (Transaksi Pending)';
+    }
+
     let extractedName = rawName;
 
     // Biasanya SN berbentuk: A/N Budi Santoso / 0812... 
@@ -83,7 +110,7 @@ export default async function handler(req, res) {
       if (parts[1]) {
         extractedName = parts[1].split('/')[0].trim();
       }
-    } else if (rawName.includes('/')) {
+    } else if (rawName.includes('/') && digiflazzData.sn) {
       extractedName = rawName.split('/')[0].trim();
     }
 
