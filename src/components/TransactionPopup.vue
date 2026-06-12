@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/stores/auth'
-
-const auth = useAuthStore()
 const isVisible = ref(false)
 const transactionInfo = ref({ title: '', message: '', status: '' })
 let timeoutId: any = null
