@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { Search, Plus, ShieldAlert } from 'lucide-vue-next'
+import { Search, Plus, ShieldAlert, Pencil, Trash } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const users = ref<any[]>([])
@@ -15,9 +15,12 @@ const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 // Modals state
 const showBalanceModal = ref(false)
 const showRoleModal = ref(false)
+const showEditModal = ref(false)
 const selectedUser = ref<any>(null)
 const balanceAmount = ref(0)
 const selectedRole = ref('')
+const editFullName = ref('')
+const editPhone = ref('')
 const actionLoading = ref(false)
 
 const fetchUsers = async () => {
@@ -70,8 +73,48 @@ const openBalanceModal = (user: any) => {
 
 const openRoleModal = (user: any) => {
   selectedUser.value = user
-  selectedRole.value = user.role
+  selectedRole.value = user.role === 'admin' || user.role === 'staff' ? user.role : 'staff'
   showRoleModal.value = true
+}
+
+const openEditModal = (user: any) => {
+  selectedUser.value = user
+  editFullName.value = user.full_name || ''
+  editPhone.value = user.phone || ''
+  showEditModal.value = true
+}
+
+const handleEditUser = async () => {
+  if (!selectedUser.value) return
+  actionLoading.value = true
+  try {
+    const { error } = await supabase
+      .from('users')
+      .update({ full_name: editFullName.value, phone: editPhone.value })
+      .eq('id', selectedUser.value.id)
+      
+    if (error) throw error
+    alert('User updated successfully')
+    showEditModal.value = false
+    fetchUsers()
+  } catch (err) {
+    console.error('Error updating user:', err)
+    alert('Failed to update user')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const handleDeleteUser = async (user: any) => {
+  if (!confirm(`Are you sure you want to delete user ${user.full_name || user.phone}?`)) return
+  try {
+    const { error } = await supabase.from('users').delete().eq('id', user.id)
+    if (error) throw error
+    fetchUsers()
+  } catch (err) {
+    console.error('Error deleting user:', err)
+    alert('Failed to delete user')
+  }
 }
 
 const handleAddBalance = async () => {
@@ -169,13 +212,14 @@ const handleUpdateRole = async () => {
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TF Saldo</th>
               <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registered</th>
               <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-if="loading">
-              <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+              <td colspan="6" class="px-6 py-10 text-center text-gray-500">
                 <div class="flex justify-center items-center">
                   <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -186,7 +230,7 @@ const handleUpdateRole = async () => {
               </td>
             </tr>
             <tr v-else-if="filteredUsers.length === 0">
-              <td colspan="5" class="px-6 py-10 text-center text-gray-500">
+              <td colspan="6" class="px-6 py-10 text-center text-gray-500">
                 No users found matching your criteria.
               </td>
             </tr>
@@ -216,22 +260,40 @@ const handleUpdateRole = async () => {
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(user.balance) }}</div>
               </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <button 
+                  @click="openBalanceModal(user)"
+                  class="inline-flex items-center gap-1 text-green-600 hover:text-green-900 bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Plus class="w-4 h-4" />
+                  <span>Balance</span>
+                </button>
+              </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ new Date(user.created_at).toLocaleDateString('id-ID') }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <div class="flex items-center justify-end gap-2">
                   <button 
-                    @click="openBalanceModal(user)"
-                    class="inline-flex items-center gap-1 text-green-600 hover:text-green-900 bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
+                    @click="openEditModal(user)"
+                    class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                    title="Edit User"
                   >
-                    <Plus class="w-4 h-4" />
-                    <span>Balance</span>
+                    <Pencil class="w-4 h-4" />
                   </button>
                   <button 
-                    v-if="isSuperadmin && user.id !== auth.userProfile?.id"
+                    v-if="user.role !== 'superadmin'"
+                    @click="handleDeleteUser(user)"
+                    class="inline-flex items-center gap-1 text-red-600 hover:text-red-900 bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                    title="Delete User"
+                  >
+                    <Trash class="w-4 h-4" />
+                  </button>
+                  <button 
+                    v-if="isSuperadmin && user.id !== auth.userProfile?.id && user.role !== 'superadmin'"
                     @click="openRoleModal(user)"
                     class="inline-flex items-center gap-1 text-purple-600 hover:text-purple-900 bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
+                    title="Change Role"
                   >
                     <ShieldAlert class="w-4 h-4" />
                     <span>Role</span>
@@ -297,12 +359,11 @@ const handleUpdateRole = async () => {
             v-model="selectedRole"
             class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
           >
-            <option value="user">User</option>
             <option value="admin">Admin</option>
-            <option value="superadmin">Superadmin</option>
+            <option value="staff">Staff</option>
           </select>
           <p class="mt-2 text-xs text-gray-500">
-            Admins have access to products and users. Superadmins can also change roles.
+            Pilih role untuk mitra Anda.
           </p>
         </div>
         <div class="flex justify-end gap-3">
@@ -322,6 +383,48 @@ const handleUpdateRole = async () => {
               <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             </span>
             Update Role
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Edit User</h3>
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <input 
+            type="text" 
+            v-model="editFullName"
+            class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+          />
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+          <input 
+            type="text" 
+            v-model="editPhone"
+            class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+          />
+        </div>
+        <div class="flex justify-end gap-3">
+          <button 
+            @click="showEditModal = false"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            :disabled="actionLoading"
+          >
+            Cancel
+          </button>
+          <button 
+            @click="handleEditUser"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 flex items-center"
+            :disabled="actionLoading"
+          >
+            <span v-if="actionLoading" class="mr-2">
+              <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </span>
+            Save Changes
           </button>
         </div>
       </div>
