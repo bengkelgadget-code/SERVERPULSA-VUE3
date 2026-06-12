@@ -128,16 +128,16 @@ const selectProduct = (sku: string) => {
 
     <div class="p-4 space-y-4">
       <!-- Input Section -->
-      <div class="card p-5 bg-white rounded-2xl shadow-sm">
-        <label class="block text-sm font-bold text-neutral-700 mb-2">
-          {{ categoryParam === 'pln' ? 'Nomor Meter / ID Pelanggan' : 'Nomor Handphone' }}
+      <div class="card p-4 bg-white rounded-2xl shadow-sm mb-4">
+        <label class="block text-xs font-bold text-neutral-700 mb-1">
+          Nomor {{ categoryParam === 'pln' ? 'Meter / ID Pelanggan' : 'Handphone' }}
         </label>
         
         <input 
           v-model="customerNo" 
           type="text" 
           inputmode="numeric"
-          class="input-field text-xl font-bold tracking-wider py-4 w-full bg-neutral-50 focus:bg-white" 
+          class="input-field text-xl font-bold tracking-wider py-3 px-4 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
           :placeholder="categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx'" 
           @input="categoryParam === 'pln' && customerNo.length >= 11 && checkPLN()"
         />
@@ -156,18 +156,18 @@ const selectProduct = (sku: string) => {
 
         <!-- 3 Icons (Mic, Barcode, Contacts) -->
         <div class="flex items-center gap-3 mt-4 pt-4 border-t border-neutral-100">
-          <button @click="showAlert('Mic / Speech to Text segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-2 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
+          <button @click="showAlert('Mic / Speech to Text segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-1.5 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
             <span class="text-[10px] font-bold">Suara</span>
           </button>
           
-          <button @click="showAlert('Barcode Scanner segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-2 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
+          <button @click="showAlert('Barcode Scanner segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-1.5 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
             <span class="text-[10px] font-bold">Scan</span>
           </button>
           
-          <button @click="showAlert('Ambil dari Kontak segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-2 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <button @click="showAlert('Ambil dari Kontak segera hadir')" class="flex-1 flex flex-col items-center gap-1 p-1.5 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span class="text-[10px] font-bold">Kontak</span>
           </button>
         </div>
