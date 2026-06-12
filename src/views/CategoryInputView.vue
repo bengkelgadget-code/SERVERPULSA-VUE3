@@ -120,7 +120,11 @@ const checkPLN = async () => {
 
 const selectProduct = (sku: string) => {
   // Store customerNo in sessionStorage or pass via query params
-  router.push(`/transaction/${sku}?phone=${customerNo.value}`)
+  if (categoryParam === 'pln' && plnName.value && !plnName.value.includes('Gagal') && !plnName.value.includes('Tidak Ditemukan')) {
+    router.push(`/transaction/${sku}?phone=${customerNo.value}&name=${encodeURIComponent(plnName.value)}`)
+  } else {
+    router.push(`/transaction/${sku}?phone=${customerNo.value}`)
+  }
 }
 
 </script>

@@ -3,18 +3,28 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const productsStore = useProductsStore()
+const authStore = useAuthStore()
 
 const showAlert = (msg: string) => window.alert(msg)
 
 const sku = route.params.sku as string
-const customerNo = ref('')
+const customerNo = ref((route.query.phone as string) || '')
+const plnNameQuery = route.query.name as string || ''
 const loading = ref(false)
-const plnName = ref('')
+const plnName = ref(plnNameQuery)
 const errorMsg = ref('')
+
+const paymentMethods = [
+  { id: 'saldo', name: 'Saldo Aplikasi', icon: 'M3 6h18v12H3z', description: 'Potong dari saldo deposit' },
+  { id: 'qris', name: 'QRIS', icon: 'M3 3h8v8H3z M13 3h8v8h-8z M3 13h8v8H3z', description: 'Bayar pakai E-Wallet/M-Banking' },
+]
+
+const selectedPayment = ref('saldo')
 
 const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 
@@ -22,33 +32,42 @@ const product = computed(() => {
   return productsStore.products.find(p => p.sku_code === sku)
 })
 
+const adminFee = computed(() => {
+  if (selectedPayment.value === 'qris') return 1500
+  return 0
+})
+
+const totalPrice = computed(() => {
+  return (product.value?.harga_jual || 0) + adminFee.value
+})
+
 onMounted(() => {
   if (productsStore.products.length === 0) {
     productsStore.fetchProducts()
   }
+  
+  // If PLN name wasn't passed via query, we might need to fetch it here
+  if (product.value?.category?.toLowerCase().includes('pln') && !plnName.value && customerNo.value.length >= 11) {
+    checkPLN()
+  }
 })
 
 const checkPLN = async () => {
-  if (customerNo.value.length < 10) return
-  loading.value = true
+  if (customerNo.value.length < 11) return
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/mobile/transaction/inquiry-pln`, {
+    const res = await fetch('/api/inquiry-pln', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`
-      },
-      body: JSON.stringify({ customer_no: customerNo.value, sku_code: sku })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_no: customerNo.value })
     })
     const data = await res.json()
-    if (data.success && data.data?.name) {
-      plnName.value = data.data.name
+    if (data.success && data.name) {
+      let displayName = data.name
+      if (data.segment_power) displayName += ` / ${data.segment_power}`
+      plnName.value = displayName
     }
   } catch (e) {
     console.error(e)
-  } finally {
-    loading.value = false
   }
 }
 
@@ -68,7 +87,7 @@ const buyProduct = async () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session?.access_token}`
       },
-      body: JSON.stringify({ customer_no: customerNo.value, sku_code: sku })
+      body: JSON.stringify({ customer_no: customerNo.value, sku_code: sku, payment_method: selectedPayment.value })
     })
     
     const data = await res.json()
@@ -86,60 +105,111 @@ const buyProduct = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-50 flex flex-col">
-    <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm">
-      <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+  <div class="min-h-screen bg-neutral-50 flex flex-col pb-24">
+    <!-- Header -->
+    <div class="bg-primary-600 text-white py-2 px-3 flex items-center gap-2 shadow-sm sticky top-0 z-10">
+      <button @click="router.back()" class="p-1.5 -ml-1.5 rounded-full hover:bg-white/20 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h1 class="text-lg font-bold">Transaksi</h1>
+      <h1 class="text-base font-bold">Checkout Pembayaran</h1>
     </div>
 
-    <div class="p-4 flex-1" v-if="product">
-      <div class="card mb-6">
-        <div class="flex justify-between items-start mb-2">
+    <div class="p-3 space-y-3" v-if="product">
+      <!-- Detail Tujuan -->
+      <div class="card p-4 bg-white rounded-2xl shadow-sm border border-neutral-100">
+        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Informasi Tujuan</h3>
+        
+        <div class="space-y-3">
           <div>
-            <h2 class="font-bold text-lg text-neutral-800">{{ product.product_name }}</h2>
-            <p class="text-sm text-neutral-500">{{ product.brand }}</p>
+            <p class="text-[10px] text-neutral-400 font-medium">Nomor {{ product.category?.toLowerCase().includes('pln') ? 'Meter/ID Pelanggan' : 'Handphone' }}</p>
+            <p class="font-bold text-neutral-800 text-base">{{ customerNo }}</p>
           </div>
-          <p class="font-bold text-primary-600 text-lg">{{ formatRp(product.harga_jual) }}</p>
+          
+          <div v-if="plnName">
+            <p class="text-[10px] text-neutral-400 font-medium">Nama Pelanggan</p>
+            <p class="font-bold text-neutral-800 text-sm">{{ plnName }}</p>
+          </div>
         </div>
       </div>
 
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-bold text-neutral-700 mb-2">Nomor Tujuan / PLN</label>
-          <div class="relative flex items-center gap-2">
-            <input 
-              v-model="customerNo" 
-              type="text" 
-              inputmode="numeric"
-              class="input-field text-lg font-bold tracking-wide py-3 flex-1" 
-              placeholder="08123xxxx / 5123xxxx" 
-              @blur="product.category.toLowerCase().includes('pln') && checkPLN()"
-            />
-            <button @click="showAlert('Fitur Scan Barcode akan segera hadir!')" class="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-neutral-200 transition-colors border border-neutral-200" title="Scan Barcode">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
-            </button>
+      <!-- Detail Produk -->
+      <div class="card p-4 bg-white rounded-2xl shadow-sm border border-neutral-100">
+        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Detail Pembelian</h3>
+        
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 bg-primary-50 rounded-full flex items-center justify-center text-primary-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg>
+          </div>
+          <div>
+            <h2 class="font-bold text-sm text-neutral-800 leading-tight">{{ product.product_name }}</h2>
+            <p class="text-[11px] text-neutral-500 mt-0.5">{{ product.brand }}</p>
           </div>
         </div>
-
-        <div v-if="plnName" class="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-          <p class="text-xs text-blue-600 font-semibold mb-1">Nama Pelanggan PLN</p>
-          <p class="font-bold text-blue-900">{{ plnName }}</p>
+        
+        <div class="border-t border-dashed border-neutral-200 my-3"></div>
+        
+        <div class="space-y-2">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-neutral-500">Harga Produk</span>
+            <span class="font-semibold text-neutral-800">{{ formatRp(product.harga_jual) }}</span>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-neutral-500">Biaya Admin</span>
+            <span class="font-semibold text-neutral-800">{{ adminFee === 0 ? 'Gratis' : formatRp(adminFee) }}</span>
+          </div>
         </div>
-
-        <div v-if="errorMsg" class="p-4 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 font-medium">
-          {{ errorMsg }}
+        
+        <div class="border-t border-dashed border-neutral-200 my-3"></div>
+        
+        <div class="flex justify-between items-center">
+          <span class="font-bold text-neutral-800">Total Pembayaran</span>
+          <span class="font-extrabold text-primary-600 text-lg">{{ formatRp(totalPrice) }}</span>
         </div>
+      </div>
+
+      <!-- Metode Pembayaran -->
+      <div class="card p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 mb-6">
+        <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Pilih Pembayaran</h3>
+        
+        <div class="space-y-2">
+          <label v-for="method in paymentMethods" :key="method.id" 
+            :class="[
+              'flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all',
+              selectedPayment === method.id ? 'border-primary-500 bg-primary-50' : 'border-neutral-100 hover:border-primary-200'
+            ]">
+            <input type="radio" :value="method.id" v-model="selectedPayment" class="mt-1 w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500">
+            <div class="flex-1">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-sm text-neutral-800">{{ method.name }}</span>
+                <span v-if="method.id === 'saldo'" class="text-[10px] font-bold text-primary-600 bg-white px-2 py-0.5 rounded-full border border-primary-200">
+                  Sisa: {{ formatRp(authStore.profile?.balance || 0) }}
+                </span>
+              </div>
+              <p class="text-[10px] text-neutral-500 mt-0.5">{{ method.description }}</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div v-if="errorMsg" class="p-3 bg-red-50 text-red-600 text-xs rounded-xl border border-red-100 font-semibold text-center">
+        {{ errorMsg }}
       </div>
     </div>
 
-    <div class="p-4 bg-white border-t border-neutral-200 pb-safe">
+    <!-- Bottom Sticky Button -->
+    <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-3 bg-white border-t border-neutral-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe z-20">
       <button 
         @click="buyProduct" 
         :disabled="loading || !customerNo"
-        class="btn-primary w-full py-4 text-lg">
-        {{ loading ? 'Memproses...' : 'Beli Sekarang' }}
+        class="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-between items-center active:scale-[0.98]">
+        <div class="text-left">
+          <p class="text-[10px] font-medium text-primary-100 mb-0.5">Total Bayar</p>
+          <p class="text-sm font-extrabold">{{ formatRp(totalPrice) }}</p>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span>{{ loading ? 'Memproses...' : 'Bayar Sekarang' }}</span>
+          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
       </button>
     </div>
   </div>
