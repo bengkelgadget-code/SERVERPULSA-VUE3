@@ -48,11 +48,11 @@ export default async function handler(req, res) {
 
     // 3. Perform action
     if (action === 'update_user') {
-      const { id, full_name, phone } = payload;
+      const { id, nama_toko, email } = payload;
       
       const { error: updateError } = await supabaseAdmin
         .from('users')
-        .update({ full_name, phone })
+        .update({ nama_toko, email })
         .eq('id', id);
 
       if (updateError) throw updateError;

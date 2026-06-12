@@ -14,7 +14,7 @@ const fetchDeposits = async () => {
   try {
     const { data, error } = await supabase
       .from('deposits')
-      .select('*, users(full_name, phone)')
+      .select('*, users(nama_toko, email)')
       .order('created_at', { ascending: false })
       
     if (error) throw error
@@ -37,8 +37,8 @@ const filteredDeposits = computed(() => {
     const searchLower = searchQuery.value.toLowerCase()
     const matchesSearch = 
       d.id?.toLowerCase().includes(searchLower) || 
-      d.users?.full_name?.toLowerCase().includes(searchLower) ||
-      d.users?.phone?.toLowerCase().includes(searchLower)
+      d.users?.nama_toko?.toLowerCase().includes(searchLower) ||
+      d.users?.email?.toLowerCase().includes(searchLower)
     const matchesStatus = statusFilter.value ? d.status === statusFilter.value : true
     return matchesSearch && matchesStatus
   })
@@ -53,7 +53,7 @@ const formatCurrency = (value: number) => {
 }
 
 const handleApproveDeposit = async (deposit: any) => {
-  if (!confirm(`Are you sure you want to approve deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.full_name || 'this user'}?`)) return
+  if (!confirm(`Are you sure you want to approve deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.nama_toko || 'this user'}?`)) return
   
   actionLoading.value[deposit.id] = true
   try {
@@ -74,7 +74,7 @@ const handleApproveDeposit = async (deposit: any) => {
 }
 
 const handleRejectDeposit = async (deposit: any) => {
-  if (!confirm(`Are you sure you want to reject deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.full_name || 'this user'}?`)) return
+  if (!confirm(`Are you sure you want to reject deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.nama_toko || 'this user'}?`)) return
   
   actionLoading.value[deposit.id] = true
   try {
@@ -172,8 +172,8 @@ const handleRejectDeposit = async (deposit: any) => {
                 <div class="text-xs text-gray-400 font-mono mt-0.5">{{ deposit.id }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ deposit.users?.full_name || 'Unknown User' }}</div>
-                <div class="text-sm text-gray-500">{{ deposit.users?.phone || '-' }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ deposit.users?.nama_toko || 'Unknown User' }}</div>
+                <div class="text-sm text-gray-500">{{ deposit.users?.email || '' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-bold text-gray-900">{{ formatCurrency(deposit.amount) }}</div>

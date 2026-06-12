@@ -17,9 +17,9 @@ const showBalanceModal = ref(false)
 const showEditModal = ref(false)
 const selectedUser = ref<any>(null)
 const balanceAmount = ref(0)
-const editFullName = ref('')
-const editPhone = ref('')
-const editRole = ref('')
+const editNamaToko = ref('')
+const editEmail = ref('')
+const editRole = ref('staff')
 const actionLoading = ref(false)
 
 const fetchUsers = async () => {
@@ -48,8 +48,8 @@ onMounted(() => {
 const filteredUsers = computed(() => {
   return users.value.filter(u => {
     const matchesSearch = 
-      u.full_name?.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
-      u.phone?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      u.nama_toko?.toLowerCase().includes(searchQuery.value.toLowerCase()) || 
+      u.email?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       u.id?.toLowerCase().includes(searchQuery.value.toLowerCase())
     const matchesRole = roleFilter.value ? u.role === roleFilter.value : true
     return matchesSearch && matchesRole
@@ -72,8 +72,8 @@ const openBalanceModal = (user: any) => {
 
 const openEditModal = (user: any) => {
   selectedUser.value = user
-  editFullName.value = user.full_name || ''
-  editPhone.value = user.phone || ''
+  editNamaToko.value = user.nama_toko || ''
+  editEmail.value = user.email || ''
   if (user.role === 'superadmin') {
     editRole.value = 'superadmin'
   } else {
@@ -101,8 +101,8 @@ const handleEditUser = async () => {
         action: 'update_user',
         payload: {
           id: selectedUser.value.id,
-          full_name: editFullName.value,
-          phone: editPhone.value
+          nama_toko: editNamaToko.value,
+          email: editEmail.value
         }
       })
     })
@@ -132,7 +132,7 @@ const handleEditUser = async () => {
 }
 
 const handleDeleteUser = async (user: any) => {
-  if (!confirm(`Are you sure you want to delete user ${user.full_name || user.phone}?`)) return
+  if (!confirm(`Are you sure you want to delete user ${user.nama_toko || user.email}?`)) return
   try {
     const { data: session } = await supabase.auth.getSession()
     const token = session.session?.access_token
@@ -261,11 +261,11 @@ const handleAddBalance = async () => {
               <td class="px-6 py-4">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                    {{ (user.full_name || 'U').charAt(0).toUpperCase() }}
+                    {{ (user.nama_toko || 'U').charAt(0).toUpperCase() }}
                   </div>
                   <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">{{ user.full_name || 'No Name' }}</div>
-                    <div class="text-sm text-gray-500">{{ user.phone }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ user.nama_toko || 'No Name' }}</div>
+                    <div class="text-sm text-gray-500">{{ user.email }}</div>
                     <div class="text-xs text-gray-400 font-mono mt-0.5 truncate w-32" :title="user.id">{{ user.id }}</div>
                   </div>
                 </div>
@@ -281,7 +281,7 @@ const handleAddBalance = async () => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(user.balance) }}</div>
+                <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(user.saldo) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <button 
@@ -326,7 +326,7 @@ const handleAddBalance = async () => {
         <h3 class="text-lg font-bold text-gray-900 mb-4">Add Balance</h3>
         <div class="mb-4">
           <p class="text-sm text-gray-500 mb-1">User</p>
-          <p class="font-medium">{{ selectedUser?.full_name }} ({{ selectedUser?.phone }})</p>
+          <p class="font-medium">{{ selectedUser?.nama_toko }} ({{ selectedUser?.email }})</p>
         </div>
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-2">Amount to Add (IDR)</label>
@@ -364,18 +364,18 @@ const handleAddBalance = async () => {
       <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
         <h3 class="text-lg font-bold text-gray-900 mb-4">Edit User</h3>
         <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Nama Toko</label>
           <input 
             type="text" 
-            v-model="editFullName"
+            v-model="editNamaToko"
             class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
           />
         </div>
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
           <input 
-            type="text" 
-            v-model="editPhone"
+            type="email" 
+            v-model="editEmail"
             class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
           />
         </div>
