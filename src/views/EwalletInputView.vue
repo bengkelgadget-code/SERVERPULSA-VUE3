@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 
@@ -11,6 +11,54 @@ const showAlert = (msg: string) => window.alert(msg)
 
 const walletId = route.params.id as string
 const customerNo = ref('')
+const showCheckButton = ref(false)
+const ewalletName = ref('')
+const isChecking = ref(false)
+let checkTimeout: any = null
+
+const selectedProvider = computed(() => {
+  return walletId.toUpperCase()
+})
+
+watch(customerNo, (newVal) => {
+  ewalletName.value = ''
+  showCheckButton.value = false
+  clearTimeout(checkTimeout)
+
+  if (newVal.length >= 10) {
+    checkTimeout = setTimeout(() => {
+      showCheckButton.value = true
+    }, 3000)
+  }
+})
+
+const checkEwallet = async () => {
+  if (!customerNo.value) return
+  
+  isChecking.value = true
+  ewalletName.value = ''
+  
+  try {
+    const response = await fetch('/api/inquiry-ewallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_no: customerNo.value, provider: selectedProvider.value })
+    })
+    
+    const data = await response.json()
+    if (data.success) {
+      ewalletName.value = data.name
+      showCheckButton.value = false
+    } else {
+      window.alert(data.message || 'Gagal mengecek nama e-wallet')
+    }
+  } catch (error) {
+    console.error(error)
+    window.alert('Terjadi kesalahan koneksi saat mengecek nama')
+  } finally {
+    isChecking.value = false
+  }
+}
 
 const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 
@@ -76,15 +124,50 @@ const selectProduct = (sku: string) => {
     <div class="p-4 space-y-4">
       <!-- Input Section -->
       <div class="card p-4 bg-white rounded-xl shadow-sm mb-6">
-        <label class="block text-sm font-bold text-neutral-700 mb-2">Nomor Tujuan / HP</label>
-        <input 
-          v-model="customerNo" 
-          type="text" 
-          inputmode="numeric"
-          class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
-          :placeholder="walletInfo.id === 'dana' ? '0812xxxxxxx' : '08xxxxxxx'" 
-        />
-        
+        <div class="mb-4">
+          <label class="block text-sm font-bold text-neutral-800 mb-2">Nomor Tujuan / HP</label>
+          <div class="relative flex items-center">
+            <input 
+              v-model="customerNo"
+              type="tel" 
+              pattern="[0-9]*"
+              inputmode="numeric"
+              class="w-full text-lg font-bold text-neutral-800 border-2 border-neutral-200 rounded-xl px-4 py-3 focus:border-primary-500 focus:ring-0 transition-colors pr-24"
+              placeholder="Contoh: 08123456789"
+            />
+            
+            <button 
+              v-if="customerNo && !showCheckButton"
+              @click="customerNo = ''"
+              class="absolute right-4 p-1 text-neutral-400 hover:text-neutral-600 bg-neutral-100 rounded-full"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+
+            <!-- Tombol Cek Nama -->
+            <button 
+              v-if="showCheckButton"
+              @click="checkEwallet"
+              :disabled="isChecking"
+              class="absolute right-2 px-3 py-1.5 bg-primary-100 text-primary-700 font-bold text-xs rounded-lg border border-primary-200 hover:bg-primary-200 active:bg-primary-300 transition-colors disabled:opacity-50 flex items-center gap-1"
+            >
+              <span v-if="isChecking" class="w-3 h-3 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></span>
+              {{ isChecking ? 'Cek...' : 'Cek Nama' }}
+            </button>
+          </div>
+          
+          <!-- Hasil Cek Nama -->
+          <div v-if="ewalletName" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+            <div class="mt-0.5 text-green-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold text-green-800 uppercase">{{ ewalletName }}</p>
+              <p class="text-[10px] font-medium text-green-600 mt-0.5">Nama valid dan cocok</p>
+            </div>
+          </div>
+        </div>
+
         <!-- 3 Icons (Mic, Barcode, Contacts) -->
         <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-neutral-100">
           <button @click="showAlert('Mic / Speech to Text segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
