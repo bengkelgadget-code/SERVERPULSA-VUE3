@@ -108,7 +108,7 @@ const checkPLN = async () => {
       if (data.segment_power) displayName += ` / ${data.segment_power}`
       plnName.value = displayName
     } else {
-      plnName.value = 'Nomor Pelanggan Tidak Ditemukan'
+      plnName.value = data.message || 'Nomor Pelanggan Tidak Ditemukan'
     }
   } catch (err) {
     console.error('Error checking PLN:', err)

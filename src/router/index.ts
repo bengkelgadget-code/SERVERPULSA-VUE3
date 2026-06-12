@@ -63,6 +63,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/receipt/:id',
+      name: 'receipt',
+      component: () => import('@/views/ReceiptView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/admin',
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },

@@ -10,7 +10,6 @@ const auth = useAuthStore()
 const transactions = ref<any[]>([])
 const loading = ref(true)
 
-const showAlert = (msg: string) => window.alert(msg)
 
 const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 const formatDate = (dateStr: string) => {
@@ -119,7 +118,7 @@ const getStatusColor = (status: string) => {
           </div>
           
           <div v-if="trx.status === 'sukses'" class="mt-4 pt-4 border-t border-neutral-100 flex justify-end">
-            <button @click="showAlert('Fitur Cetak Struk Bluetooth akan segera hadir!')" class="flex items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors">
+            <button @click="router.push(`/receipt/${trx.id}`)" class="flex items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
               Cetak Struk
             </button>
