@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { Users, ArrowLeftRight, CreditCard, Package } from 'lucide-vue-next'
 
 const auth = useAuthStore()
+const digiflazzBalance = ref<number | null>(null)
 const stats = ref([
   { name: 'Total Users', value: 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
   { name: 'Total Transactions', value: 0, icon: ArrowLeftRight, color: 'text-green-600', bg: 'bg-green-100' },
@@ -13,6 +14,7 @@ const stats = ref([
 ])
 
 const loading = ref(true)
+let realtimeChannel: any = null
 
 const fetchStats = async () => {
   loading.value = true
@@ -44,6 +46,17 @@ const fetchStats = async () => {
     stats.value[2].value = depositsCount || 0
     stats.value[3].value = productsCount || 0
     
+    // Fetch Digiflazz Balance
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin/digiflazz-balance`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        digiflazzBalance.value = data.balance
+      }
+    }
   } catch (error) {
     console.error('Error fetching stats:', error)
   } finally {
@@ -51,8 +64,30 @@ const fetchStats = async () => {
   }
 }
 
+const setupRealtime = () => {
+  realtimeChannel = supabase.channel('admin-dashboard-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+      fetchStats()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+      fetchStats()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => {
+      fetchStats()
+    })
+    .subscribe()
+}
+
 onMounted(() => {
   fetchStats()
+  setupRealtime()
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel)
+  }
 })
 </script>
 
@@ -63,14 +98,19 @@ onMounted(() => {
       <!-- Saldo Digiflazz -->
       <div class="bg-gradient-to-r from-[#7c3aed] to-[#a855f7] rounded-2xl p-6 text-white shadow-md shadow-purple-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO DIGIFLAZZ</div>
-        <div class="text-3xl font-extrabold tracking-tight">Rp 196.565</div>
+        <div class="text-3xl font-extrabold tracking-tight">
+          <span v-if="digiflazzBalance !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(digiflazzBalance) }}</span>
+          <span v-else class="animate-pulse">Loading...</span>
+        </div>
       </div>
       
       <!-- Saldo Pusat -->
       <div class="bg-gradient-to-r from-[#10b981] to-[#059669] rounded-2xl p-6 text-white shadow-md shadow-green-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO PUSAT (LOKAL)</div>
         <div class="flex items-end justify-between">
-          <div class="text-3xl font-extrabold tracking-tight">Rp 0</div>
+          <div class="text-3xl font-extrabold tracking-tight">
+            {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(auth.userProfile?.saldo || 0) }}
+          </div>
           <div class="text-xs opacity-90 truncate bg-white/20 px-3 py-1 rounded-full">{{ auth.userProfile?.email || 'admin@serverpulsa.com' }}</div>
         </div>
       </div>

@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const userProfile = ref<any>(null)
   const loading = ref(true)
   const isInitialized = ref(false)
+  let userSubscription: any = null
 
   async function initialize() {
     if (isInitialized.value) return
@@ -24,6 +25,10 @@ export const useAuthStore = defineStore('auth', () => {
         await fetchProfile(user.value.id)
       } else {
         userProfile.value = null
+        if (userSubscription) {
+          supabase.removeChannel(userSubscription)
+          userSubscription = null
+        }
       }
     })
     
@@ -45,9 +50,27 @@ export const useAuthStore = defineStore('auth', () => {
     if (data) {
       console.log('Profile fetched successfully:', data.role)
       userProfile.value = data
+      setupRealtime(userId)
     } else {
       console.log('No profile data returned.')
     }
+  }
+
+  function setupRealtime(userId: string) {
+    if (userSubscription) {
+      supabase.removeChannel(userSubscription)
+    }
+
+    userSubscription = supabase.channel('user-profile-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
+        (payload) => {
+          console.log('User profile updated via realtime:', payload.new)
+          userProfile.value = { ...userProfile.value, ...payload.new }
+        }
+      )
+      .subscribe()
   }
 
   async function ensureProfile() {
@@ -63,6 +86,10 @@ export const useAuthStore = defineStore('auth', () => {
     await supabase.auth.signOut()
     user.value = null
     userProfile.value = null
+    if (userSubscription) {
+      supabase.removeChannel(userSubscription)
+      userSubscription = null
+    }
   }
 
   return {
