@@ -93,11 +93,29 @@ const checkPLN = async () => {
   plnLoading.value = true
   plnName.value = ''
   
-  // Simulasi API validasi PLN (karena API Digiflazz untuk CEK PLN butuh biaya/SKU khusus)
-  setTimeout(() => {
-    plnName.value = 'M. ILMI / R1M / 900VA'
+  try {
+    const res = await fetch('/api/inquiry-pln', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_no: customerNo.value })
+    })
+    
+    const data = await res.json()
+    
+    if (data.success && data.name) {
+      // Format the display name along with segment/power if available
+      let displayName = data.name
+      if (data.segment_power) displayName += ` / ${data.segment_power}`
+      plnName.value = displayName
+    } else {
+      plnName.value = 'Nomor Pelanggan Tidak Ditemukan'
+    }
+  } catch (err) {
+    console.error('Error checking PLN:', err)
+    plnName.value = 'Gagal mengecek nomor'
+  } finally {
     plnLoading.value = false
-  }, 1500)
+  }
 }
 
 const selectProduct = (sku: string) => {
@@ -136,11 +154,17 @@ const selectProduct = (sku: string) => {
         <!-- Validation PLN -->
         <div v-if="categoryParam === 'pln' && (plnLoading || plnName)" class="mt-3">
           <p v-if="plnLoading" class="text-xs text-primary-600 animate-pulse font-medium">Mengecek ID Pelanggan...</p>
-          <div v-else-if="plnName" class="p-2.5 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
+          <div v-else-if="plnName && !plnName.includes('Gagal') && !plnName.includes('Tidak Ditemukan')" class="p-2.5 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
             <div>
               <p class="text-[10px] text-green-600 font-semibold leading-none">Pemilik Rekening</p>
               <p class="font-bold text-green-800 text-sm mt-0.5">{{ plnName }}</p>
+            </div>
+          </div>
+          <div v-else class="p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            <div>
+               <p class="font-bold text-red-800 text-xs">{{ plnName }}</p>
             </div>
           </div>
         </div>
