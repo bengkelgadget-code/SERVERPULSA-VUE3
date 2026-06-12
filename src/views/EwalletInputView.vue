@@ -110,7 +110,11 @@ const filteredProducts = computed(() => {
 })
 
 const selectProduct = (sku: string) => {
-  router.push(`/transaction/${sku}?phone=${customerNo.value}`)
+  let url = `/transaction/${sku}?phone=${customerNo.value}`
+  if (ewalletName.value) {
+    url += `&name=${encodeURIComponent(ewalletName.value)}`
+  }
+  router.push(url)
 }
 </script>
 

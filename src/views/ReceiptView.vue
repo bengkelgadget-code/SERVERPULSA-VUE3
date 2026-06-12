@@ -122,6 +122,7 @@ const printReceipt = () => {
         <div v-else class="space-y-1 mb-4">
           <div class="flex"><span class="w-24">PRODUK</span><span>: {{ trx.products?.product_name }}</span></div>
           <div class="flex"><span class="w-24">NO TUJUAN</span><span>: {{ trx.customer_no }}</span></div>
+          <div v-if="trx.customer_name" class="flex"><span class="w-24">NAMA AKUN</span><span>: {{ trx.customer_name }}</span></div>
           <div class="flex"><span class="w-24">SN / REF</span><span>: {{ trx.sn || trx.ref_id }}</span></div>
           <div class="flex mt-2 font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
         </div>

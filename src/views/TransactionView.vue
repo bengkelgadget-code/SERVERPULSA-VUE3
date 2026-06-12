@@ -12,9 +12,9 @@ const authStore = useAuthStore()
 
 const sku = route.params.sku as string
 const customerNo = ref((route.query.phone as string) || '')
-const plnNameQuery = route.query.name as string || ''
+const customerNameQuery = route.query.name as string || ''
 const loading = ref(false)
-const plnName = ref(plnNameQuery)
+const customerName = ref(customerNameQuery)
 const errorMsg = ref('')
 
 const paymentMethods = [
@@ -45,7 +45,7 @@ onMounted(() => {
   }
   
   // If PLN name wasn't passed via query, we might need to fetch it here
-  if (product.value?.category?.toLowerCase().includes('pln') && !plnName.value && customerNo.value.length >= 11) {
+  if (product.value?.category?.toLowerCase().includes('pln') && !customerName.value && customerNo.value.length >= 11) {
     checkPLN()
   }
 })
@@ -62,7 +62,7 @@ const checkPLN = async () => {
     if (data.success && data.name) {
       let displayName = data.name
       if (data.segment_power) displayName += ` / ${data.segment_power}`
-      plnName.value = displayName
+      customerName.value = displayName
     }
   } catch (e) {
     console.error(e)
@@ -85,7 +85,12 @@ const buyProduct = async () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session?.access_token}`
       },
-      body: JSON.stringify({ customer_no: customerNo.value, sku_code: sku, payment_method: selectedPayment.value })
+      body: JSON.stringify({ 
+        customer_no: customerNo.value, 
+        sku_code: sku, 
+        payment_method: selectedPayment.value,
+        customer_name: customerName.value // Dikirim ke API (jika API mendukung penyimpanan nama ini)
+      })
     })
     
     const data = await res.json()
@@ -123,9 +128,9 @@ const buyProduct = async () => {
             <p class="font-bold text-neutral-800 text-base">{{ customerNo }}</p>
           </div>
           
-          <div v-if="plnName">
-            <p class="text-[10px] text-neutral-400 font-medium">Nama Pelanggan</p>
-            <p class="font-bold text-neutral-800 text-sm">{{ plnName }}</p>
+          <div v-if="customerName">
+            <p class="text-[10px] text-neutral-400 font-medium">Nama Pelanggan/Akun</p>
+            <p class="font-bold text-neutral-800 text-sm">{{ customerName }}</p>
           </div>
         </div>
       </div>
@@ -180,7 +185,7 @@ const buyProduct = async () => {
               <div class="flex justify-between items-center">
                 <span class="font-bold text-sm text-neutral-800">{{ method.name }}</span>
                 <span v-if="method.id === 'saldo'" class="text-[10px] font-bold text-primary-600 bg-white px-2 py-0.5 rounded-full border border-primary-200">
-                  Sisa: {{ formatRp(authStore.userProfile?.balance || 0) }}
+                  Sisa: {{ formatRp(authStore.userProfile?.saldo || 0) }}
                 </span>
               </div>
               <p class="text-[10px] text-neutral-500 mt-0.5">{{ method.description }}</p>
