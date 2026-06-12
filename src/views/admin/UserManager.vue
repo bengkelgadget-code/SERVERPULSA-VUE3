@@ -86,12 +86,31 @@ const handleEditUser = async () => {
   if (!selectedUser.value) return
   actionLoading.value = true
   try {
-    const { error } = await supabase
-      .from('users')
-      .update({ full_name: editFullName.value, phone: editPhone.value })
-      .eq('id', selectedUser.value.id)
-      
-    if (error) throw error
+    const { data: session } = await supabase.auth.getSession()
+    const token = session.session?.access_token
+
+    if (!token) throw new Error('Not authenticated')
+
+    const response = await fetch('/api/admin-action', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        action: 'update_user',
+        payload: {
+          id: selectedUser.value.id,
+          full_name: editFullName.value,
+          phone: editPhone.value
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update user profile')
+    }
 
     if (isSuperadmin.value && selectedUser.value.role !== editRole.value && selectedUser.value.role !== 'superadmin' && editRole.value !== 'superadmin') {
       const { error: roleError } = await supabase.rpc('update_user_role', {
@@ -104,9 +123,9 @@ const handleEditUser = async () => {
     alert('User updated successfully')
     showEditModal.value = false
     fetchUsers()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error updating user:', err)
-    alert('Failed to update user')
+    alert(err.message || 'Failed to update user')
   } finally {
     actionLoading.value = false
   }
@@ -115,12 +134,32 @@ const handleEditUser = async () => {
 const handleDeleteUser = async (user: any) => {
   if (!confirm(`Are you sure you want to delete user ${user.full_name || user.phone}?`)) return
   try {
-    const { error } = await supabase.from('users').delete().eq('id', user.id)
-    if (error) throw error
+    const { data: session } = await supabase.auth.getSession()
+    const token = session.session?.access_token
+
+    if (!token) throw new Error('Not authenticated')
+
+    const response = await fetch('/api/admin-action', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        action: 'delete_user',
+        payload: { id: user.id }
+      })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to delete user')
+    }
+
     fetchUsers()
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error deleting user:', err)
-    alert('Failed to delete user')
+    alert(err.message || 'Failed to delete user')
   }
 }
 
