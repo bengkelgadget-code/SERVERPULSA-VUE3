@@ -14,13 +14,12 @@ const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
 // Modals state
 const showBalanceModal = ref(false)
-const showRoleModal = ref(false)
 const showEditModal = ref(false)
 const selectedUser = ref<any>(null)
 const balanceAmount = ref(0)
-const selectedRole = ref('')
 const editFullName = ref('')
 const editPhone = ref('')
+const editRole = ref('')
 const actionLoading = ref(false)
 
 const fetchUsers = async () => {
@@ -71,16 +70,15 @@ const openBalanceModal = (user: any) => {
   showBalanceModal.value = true
 }
 
-const openRoleModal = (user: any) => {
-  selectedUser.value = user
-  selectedRole.value = user.role === 'admin' || user.role === 'staff' ? user.role : 'staff'
-  showRoleModal.value = true
-}
-
 const openEditModal = (user: any) => {
   selectedUser.value = user
   editFullName.value = user.full_name || ''
   editPhone.value = user.phone || ''
+  if (user.role === 'superadmin') {
+    editRole.value = 'superadmin'
+  } else {
+    editRole.value = user.role === 'admin' || user.role === 'staff' ? user.role : 'staff'
+  }
   showEditModal.value = true
 }
 
@@ -94,6 +92,15 @@ const handleEditUser = async () => {
       .eq('id', selectedUser.value.id)
       
     if (error) throw error
+
+    if (isSuperadmin.value && selectedUser.value.role !== editRole.value && selectedUser.value.role !== 'superadmin' && editRole.value !== 'superadmin') {
+      const { error: roleError } = await supabase.rpc('update_user_role', {
+        user_id: selectedUser.value.id,
+        new_role: editRole.value
+      })
+      if (roleError) throw roleError
+    }
+
     alert('User updated successfully')
     showEditModal.value = false
     fetchUsers()
@@ -289,15 +296,6 @@ const handleUpdateRole = async () => {
                   >
                     <Trash class="w-4 h-4" />
                   </button>
-                  <button 
-                    v-if="isSuperadmin && user.id !== auth.userProfile?.id && user.role !== 'superadmin'"
-                    @click="openRoleModal(user)"
-                    class="inline-flex items-center gap-1 text-purple-600 hover:text-purple-900 bg-purple-50 px-3 py-1.5 rounded-lg transition-colors"
-                    title="Change Role"
-                  >
-                    <ShieldAlert class="w-4 h-4" />
-                    <span>Role</span>
-                  </button>
                 </div>
               </td>
             </tr>
@@ -345,61 +343,6 @@ const handleUpdateRole = async () => {
       </div>
     </div>
 
-    <!-- Update Role Modal -->
-    <div v-if="showRoleModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Change User Role</h3>
-        <div class="mb-4">
-          <p class="text-sm text-gray-500 mb-1">User</p>
-          <p class="font-medium">{{ selectedUser?.full_name }} ({{ selectedUser?.phone }})</p>
-        </div>
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Select New Role</label>
-          <select 
-            v-model="selectedRole"
-            class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
-          >
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-          </select>
-          <p class="mt-2 text-xs text-gray-500">
-            Pilih role untuk mitra Anda.
-          </p>
-        </div>
-        <div class="flex justify-end gap-3">
-          <button 
-            @click="showRoleModal = false"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            :disabled="actionLoading"
-          >
-            Cancel
-          </button>
-          <button 
-            @click="handleUpdateRole"
-            class="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-lg hover:bg-purple-700 flex items-center"
-            :disabled="actionLoading || selectedRole === selectedUser?.role"
-          >
-            <span v-if="actionLoading" class="mr-2">
-              <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            </span>
-            Update Role
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Edit User Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Edit User</h3>
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-          <input 
-            type="text" 
-            v-model="editFullName"
-            class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
-          />
-        </div>
         <div class="mb-6">
           <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
           <input 
@@ -407,6 +350,16 @@ const handleUpdateRole = async () => {
             v-model="editPhone"
             class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
           />
+        </div>
+        <div class="mb-6" v-if="isSuperadmin && selectedUser?.role !== 'superadmin'">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+          <select 
+            v-model="editRole"
+            class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+          >
+            <option value="admin">Admin</option>
+            <option value="staff">Staff</option>
+          </select>
         </div>
         <div class="flex justify-end gap-3">
           <button 
