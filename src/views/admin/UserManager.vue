@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { Search, Plus, ShieldAlert, Pencil, Trash } from 'lucide-vue-next'
+import { Search, Plus, Pencil, Trash } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const users = ref<any[]>([])
@@ -142,29 +142,6 @@ const handleAddBalance = async () => {
   } catch (err) {
     console.error('Error adding balance:', err)
     alert('Failed to add balance')
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-const handleUpdateRole = async () => {
-  if (!selectedUser.value || !selectedRole.value) return
-  
-  actionLoading.value = true
-  try {
-    const { error } = await supabase.rpc('update_user_role', {
-      user_id: selectedUser.value.id,
-      new_role: selectedRole.value
-    })
-    
-    if (error) throw error
-    
-    alert('Role updated successfully')
-    showRoleModal.value = false
-    fetchUsers() // Refresh
-  } catch (err) {
-    console.error('Error updating role:', err)
-    alert('Failed to update role')
   } finally {
     actionLoading.value = false
   }
