@@ -34,18 +34,31 @@ export default async function handler(req, res) {
 
     const username = process.env.DIGIFLAZZ_USERNAME;
     const apiKey = process.env.DIGIFLAZZ_API_KEY;
-    const sign = md5(`${username}${apiKey}depo`);
+    const sign = md5(`${username}${apiKey}pricelist`);
 
+    console.log('Requesting price list from Digiflazz via proxy...');
     const response = await axios.post(
       'https://api.digiflazz.com/v1/price-list',
-      { cmd: 'depo', username: username, sign: sign },
-      { httpsAgent: proxyAgent }
+      {
+        cmd: 'prepaid',
+        username: username,
+        sign: sign
+      },{ httpsAgent: proxyAgent }
     );
 
-    const digiflazzProducts = response.data.data;
-    if (!digiflazzProducts || !Array.isArray(digiflazzProducts)) {
-      throw new Error('Invalid response from DigiFlazz');
+    const digiflazzData = response.data.data;
+    
+    // Check for Digiflazz API Error like rate limits (RC 83)
+    if (digiflazzData && digiflazzData.rc && digiflazzData.rc !== '00') {
+        throw new Error(`DigiFlazz Error [${digiflazzData.rc}]: ${digiflazzData.message || 'Unknown Error'}`);
     }
+
+    if (!digiflazzData || !Array.isArray(digiflazzData)) {
+      throw new Error(`Invalid response dari DigiFlazz: ${JSON.stringify(response.data)}`);
+    }
+
+    const digiflazzProducts = digiflazzData;
+    console.log(`Fetched ${digiflazzProducts.length} products from DigiFlazz.`);
 
     const { data: existingProducts, error: fetchError } = await supabase
       .from('products')
