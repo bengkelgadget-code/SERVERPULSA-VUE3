@@ -87,7 +87,19 @@ router.beforeEach(async (to, _from, next) => {
   if (to.meta.requiresAuth && !auth.user) {
     next('/login')
   } else if (to.meta.requiresGuest && auth.user) {
-    next('/')
+    const role = auth.userProfile?.role
+    if (role === 'admin' || role === 'superadmin') {
+      next('/admin')
+    } else {
+      next('/')
+    }
+  } else if (to.path === '/' && auth.user) {
+    const role = auth.userProfile?.role
+    if (role === 'admin' || role === 'superadmin') {
+      next('/admin')
+    } else {
+      next()
+    }
   } else if (to.meta.requiresAdmin) {
     const role = auth.userProfile?.role
     if (role === 'admin' || role === 'superadmin') {
