@@ -96,6 +96,25 @@ export default async function handler(req, res) {
       if (upsertError) throw upsertError;
     }
 
+    // Handle stale products (products that are in our DB but no longer exist in Digiflazz)
+    const digiflazzProductSkus = new Set(digiflazzProducts.map(p => p.buyer_sku_code));
+    const staleProductSkus = existingProducts
+      .filter(p => !digiflazzProductSkus.has(p.sku_code) && p.is_active === true)
+      .map(p => p.sku_code);
+
+    if (staleProductSkus.length > 0) {
+      console.log(`Deactivating ${staleProductSkus.length} stale products...`);
+      for (let i = 0; i < staleProductSkus.length; i += chunkSize) {
+        const chunk = staleProductSkus.slice(i, i + chunkSize);
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ is_active: false })
+          .in('sku_code', chunk);
+        
+        if (updateError) console.error('Error deactivating stale products:', updateError);
+      }
+    }
+
     return res.status(200).json({ success: true, message: `Berhasil sinkronisasi ${upsertData.length} produk!` });
   } catch (error) {
     console.error('Error syncing with DigiFlazz:', error.message);
