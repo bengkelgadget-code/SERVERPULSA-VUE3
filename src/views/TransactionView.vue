@@ -8,6 +8,8 @@ const route = useRoute()
 const router = useRouter()
 const productsStore = useProductsStore()
 
+const showAlert = (msg: string) => window.alert(msg)
+
 const sku = route.params.sku as string
 const customerNo = ref('')
 const loading = ref(false)
@@ -115,7 +117,7 @@ const buyProduct = async () => {
               placeholder="08123xxxx / 5123xxxx" 
               @blur="product.category.toLowerCase().includes('pln') && checkPLN()"
             />
-            <button @click="alert('Fitur Scan Barcode akan segera hadir!')" class="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-neutral-200 transition-colors border border-neutral-200" title="Scan Barcode">
+            <button @click="showAlert('Fitur Scan Barcode akan segera hadir!')" class="p-3 bg-neutral-100 text-neutral-600 rounded-xl hover:bg-neutral-200 transition-colors border border-neutral-200" title="Scan Barcode">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
             </button>
           </div>

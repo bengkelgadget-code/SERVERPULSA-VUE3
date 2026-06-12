@@ -39,6 +39,30 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/category/:type',
+      name: 'category',
+      component: () => import('@/views/CategoryInputView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/ewallet',
+      name: 'ewallet-menu',
+      component: () => import('@/views/EwalletMenuView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/ewallet/:id',
+      name: 'ewallet-input',
+      component: () => import('@/views/EwalletInputView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/admin',
       component: AdminLayout,
       meta: { requiresAuth: true, requiresAdmin: true },
