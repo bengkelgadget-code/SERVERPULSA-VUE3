@@ -27,11 +27,11 @@ onMounted(() => {
 const filteredProducts = computed(() => {
   let result = productsStore.products.filter(p => {
     const catLower = p.category.toLowerCase()
-    const brandLower = p.brand.toLowerCase()
-    const isEwallet = catLower.includes('wallet') || catLower.includes('dana') || catLower.includes('ovo') || catLower.includes('gopay')
+    const cleanBrand = p.brand.toLowerCase().replace(/\s+/g, '')
+    const isEwallet = catLower.includes('e-money') || catLower.includes('wallet') || catLower.includes('dana') || catLower.includes('ovo') || catLower.includes('gopay')
     
     if (!isEwallet) return false
-    return brandLower.includes(walletId.toLowerCase())
+    return cleanBrand.includes(walletId.toLowerCase().replace(/\s+/g, ''))
   })
 
   result.sort((a, b) => (a.harga_jual || 0) - (b.harga_jual || 0))
