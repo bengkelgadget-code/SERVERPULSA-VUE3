@@ -16,27 +16,29 @@ export const useAuthStore = defineStore('auth', () => {
     if (initPromise) return initPromise
 
     initPromise = new Promise((resolve) => {
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        try {
-          user.value = session?.user || null
-          if (user.value) {
-            await fetchProfile(user.value.id)
-          } else {
-            userProfile.value = null
-            if (userSubscription) {
-              supabase.removeChannel(userSubscription)
-              userSubscription = null
+      supabase.auth.onAuthStateChange((_event, session) => {
+        Promise.resolve().then(async () => {
+          try {
+            user.value = session?.user || null
+            if (user.value) {
+              await fetchProfile(user.value.id)
+            } else {
+              userProfile.value = null
+              if (userSubscription) {
+                supabase.removeChannel(userSubscription)
+                userSubscription = null
+              }
+            }
+          } catch (err) {
+            console.error('Critical error in fetchProfile during init:', err)
+          } finally {
+            if (!isInitialized.value) {
+              isInitialized.value = true
+              loading.value = false
+              resolve(true)
             }
           }
-        } catch (err) {
-          console.error('Critical error in fetchProfile during init:', err)
-        } finally {
-          if (!isInitialized.value) {
-            isInitialized.value = true
-            loading.value = false
-            resolve(true)
-          }
-        }
+        })
       })
     })
   }
