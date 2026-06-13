@@ -29,7 +29,7 @@ let realtimeChannel: any
 
 const fetchHistory = async () => {
   loading.value = true
-  const targetUserId = auth.userProfile?.admin_id || auth.user?.id
+  const targetUserId = auth.userProfile?.role === 'staff' ? auth.userProfile?.admin_id : auth.user?.id
   const { data } = await supabase
     .from('transactions')
     .select('*, products(product_name)')
@@ -39,8 +39,43 @@ const fetchHistory = async () => {
   
   if (data) {
     transactions.value = data
+    
+    // Auto-check pending transactions in the background
+    const pendingTrx = data.filter(t => t.status === 'pending')
+    if (pendingTrx.length > 0) {
+      checkPendingStatuses(pendingTrx)
+    }
   }
   loading.value = false
+}
+
+const checkPendingStatuses = async (pendingTrx: any[]) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+
+  for (const trx of pendingTrx) {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ transaction_id: trx.id })
+      })
+      const result = await res.json()
+      if (result.success && result.status !== trx.status) {
+        const idx = transactions.value.findIndex(t => t.id === trx.id)
+        if (idx !== -1) {
+          transactions.value[idx].status = result.status
+          transactions.value[idx].sn = result.sn || transactions.value[idx].sn
+          transactions.value = [...transactions.value]
+        }
+      }
+    } catch (e) {
+      console.error('Failed to auto-check status:', e)
+    }
+  }
 }
 
 onMounted(async () => {
