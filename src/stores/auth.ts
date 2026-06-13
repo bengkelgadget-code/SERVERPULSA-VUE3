@@ -43,6 +43,8 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
+  let adminSubscription: any = null
+
   async function fetchProfile(userId: string) {
     console.log('Fetching profile for:', userId)
     try {
@@ -57,9 +59,16 @@ export const useAuthStore = defineStore('auth', () => {
       }
       
       if (data) {
-        console.log('Profile fetched successfully:', data.role)
-        userProfile.value = data
-        setupRealtime(userId)
+        let finalData = { ...data }
+        if (data.role === 'staff' && data.admin_id) {
+          const { data: adminData } = await supabase.from('users').select('saldo').eq('id', data.admin_id).single()
+          if (adminData) {
+            finalData.saldo = adminData.saldo
+          }
+        }
+        console.log('Profile fetched successfully:', finalData.role)
+        userProfile.value = finalData
+        setupRealtime(userId, data.admin_id)
       } else {
         console.log('No profile data returned.')
       }
@@ -68,9 +77,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setupRealtime(userId: string) {
+  function setupRealtime(userId: string, adminId?: string) {
     if (userSubscription) {
       supabase.removeChannel(userSubscription)
+    }
+    if (adminSubscription) {
+      supabase.removeChannel(adminSubscription)
     }
 
     userSubscription = supabase.channel('user-profile-changes')
@@ -79,10 +91,29 @@ export const useAuthStore = defineStore('auth', () => {
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
         (payload) => {
           console.log('User profile updated via realtime:', payload.new)
-          userProfile.value = { ...userProfile.value, ...payload.new }
+          if (userProfile.value?.role === 'staff' && adminId) {
+            const { saldo, ...rest } = payload.new as any
+            userProfile.value = { ...userProfile.value, ...rest }
+          } else {
+            userProfile.value = { ...userProfile.value, ...payload.new }
+          }
         }
       )
       .subscribe()
+      
+    if (adminId) {
+      adminSubscription = supabase.channel('admin-profile-changes')
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${adminId}` },
+          (payload) => {
+             if (userProfile.value) {
+                userProfile.value.saldo = (payload.new as any).saldo
+             }
+          }
+        )
+        .subscribe()
+    }
   }
 
   async function ensureProfile() {
