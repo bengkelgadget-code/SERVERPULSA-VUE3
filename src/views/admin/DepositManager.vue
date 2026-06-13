@@ -56,48 +56,7 @@ const formatCurrency = (value: number) => {
   }).format(value || 0)
 }
 
-const handleApproveDeposit = async (deposit: any) => {
-  if (!confirm(`Are you sure you want to approve deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.nama_toko || 'this user'}?`)) return
-  
-  actionLoading.value[deposit.id] = true
-  try {
-    const { error } = await supabase.rpc('approve_deposit', {
-      deposit_id: deposit.id
-    })
-    
-    if (error) throw error
-    
-    alert('Deposit approved successfully')
-    deposit.status = 'success'
-  } catch (err) {
-    console.error('Error approving deposit:', err)
-    alert('Failed to approve deposit')
-  } finally {
-    actionLoading.value[deposit.id] = false
-  }
-}
 
-const handleRejectDeposit = async (deposit: any) => {
-  if (!confirm(`Are you sure you want to reject deposit of ${formatCurrency(deposit.amount)} for ${deposit.users?.nama_toko || 'this user'}?`)) return
-  
-  actionLoading.value[deposit.id] = true
-  try {
-    const { error } = await supabase
-      .from('deposits')
-      .update({ status: 'failed' })
-      .eq('id', deposit.id)
-      
-    if (error) throw error
-    
-    alert('Deposit rejected successfully')
-    deposit.status = 'failed'
-  } catch (err) {
-    console.error('Error rejecting deposit:', err)
-    alert('Failed to reject deposit')
-  } finally {
-    actionLoading.value[deposit.id] = false
-  }
-}
 </script>
 
 <template>
