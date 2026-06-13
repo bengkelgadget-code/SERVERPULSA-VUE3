@@ -10,7 +10,7 @@ const deposits = ref<any[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('pending')
-const actionLoading = ref<Record<string, boolean>>({})
+
 
 const fetchDeposits = async () => {
   loading.value = true
