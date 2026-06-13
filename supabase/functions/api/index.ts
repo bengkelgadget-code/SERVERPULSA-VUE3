@@ -109,16 +109,39 @@ app.post('/mobile/transaction/purchase', async (c) => {
     if (productError || !product) return c.json({ error: 'Product not found' }, 404)
     if (!product.is_active) return c.json({ error: 'Product is currently inactive' }, 400)
 
+    // Determine pricing based on role
+    const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+    let finalHargaModal = product.harga_jual // Mitra pays the Superadmin's selling price
+    let finalHargaJual = product.harga_jual  // Default selling price
+
+    if (profile?.role === 'admin' || profile?.role === 'staff') {
+      const mitraId = profile.role === 'admin' ? user.id : profile.admin_id
+      if (mitraId) {
+        const { data: mitraPricing } = await supabase
+          .from('mitra_pricing')
+          .select('markup_amount')
+          .eq('mitra_id', mitraId)
+          .eq('product_sku', sku_code)
+          .single()
+        
+        if (mitraPricing) {
+          finalHargaJual = finalHargaModal + mitraPricing.markup_amount
+        }
+      }
+    } else if (profile?.role === 'superadmin') {
+      finalHargaModal = product.harga_modal // Superadmin pays Digiflazz cost directly
+    }
+
     const refId = generateRefId()
 
     const { data: transactionId, error: rpcError } = await supabase.rpc('process_purchase', {
       p_user_id: user.id,
-      p_amount: product.harga_jual,
+      p_amount: finalHargaModal, // Deduct based on their modal
       p_sku_code: sku_code,
       p_customer_no: customer_no,
       p_ref_id: refId,
-      p_harga_modal: product.harga_modal,
-      p_harga_jual: product.harga_jual,
+      p_harga_modal: finalHargaModal,
+      p_harga_jual: finalHargaJual,
     })
 
     if (rpcError) return c.json({ success: false, error: rpcError.message || 'Error' }, 400)
@@ -225,6 +248,24 @@ app.post('/admin-action', async (c) => {
       }).eq('id', authData.user.id)
       
       return c.json({ success: true, user: authData.user })
+    }
+
+    if (action === 'update_product_markup') {
+      const { sku, markup } = payload
+      
+      if (callerProfile.role === 'superadmin') {
+        const { error } = await supabaseService.from('products').update({ harga_jual: markup }).eq('sku_code', sku)
+        if (error) throw error
+      } else if (callerProfile.role === 'admin') {
+        const { error } = await supabaseService.from('mitra_pricing').upsert({
+          mitra_id: user.id,
+          product_sku: sku,
+          markup_amount: markup,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'mitra_id,product_sku' })
+        if (error) throw error
+      }
+      return c.json({ success: true })
     }
 
     return c.json({ error: 'Unknown action' }, 400)

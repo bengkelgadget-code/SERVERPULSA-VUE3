@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 const products = ref<any[]>([])
 const loading = ref(true)
@@ -9,6 +12,9 @@ const brandFilter = ref('')
 const categories = ref<string[]>([])
 const saveLoading = ref<Record<string, boolean>>({})
 const syncLoading = ref(false)
+const mitraPricing = ref<Record<string, number>>({})
+
+const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
 let typingTimers: Record<string, any> = {}
 
@@ -29,6 +35,23 @@ const fetchProducts = async () => {
         if (p.category) uniqueCats.add(p.category)
       })
       categories.value = Array.from(uniqueCats).sort()
+    }
+    
+    // Fetch Mitra Pricing if admin
+    if (!isSuperadmin.value && auth.user?.id) {
+      const { data: mpData, error: mpError } = await supabase
+        .from('mitra_pricing')
+        .select('*')
+        .eq('mitra_id', auth.user?.id)
+      
+      if (mpError) throw mpError
+      if (mpData) {
+        const mapping: Record<string, number> = {}
+        mpData.forEach(mp => {
+          mapping[mp.product_sku] = mp.markup_amount
+        })
+        mitraPricing.value = mapping
+      }
     }
   } catch (err) {
     console.error('Error fetching products:', err)
@@ -98,6 +121,15 @@ const toggleActive = async (product: any) => {
   }
 }
 
+const getHargaModal = (product: any) => {
+  return isSuperadmin.value ? product.harga_modal : product.harga_jual
+}
+
+const getHargaJual = (product: any) => {
+  if (isSuperadmin.value) return product.harga_jual
+  return product.harga_jual + (mitraPricing.value[product.sku_code] || 0)
+}
+
 const handlePriceChange = (product: any, event: Event) => {
   const target = event.target as HTMLInputElement
   const newPrice = parseInt(target.value.replace(/[^0-9]/g, '')) || 0
@@ -110,15 +142,37 @@ const handlePriceChange = (product: any, event: Event) => {
   
   typingTimers[product.sku_code] = setTimeout(async () => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ harga_jual: newPrice })
-        .eq('sku_code', product.sku_code)
-        
-      if (error) throw error
-      product.harga_jual = newPrice
+      const { data: session } = await supabase.auth.getSession()
+      const token = session.session?.access_token
+      if (!token) throw new Error('Not authenticated')
+
+      const markupAmount = isSuperadmin.value ? newPrice : newPrice - product.harga_jual
+
+      const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'update_product_markup',
+          payload: {
+            sku: product.sku_code,
+            markup: markupAmount
+          }
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to update price')
+      
+      if (isSuperadmin.value) {
+        product.harga_jual = newPrice
+      } else {
+        mitraPricing.value[product.sku_code] = markupAmount
+      }
     } catch (err) {
       console.error('Error saving price:', err)
+      alert('Gagal menyimpan harga')
     } finally {
       saveLoading.value[product.sku_code] = false
     }
@@ -130,14 +184,35 @@ const setAutoSama = async () => {
   
   loading.value = true
   try {
+    const { data: session } = await supabase.auth.getSession()
+    const token = session.session?.access_token
+    if (!token) throw new Error('Not authenticated')
+
     for (const product of filteredProducts.value) {
-      const newPrice = product.harga_modal || 0
-      if (product.harga_jual !== newPrice) {
-        await supabase
-          .from('products')
-          .update({ harga_jual: newPrice })
-          .eq('sku_code', product.sku_code)
-        product.harga_jual = newPrice
+      const newPrice = getHargaModal(product) || 0
+      if (getHargaJual(product) !== newPrice) {
+        const markupAmount = isSuperadmin.value ? newPrice : newPrice - product.harga_jual
+
+        await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            action: 'update_product_markup',
+            payload: {
+              sku: product.sku_code,
+              markup: markupAmount
+            }
+          })
+        })
+        
+        if (isSuperadmin.value) {
+          product.harga_jual = newPrice
+        } else {
+          mitraPricing.value[product.sku_code] = markupAmount
+        }
       }
     }
     alert('Prices updated successfully!')
@@ -268,14 +343,14 @@ const syncDigiflazz = async () => {
                 <span class="text-[12px] font-bold text-gray-600">{{ product.brand }}</span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
-                <span class="text-[12px] text-gray-500">{{ formatCurrency(product.harga_modal) }}</span>
+                <span class="text-[12px] text-gray-500">{{ formatCurrency(getHargaModal(product)) }}</span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
                 <div class="flex items-center gap-2 relative">
                   <span class="absolute left-3 text-[12px] text-gray-400">Rp</span>
                   <input 
                     type="text" 
-                    :value="product.harga_jual?.toLocaleString('id-ID')"
+                    :value="getHargaJual(product)?.toLocaleString('id-ID')"
                     @input="(e) => handlePriceChange(product, e)"
                     class="block w-28 pl-8 pr-2 py-1 border border-gray-200 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[12px] font-bold text-gray-800 transition-colors"
                     :class="{'bg-gray-50 border-gray-200': saveLoading[product.sku_code]}"
@@ -287,8 +362,8 @@ const syncDigiflazz = async () => {
                 </div>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
-                <span class="text-[12px] font-bold" :class="(product.harga_jual - product.harga_modal) > 0 ? 'text-green-500' : (product.harga_jual - product.harga_modal) < 0 ? 'text-red-500' : 'text-green-500'">
-                  +{{ formatCurrency(Math.max(0, (product.harga_jual || 0) - (product.harga_modal || 0))) }}
+                <span class="text-[12px] font-bold" :class="(getHargaJual(product) - getHargaModal(product)) > 0 ? 'text-green-500' : (getHargaJual(product) - getHargaModal(product)) < 0 ? 'text-red-500' : 'text-green-500'">
+                  +{{ formatCurrency(Math.max(0, (getHargaJual(product) || 0) - (getHargaModal(product) || 0))) }}
                 </span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap text-center">

@@ -34,7 +34,8 @@ const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('admin_id', auth.user?.id)
+      .or(`id.eq.${auth.user?.id},admin_id.eq.${auth.user?.id}`)
+      .neq('role', 'superadmin')
       .order('created_at', { ascending: false })
       
     if (error) throw error
