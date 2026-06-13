@@ -167,6 +167,11 @@ watch(customerNo, (newVal) => {
 })
 
 const selectProduct = (sku: string) => {
+  if (!customerNo.value) {
+    showAlert('Silakan isi Nomor Handphone atau ID Pelanggan terlebih dahulu!')
+    return
+  }
+
   // Store customerNo in sessionStorage or pass via query params
   if (categoryParam === 'pln' && plnName.value && !plnName.value.includes('Gagal') && !plnName.value.includes('Tidak Ditemukan')) {
     router.push(`/transaction/${sku}?phone=${customerNo.value}&name=${encodeURIComponent(plnName.value)}`)

@@ -115,6 +115,10 @@ const filteredProducts = computed(() => {
 })
 
 const selectProduct = (sku: string) => {
+  if (!customerNo.value) {
+    showAlert('Silakan isi Nomor Handphone terlebih dahulu!')
+    return
+  }
   let url = `/transaction/${sku}?phone=${customerNo.value}`
   if (ewalletName.value) {
     url += `&name=${encodeURIComponent(ewalletName.value)}`
