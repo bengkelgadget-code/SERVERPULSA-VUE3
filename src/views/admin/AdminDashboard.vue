@@ -6,6 +6,8 @@ import { Users, ArrowLeftRight, CreditCard, Package } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const digiflazzBalance = ref<number | null>(null)
+const totalSaldoMitra = ref<number | null>(null)
+const totalProfit = ref<number | null>(null)
 const stats = ref([
   { name: 'Total Users', value: 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
   { name: 'Total Transactions', value: 0, icon: ArrowLeftRight, color: 'text-green-600', bg: 'bg-green-100' },
@@ -45,6 +47,22 @@ const fetchStats = async () => {
     stats.value[1].value = txCount || 0
     stats.value[2].value = depositsCount || 0
     stats.value[3].value = productsCount || 0
+    
+    // Fetch Total Saldo Mitra
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('saldo')
+      .eq('role', 'staff')
+    
+    totalSaldoMitra.value = usersData?.reduce((acc, user) => acc + (Number(user.saldo) || 0), 0) || 0
+
+    // Fetch Profit
+    const { data: txData } = await supabase
+      .from('transactions')
+      .select('harga_jual, harga_modal')
+      .eq('status', 'sukses')
+      
+    totalProfit.value = txData?.reduce((acc, tx) => acc + (Number(tx.harga_jual) - Number(tx.harga_modal)), 0) || 0
     
     // Fetch Digiflazz Balance
     const { data: { session } } = await supabase.auth.getSession()
@@ -94,7 +112,7 @@ onUnmounted(() => {
 <template>
   <div class="h-full overflow-y-auto space-y-6 pb-8 pr-2">
     <!-- Saldo Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Saldo Digiflazz -->
       <div class="bg-gradient-to-r from-[#7c3aed] to-[#a855f7] rounded-2xl p-6 text-white shadow-md shadow-purple-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO DIGIFLAZZ</div>
@@ -104,14 +122,27 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- Saldo Pusat -->
+      <!-- Saldo Mitra -->
+      <div class="bg-gradient-to-r from-[#f59e0b] to-[#d97706] rounded-2xl p-6 text-white shadow-md shadow-orange-200">
+        <div class="text-sm font-bold opacity-90 mb-1 tracking-wide flex justify-between items-center">
+          TOTAL SALDO MITRA
+          <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">Kewajiban SAAS</span>
+        </div>
+        <div class="text-3xl font-extrabold tracking-tight">
+          <span v-if="totalSaldoMitra !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalSaldoMitra) }}</span>
+          <span v-else class="animate-pulse">Loading...</span>
+        </div>
+      </div>
+      
+      <!-- Total Profit -->
       <div class="bg-gradient-to-r from-[#10b981] to-[#059669] rounded-2xl p-6 text-white shadow-md shadow-green-200">
-        <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO PUSAT (LOKAL)</div>
-        <div class="flex items-end justify-between">
-          <div class="text-3xl font-extrabold tracking-tight">
-            {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(auth.userProfile?.saldo || 0) }}
-          </div>
-          <div class="text-xs opacity-90 truncate bg-white/20 px-3 py-1 rounded-full">{{ auth.userProfile?.email || 'admin@serverpulsa.com' }}</div>
+        <div class="text-sm font-bold opacity-90 mb-1 tracking-wide flex justify-between items-center">
+          TOTAL KEUNTUNGAN
+          <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">Uang Superadmin</span>
+        </div>
+        <div class="text-3xl font-extrabold tracking-tight">
+          <span v-if="totalProfit !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalProfit) }}</span>
+          <span v-else class="animate-pulse">Loading...</span>
         </div>
       </div>
     </div>
