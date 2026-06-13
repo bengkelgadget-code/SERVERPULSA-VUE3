@@ -155,6 +155,34 @@ const selectProduct = (sku: string) => {
   }
 }
 
+const pickContact = async () => {
+  if (!('contacts' in navigator && 'ContactsManager' in window)) {
+    showAlert('Browser Anda tidak mendukung fitur ambil kontak. Silakan ketik manual.')
+    return
+  }
+  
+  try {
+    const props = ['name', 'tel']
+    const opts = { multiple: false }
+    const contacts = await (navigator as any).contacts.select(props, opts)
+    
+    if (contacts.length > 0 && contacts[0].tel && contacts[0].tel.length > 0) {
+      let phone = contacts[0].tel[0]
+      // Clean up the phone number
+      phone = phone.replace(/[^0-9+]/g, '')
+      if (phone.startsWith('+62')) {
+        phone = '0' + phone.slice(3)
+      } else if (phone.startsWith('62')) {
+        phone = '0' + phone.slice(2)
+      }
+      
+      customerNo.value = phone
+    }
+  } catch (ex) {
+    console.error('Failed to pick contact', ex)
+  }
+}
+
 </script>
 
 <template>
@@ -212,7 +240,7 @@ const selectProduct = (sku: string) => {
             <span class="text-[9px] font-bold">Scan</span>
           </button>
           
-          <button @click="showAlert('Ambil dari Kontak segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+          <button @click="pickContact" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span class="text-[9px] font-bold">Kontak</span>
           </button>
