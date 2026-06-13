@@ -206,6 +206,18 @@ app.post('/inquiry-ewallet', async (c) => {
       return c.json({ success: false, message: response.message || 'Gagal mengecek nama e-wallet', rc: response.rc }, 400);
     }
 
+    // Deduct inquiry fee if there is a price
+    if (response && response.price > 0) {
+      const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+      const effectiveUserId = profile?.role === 'staff' ? profile.admin_id : user.id
+      
+      const supabaseService = getSupabaseService()
+      await supabaseService.rpc('add_balance', {
+        p_user_id: effectiveUserId,
+        p_amount: -response.price
+      })
+    }
+
     let rawName = response.sn || response.message || '';
     if (response.rc === '03' && !response.sn) {
       rawName = 'Menunggu Server (Transaksi Pending)';
@@ -222,9 +234,39 @@ app.post('/inquiry-ewallet', async (c) => {
       finalName = rawName.split('SPAY ')[1] || rawName;
     }
 
-    return c.json({ success: true, name: finalName.trim(), rc: response.rc });
+    return c.json({ success: true, name: finalName.trim(), rc: response.rc, price: response.price });
   } catch (err: any) {
     return c.json({ success: false, message: err.message }, 500);
+  }
+})
+
+app.post('/sync-digiflazz-balance', async (c) => {
+  try {
+    const authHeader = c.req.header('Authorization')
+    if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    const supabase = getSupabase(c)
+    const { data: { user } } = await supabase.auth.getUser(token)
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+    const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+    if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+
+    const digiflazzBalance = await digiflazz.cekSaldo()
+    
+    if (typeof digiflazzBalance === 'number') {
+      const supabaseService = getSupabaseService()
+      const effectiveUserId = profile.role === 'admin' ? user.id : profile.admin_id
+      
+      await supabaseService.from('users').update({ saldo: digiflazzBalance }).eq('id', effectiveUserId)
+      return c.json({ success: true, new_saldo: digiflazzBalance })
+    }
+    return c.json({ error: 'Failed to fetch digiflazz balance' }, 500)
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500)
   }
 })
 
