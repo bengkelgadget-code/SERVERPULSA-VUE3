@@ -50,7 +50,7 @@ const fetchStats = async () => {
     const { data: usersData } = await supabase
       .from('users')
       .select('saldo')
-      .eq('role', 'staff')
+      .eq('role', 'admin')
     
     totalSaldoMitra.value = usersData?.reduce((acc, user) => acc + (Number(user.saldo) || 0), 0) || 0
 
