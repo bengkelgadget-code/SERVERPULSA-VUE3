@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/stores/auth'
 import { Users, ArrowLeftRight, CreditCard, Package } from 'lucide-vue-next'
 
-const auth = useAuthStore()
 const digiflazzBalance = ref<number | null>(null)
 const totalSaldoMitra = ref<number | null>(null)
 const totalProfit = ref<number | null>(null)
