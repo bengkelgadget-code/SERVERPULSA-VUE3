@@ -8,7 +8,8 @@ import {
   ArrowLeftRight,
   LogOut,
   ChevronLeft,
-  Menu
+  Menu,
+  Package
 } from 'lucide-vue-next'
 import { ref } from 'vue'
 
@@ -27,6 +28,7 @@ const handleSignOut = async () => {
 
 const menuItems = [
   { name: 'Dashboard SAAS', path: '/superadmin/dashboard', icon: LayoutDashboard },
+  { name: 'Katalog Produk', path: '/superadmin/products', icon: Package },
   { name: 'Data Mitra', path: '/superadmin/mitra', icon: Users },
   { name: 'Sistem Deposit', path: '/superadmin/deposits', icon: CreditCard },
   { name: 'Semua Transaksi', path: '/superadmin/transactions', icon: ArrowLeftRight }

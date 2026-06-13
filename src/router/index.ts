@@ -138,6 +138,11 @@ const router = createRouter({
           component: () => import('@/views/superadmin/SuperadminDashboard.vue')
         },
         {
+          path: 'products',
+          name: 'superadmin-products',
+          component: ProductManager
+        },
+        {
           path: 'mitra',
           name: 'superadmin-mitra',
           component: () => import('@/views/superadmin/MitraManager.vue')
