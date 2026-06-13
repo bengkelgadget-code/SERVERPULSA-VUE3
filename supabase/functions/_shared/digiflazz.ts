@@ -105,10 +105,18 @@ export class DigiFlazzClient {
         };
       }
       return null;
-    } catch (e) {
-      console.error('Inquiry PLN failed:', e);
       return null;
     }
+  }
+
+  async getPriceList(): Promise<any> {
+    const signature = this.generateSignature('pricelist');
+    const json = await this.fetchWithProxy('/price-list', {
+      cmd: 'prepaid',
+      username: this.username,
+      sign: signature
+    });
+    return json.data;
   }
 }
 

@@ -188,26 +188,14 @@ const setAutoSama = async () => {
     const token = session.session?.access_token
     if (!token) throw new Error('Not authenticated')
 
+    const items = []
     for (const product of filteredProducts.value) {
       const newPrice = getHargaModal(product) || 0
       if (getHargaJual(product) !== newPrice) {
         const markupAmount = isSuperadmin.value ? newPrice : newPrice - product.harga_jual
-
-        await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            action: 'update_product_markup',
-            payload: {
-              sku: product.sku_code,
-              markup: markupAmount
-            }
-          })
-        })
+        items.push({ sku: product.sku_code, markup: markupAmount })
         
+        // Update local state immediately for better UX
         if (isSuperadmin.value) {
           product.harga_jual = newPrice
         } else {
@@ -215,10 +203,29 @@ const setAutoSama = async () => {
         }
       }
     }
-    alert('Prices updated successfully!')
+
+    if (items.length > 0) {
+      const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'batch_update_product_markup',
+          payload: { items }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update prices')
+      }
+    }
+    
+    alert('Harga Jual telah disamakan dengan Harga Modal')
   } catch (err) {
-    console.error('Error saving prices:', err)
-    alert('Failed to update some prices.')
+    console.error('Error auto-setting prices:', err)
+    alert('Terjadi kesalahan saat menyamakan harga')
   } finally {
     loading.value = false
   }
@@ -229,8 +236,15 @@ const syncDigiflazz = async () => {
   
   syncLoading.value = true
   try {
-    const res = await fetch('/api/sync-digiflazz', {
-      method: 'POST'
+    const { data: session } = await supabase.auth.getSession()
+    const token = session.session?.access_token
+
+    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/sync-digiflazz`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
     })
     const data = await res.json()
     if (data.success) {

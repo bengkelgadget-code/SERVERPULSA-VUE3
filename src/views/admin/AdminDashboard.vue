@@ -73,16 +73,24 @@ const fetchStats = async () => {
   }
 }
 
+let fetchTimeout: any = null
+const debouncedFetchStats = () => {
+  if (fetchTimeout) clearTimeout(fetchTimeout)
+  fetchTimeout = setTimeout(() => {
+    fetchStats()
+  }, 1000)
+}
+
 const setupRealtime = () => {
   realtimeChannel = supabase.channel('admin-dashboard-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .subscribe()
 }

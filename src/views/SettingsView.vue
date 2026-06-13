@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BottomNav from '@/components/BottomNav.vue'
+import { supabase } from '@/lib/supabase'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -16,8 +17,31 @@ onMounted(() => {
   alamat.value = 'Jl. Contoh Alamat No 123' // Placeholder, if we add address to DB later
 })
 
-const handleSave = () => {
-  alert('Pengaturan berhasil disimpan!')
+const isSaving = ref(false)
+
+const handleSave = async () => {
+  if (!auth.user?.id) return
+  isSaving.value = true
+  
+  try {
+    const { error } = await supabase.from('users')
+      .update({ nama_toko: namaToko.value })
+      .eq('id', auth.user.id)
+      
+    if (error) throw error
+    
+    // Update local store
+    if (auth.userProfile) {
+      auth.userProfile.nama_toko = namaToko.value
+    }
+    
+    alert('Pengaturan berhasil disimpan!')
+  } catch (err) {
+    console.error('Error saving settings:', err)
+    alert('Gagal menyimpan pengaturan')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const connectPrinter = () => {
@@ -61,8 +85,8 @@ const doLogout = () => {
             ></textarea>
           </div>
 
-          <button @click="handleSave" class="btn-primary w-full py-3 rounded-xl font-bold mt-2">
-            Simpan Profil
+          <button @click="handleSave" :disabled="isSaving" class="btn-primary w-full py-3 rounded-xl font-bold mt-2 disabled:opacity-50">
+            {{ isSaving ? 'Menyimpan...' : 'Simpan Profil' }}
           </button>
         </div>
       </div>

@@ -53,9 +53,13 @@ onMounted(() => {
 const checkPLN = async () => {
   if (customerNo.value.length < 11) return
   try {
-    const res = await fetch('/api/inquiry-pln', {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/inquiry-pln`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
       body: JSON.stringify({ customer_no: customerNo.value })
     })
     const data = await res.json()
@@ -74,6 +78,12 @@ const buyProduct = async () => {
     errorMsg.value = 'Nomor tujuan wajib diisi'
     return
   }
+
+  const confirmMsg = `Konfirmasi Pembelian:\n\nProduk: ${product.value?.product_name}\nNomor: ${customerNo.value}\nHarga: ${formatRp(totalPrice.value)}\nMetode: ${selectedPayment.value === 'saldo' ? 'Saldo Aplikasi' : 'Tunai / Kasir'}\n\nLanjutkan?`
+  if (!window.confirm(confirmMsg)) {
+    return
+  }
+
   loading.value = true
   errorMsg.value = ''
   

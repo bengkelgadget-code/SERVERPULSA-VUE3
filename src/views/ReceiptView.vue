@@ -19,7 +19,19 @@ const fetchTransaction = async () => {
     .single()
   
   if (data) {
+    const authStore = (await import('@/stores/auth')).useAuthStore()
+    const user = authStore.user
+    const profile = authStore.userProfile
+
+    if (data.user_id !== user?.id && profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+      alert('Unauthorized access to receipt')
+      router.push('/')
+      return
+    }
     trx.value = data
+  } else {
+    alert('Transaction not found')
+    router.push('/')
   }
   loading.value = false
 }

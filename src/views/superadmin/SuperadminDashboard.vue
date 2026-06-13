@@ -80,16 +80,24 @@ const fetchStats = async () => {
   }
 }
 
+let fetchTimeout: any = null
+const debouncedFetchStats = () => {
+  if (fetchTimeout) clearTimeout(fetchTimeout)
+  fetchTimeout = setTimeout(() => {
+    fetchStats()
+  }, 1000)
+}
+
 const setupRealtime = () => {
-  realtimeChannel = supabase.channel('admin-dashboard-changes')
+  realtimeChannel = supabase.channel('superadmin-dashboard-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => {
-      fetchStats()
+      debouncedFetchStats()
     })
     .subscribe()
 }
@@ -179,20 +187,16 @@ onUnmounted(() => {
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-        <div class="grid grid-cols-2 gap-4">
-          <router-link to="/admin/deposits" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <router-link to="/superadmin/deposits" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
             <CreditCard class="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-2" />
             <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700">Approve Deposits</span>
           </router-link>
-          <router-link to="/admin/users" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
+          <router-link to="/superadmin/mitra" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
             <Users class="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-2" />
-            <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700">Manage Users</span>
+            <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700">Manage Mitra</span>
           </router-link>
-          <router-link to="/admin/products" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
-            <Package class="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-2" />
-            <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700">Update Prices</span>
-          </router-link>
-          <router-link to="/admin/transactions" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
+          <router-link to="/superadmin/transactions" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
             <ArrowLeftRight class="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-2" />
             <span class="text-sm font-medium text-gray-700 group-hover:text-blue-700">View Logs</span>
           </router-link>

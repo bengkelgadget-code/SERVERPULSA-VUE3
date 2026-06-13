@@ -181,6 +181,14 @@ const handleCreateUser = async () => {
   }
 }
 
+const openAddModal = () => {
+  addNamaToko.value = ''
+  addEmail.value = ''
+  addPassword.value = ''
+  addRole.value = 'staff'
+  showAddModal.value = true
+}
+
 const handleDeleteUser = async (user: any) => {
   if (!confirm(`Are you sure you want to delete user ${user.nama_toko || user.email}?`)) return
   try {
@@ -215,20 +223,31 @@ const handleDeleteUser = async (user: any) => {
 
 const handleAddBalance = async () => {
   if (!selectedUser.value || !balanceAmount.value) return
-  
   actionLoading.value = true
   try {
-    const { error } = await supabase.rpc('add_balance', {
-      user_id: selectedUser.value.id,
-      amount: balanceAmount.value
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionData.session?.access_token}`
+      },
+      body: JSON.stringify({
+        action: 'add_balance',
+        payload: {
+          user_id: selectedUser.value.id,
+          amount: balanceAmount.value
+        }
+      })
     })
     
-    if (error) throw error
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to add balance')
     
     alert('Balance added successfully')
     showBalanceModal.value = false
     fetchUsers() // Refresh
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error adding balance:', err)
     alert('Failed to add balance')
   } finally {
@@ -266,7 +285,7 @@ const handleAddBalance = async () => {
         </select>
         
         <button 
-          @click="showAddModal = true"
+          @click="openAddModal"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
           <Plus class="w-4 h-4" /> Tambah Staff
@@ -472,20 +491,20 @@ const handleAddBalance = async () => {
         </div>
         
         <div class="p-6">
-          <form @submit.prevent="handleCreateUser" class="space-y-4">
+          <form @submit.prevent="handleCreateUser" class="space-y-4" autocomplete="off">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Nama Staff</label>
-              <input type="text" v-model="addNamaToko" required class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+              <input type="text" v-model="addNamaToko" required autocomplete="off" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" v-model="addEmail" required class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+              <input type="email" v-model="addEmail" required autocomplete="off" data-lpignore="true" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
             </div>
             
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" v-model="addPassword" required minlength="6" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
+              <input type="password" v-model="addPassword" required minlength="6" autocomplete="new-password" data-lpignore="true" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
             </div>
             
             <div class="flex gap-3 pt-4">

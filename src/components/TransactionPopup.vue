@@ -11,13 +11,18 @@ onMounted(async () => {
   setupRealtime()
 })
 
+let retryCount = 0
+
 const setupRealtime = async () => {
   const { data: { session } } = await supabase.auth.getSession()
   const userId = session?.user?.id
   
   if (!userId) {
     // Retry shortly if auth not ready
-    setTimeout(setupRealtime, 2000)
+    if (retryCount < 5) {
+      retryCount++
+      setTimeout(setupRealtime, 2000)
+    }
     return
   }
 

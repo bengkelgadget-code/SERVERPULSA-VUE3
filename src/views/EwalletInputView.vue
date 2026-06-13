@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
+import { supabase } from '@/lib/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,9 +44,13 @@ const checkEwallet = async () => {
   ewalletName.value = ''
   
   try {
-    const response = await fetch('/api/inquiry-ewallet', {
+    const { data: { session } } = await supabase.auth.getSession()
+    const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/inquiry-ewallet`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
       body: JSON.stringify({ 
         customer_no: customerNo.value, 
         provider: selectedProvider.value,

@@ -30,7 +30,9 @@ const handleLogin = async () => {
     authStore.userProfile = profile
     
     loading.value = false
-    if (profile?.role === 'admin' || profile?.role === 'superadmin') {
+    if (profile?.role === 'superadmin') {
+      router.push('/superadmin')
+    } else if (profile?.role === 'admin') {
       router.push('/admin')
     } else {
       router.push('/')

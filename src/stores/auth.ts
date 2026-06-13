@@ -9,30 +9,32 @@ export const useAuthStore = defineStore('auth', () => {
   const isInitialized = ref(false)
   let userSubscription: any = null
 
-  async function initialize() {
-    if (isInitialized.value) return
-    isInitialized.value = true
+  let isInitializing = false
 
-    const { data: { session } } = await supabase.auth.getSession()
-    user.value = session?.user || null
-    if (user.value) {
-      await fetchProfile(user.value.id)
-    }
-    
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      user.value = session?.user || null
-      if (user.value) {
-        await fetchProfile(user.value.id)
-      } else {
-        userProfile.value = null
-        if (userSubscription) {
-          supabase.removeChannel(userSubscription)
-          userSubscription = null
+  async function initialize() {
+    if (isInitialized.value || isInitializing) return
+    isInitializing = true
+
+    return new Promise((resolve) => {
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        user.value = session?.user || null
+        if (user.value) {
+          await fetchProfile(user.value.id)
+        } else {
+          userProfile.value = null
+          if (userSubscription) {
+            supabase.removeChannel(userSubscription)
+            userSubscription = null
+          }
         }
-      }
+        
+        if (!isInitialized.value) {
+          isInitialized.value = true
+          loading.value = false
+          resolve(true)
+        }
+      })
     })
-    
-    loading.value = false
   }
 
   async function fetchProfile(userId: string) {

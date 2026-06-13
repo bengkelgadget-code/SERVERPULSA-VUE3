@@ -8,6 +8,41 @@ const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('')
 
+const checkingStatus = ref<Record<string, boolean>>({})
+
+const checkStatus = async (transactionId: string) => {
+  if (checkingStatus.value[transactionId]) return
+  checkingStatus.value[transactionId] = true
+  
+  try {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${sessionData.session?.access_token}`
+      },
+      body: JSON.stringify({
+        action: 'check_transaction_status',
+        payload: { transaction_id: transactionId }
+      })
+    })
+    
+    const result = await res.json()
+    if (result.success) {
+      alert(`Status updated: ${result.status}`)
+      fetchTransactions()
+    } else {
+      alert(result.error || 'Failed to check status')
+    }
+  } catch (err) {
+    console.error('Check status error:', err)
+    alert('Error checking status')
+  } finally {
+    checkingStatus.value[transactionId] = false
+  }
+}
+
 const fetchTransactions = async () => {
   loading.value = true
   try {
@@ -147,7 +182,7 @@ const formatCurrency = (value: number) => {
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="trx.status === 'Sukses'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span v-if="trx.status === 'sukses'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <CheckCircle class="w-3.5 h-3.5" /> Sukses
                 </span>
                 <span v-else-if="trx.status === 'pending'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
@@ -156,6 +191,14 @@ const formatCurrency = (value: number) => {
                 <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                   <XCircle class="w-3.5 h-3.5" /> Gagal
                 </span>
+                <button 
+                  v-if="trx.status === 'pending'" 
+                  @click="checkStatus(trx.id)"
+                  :disabled="checkingStatus[trx.id]"
+                  class="ml-2 px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors disabled:opacity-50"
+                >
+                  {{ checkingStatus[trx.id] ? 'Mengecek...' : 'Cek Status' }}
+                </button>
               </td>
             </tr>
           </tbody>

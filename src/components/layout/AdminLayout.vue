@@ -62,7 +62,7 @@ const menuItems = [
 
         <div class="flex-1 overflow-y-auto no-scrollbar flex flex-col">
           <nav class="px-3 py-6 flex-1 flex flex-col">
-            <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">MENU SUPER ADMIN</div>
+            <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">MENU MITRA</div>
             <ul class="space-y-1 flex-1 flex flex-col">
               <li v-for="item in menuItems" :key="item.path" class="shrink-0">
                 <router-link
