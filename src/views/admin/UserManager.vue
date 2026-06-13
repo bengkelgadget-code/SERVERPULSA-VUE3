@@ -99,7 +99,7 @@ const handleEditUser = async () => {
 
     if (!token) throw new Error('Not authenticated')
 
-    const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin-action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -145,7 +145,7 @@ const handleCreateUser = async () => {
 
     if (!token) throw new Error('Not authenticated')
 
-    const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin-action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -197,7 +197,7 @@ const handleDeleteUser = async (user: any) => {
 
     if (!token) throw new Error('Not authenticated')
 
-    const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin-action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,7 +226,7 @@ const handleAddBalance = async () => {
   actionLoading.value = true
   try {
     const { data: sessionData } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin-action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

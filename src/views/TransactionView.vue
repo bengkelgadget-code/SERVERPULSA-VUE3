@@ -54,7 +54,7 @@ const checkPLN = async () => {
   if (customerNo.value.length < 11) return
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/inquiry-pln`, {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/inquiry-pln`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ const buyProduct = async () => {
   
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/mobile/transaction/purchase`, {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/purchase`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

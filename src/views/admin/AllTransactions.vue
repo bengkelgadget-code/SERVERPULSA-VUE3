@@ -19,7 +19,7 @@ const checkStatus = async (transactionId: string) => {
   
   try {
     const { data: sessionData } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin-action`, {
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin-action`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

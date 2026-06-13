@@ -65,7 +65,7 @@ const fetchStats = async () => {
     // Fetch Digiflazz Balance
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
-      const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin/digiflazz-balance`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin/digiflazz-balance`, {
         headers: { Authorization: `Bearer ${session.access_token}` }
       })
       const data = await res.json()

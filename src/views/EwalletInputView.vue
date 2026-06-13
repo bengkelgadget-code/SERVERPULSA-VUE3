@@ -45,7 +45,7 @@ const checkEwallet = async () => {
   
   try {
     const { data: { session } } = await supabase.auth.getSession()
-    const response = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/inquiry-ewallet`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/inquiry-ewallet`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
