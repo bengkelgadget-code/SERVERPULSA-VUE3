@@ -215,8 +215,7 @@ app.post('/inquiry-ewallet', async (c) => {
       finalName = rawName.split('SPAY ')[1] || rawName;
     }
 
-    const cleanedName = finalName.replace(/^[A-Z]+\s+/, '').trim();
-    return c.json({ success: true, name: cleanedName, rc: response.rc });
+    return c.json({ success: true, name: finalName.trim(), rc: response.rc });
   } catch (err: any) {
     return c.json({ success: false, message: err.message }, 500);
   }

@@ -105,6 +105,8 @@ export class DigiFlazzClient {
         };
       }
       return null;
+    } catch (e) {
+      console.error('inquiryPln error:', e);
       return null;
     }
   }

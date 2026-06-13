@@ -29,7 +29,7 @@ watch(customerNo, (newVal) => {
   if (newVal.length >= 10) {
     checkTimeout = setTimeout(() => {
       showCheckButton.value = true
-    }, 3000)
+    }, 1000)
   }
 })
 
@@ -173,15 +173,10 @@ const selectProduct = (sku: string) => {
             </button>
           </div>
           
-          <!-- Hasil Cek Nama -->
-          <div v-if="ewalletName" class="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-            <div class="mt-0.5 text-green-600">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-            </div>
-            <div>
-              <p class="text-xs font-bold text-green-800 uppercase">{{ ewalletName }}</p>
-              <p class="text-[10px] font-medium text-green-600 mt-0.5">Nama valid dan cocok</p>
-            </div>
+          <!-- Hasil Cek Nama (Lebih Ringkas) -->
+          <div v-if="ewalletName" class="mt-2 text-sm font-bold text-green-600 animate-in fade-in flex items-center gap-1.5 px-1">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            <span class="uppercase">{{ ewalletName }}</span>
           </div>
         </div>
 
