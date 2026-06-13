@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
-import { useAuthStore } from '@/stores/auth'
 import { Search, CheckCircle, XCircle, Clock } from 'lucide-vue-next'
-
-const auth = useAuthStore()
 
 const transactions = ref<any[]>([])
 const loading = ref(true)
@@ -17,9 +14,8 @@ const fetchTransactions = async () => {
     const { data, error } = await supabase
       .from('transactions')
       .select('*, users!user_id(nama_toko, email), staff:users!staff_id(email)')
-      .eq('user_id', auth.user?.id)
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(500) // Limit to last 500 for performance
       
     if (error) throw error
     if (data) {
@@ -63,7 +59,7 @@ const formatCurrency = (value: number) => {
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h2 class="text-2xl font-bold text-gray-800">Riwayat Transaksi Toko</h2>
+      <h2 class="text-2xl font-bold text-gray-800">Global Transactions</h2>
       
       <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
         <!-- Search -->

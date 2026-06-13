@@ -30,9 +30,16 @@ const getSupabase = (c: any) => {
 }
 
 app.get('/admin/digiflazz-balance', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+  
   const supabase = getSupabase(c)
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  
+  if (!user) {
+    return c.json({ error: 'Unauthorized', details: authError }, 401)
+  }
 
   try {
     const balance = await digiflazz.getBalance()
@@ -77,8 +84,12 @@ function generateRefId() {
 }
 
 app.post('/mobile/transaction/purchase', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+
   const supabase = getSupabase(c)
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser(token)
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
   const { data: userData } = await supabase.from('users').select('id, role').eq('id', user.id).single()
@@ -143,6 +154,82 @@ app.post('/mobile/transaction/purchase', async (c) => {
     }
   } catch (error: any) {
     return c.json({ error: error.message }, 500)
+  }
+})
+
+app.post('/admin-action', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+
+  const supabase = getSupabase(c)
+  const { data: { user } } = await supabase.auth.getUser(token)
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  // Verify if caller is superadmin or admin
+  const { data: callerProfile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (callerProfile?.role !== 'superadmin' && callerProfile?.role !== 'admin') {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+
+  const supabaseService = createClient(
+    Deno.env.get('SUPABASE_URL') || '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  )
+
+  try {
+    const body = await c.req.json()
+    const { action, payload } = body
+
+    if (action === 'update_user') {
+      const updateData: any = {
+        nama_toko: payload.nama_toko,
+        email: payload.email
+      }
+      
+      // Only superadmins can change roles
+      if (payload.role && callerProfile.role === 'superadmin') {
+        updateData.role = payload.role
+      }
+      
+      const { error } = await supabaseService.from('users').update(updateData).eq('id', payload.id)
+      
+      if (error) throw error
+      return c.json({ success: true })
+    } 
+    
+    if (action === 'delete_user') {
+      // Delete auth user (cascades to public.users)
+      const { error } = await supabaseService.auth.admin.deleteUser(payload.id)
+      if (error) throw error
+      return c.json({ success: true })
+    }
+    
+    if (action === 'create_user') {
+      // Create auth user
+      const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
+        email: payload.email,
+        password: payload.password,
+        email_confirm: true
+      })
+      if (authError) throw authError
+      
+      // Update the automatically created profile
+      const newRole = payload.role || (callerProfile.role === 'admin' ? 'staff' : 'admin');
+      const adminId = callerProfile.role === 'admin' ? user.id : null;
+      
+      await supabaseService.from('users').update({
+        nama_toko: payload.nama_toko,
+        role: newRole,
+        admin_id: adminId
+      }).eq('id', authData.user.id)
+      
+      return c.json({ success: true, user: authData.user })
+    }
+
+    return c.json({ error: 'Unknown action' }, 400)
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500)
   }
 })
 

@@ -6,8 +6,8 @@ export class DigiFlazzClient {
   private baseUrl = 'https://api.digiflazz.com/v1';
 
   constructor() {
-    this.username = Deno.env.get('DIGIFLAZZ_USERNAME') || '';
-    this.apiKey = Deno.env.get('DIGIFLAZZ_API_KEY') || Deno.env.get('DIGIFLAZZ_PRODUCTION_KEY') || '';
+    this.username = (Deno.env.get('DIGIFLAZZ_USERNAME') || '').trim();
+    this.apiKey = (Deno.env.get('DIGIFLAZZ_API_KEY') || Deno.env.get('DIGIFLAZZ_PRODUCTION_KEY') || '').trim();
     
     if (!this.username || !this.apiKey) {
       console.warn("DigiFlazz credentials are not set in environment variables");
@@ -17,14 +17,14 @@ export class DigiFlazzClient {
   private generateSignature(command: string): string {
     const hash = createHash('md5');
     hash.update(this.username + this.apiKey + command);
-    return hash.toString();
+    return hash.toString('hex');
   }
 
   private async fetchWithProxy(path: string, body: any): Promise<any> {
-    const proxyHost = Deno.env.get('PROXY_HOST');
-    const proxyPort = Deno.env.get('PROXY_PORT');
-    const proxyUser = Deno.env.get('PROXY_USERNAME') || Deno.env.get('PROXY_USER');
-    const proxyPass = Deno.env.get('PROXY_PASSWORD') || Deno.env.get('PROXY_PASS');
+    const proxyHost = (Deno.env.get('PROXY_HOST') || '').trim();
+    const proxyPort = (Deno.env.get('PROXY_PORT') || '').trim();
+    const proxyUser = (Deno.env.get('PROXY_USERNAME') || Deno.env.get('PROXY_USER') || '').trim();
+    const proxyPass = (Deno.env.get('PROXY_PASSWORD') || Deno.env.get('PROXY_PASS') || '').trim();
 
     let client: Deno.HttpClient | undefined;
 
@@ -33,18 +33,24 @@ export class DigiFlazzClient {
       const proxyUrl = `http://${auth}${proxyHost}:${proxyPort}`;
       // @ts-ignore: Deno createHttpClient is available in Edge Runtime
       client = typeof Deno.createHttpClient === 'function' ? Deno.createHttpClient({ proxy: { url: proxyUrl } }) : undefined;
+      console.log('Is Deno.createHttpClient available?', typeof Deno.createHttpClient, client ? 'Client created' : 'Client NOT created');
     }
 
+    const bodyString = JSON.stringify(body);
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Content-Length': bodyString.length.toString()
+        },
+        body: bodyString,
         client
       });
 
       if (!response.ok) {
-        throw new Error(`DigiFlazz API Error: ${response.statusText}`);
+        const errorText = await response.text();
+        throw new Error(`DigiFlazz Error ${response.status}: ${errorText}`);
       }
 
       return await response.json();
@@ -55,12 +61,12 @@ export class DigiFlazzClient {
     }
   }
 
-  async getBalance(): Promise<number> {
+  async getBalance(): Promise<any> {
     const signature = this.generateSignature('depo');
     const json = await this.fetchWithProxy('/cek-saldo', {
       cmd: 'deposit',
       username: this.username,
-      sign: signature,
+      sign: signature
     });
     return json.data.deposit;
   }

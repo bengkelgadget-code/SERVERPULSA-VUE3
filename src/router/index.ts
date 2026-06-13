@@ -10,6 +10,7 @@ import ProductManager from '@/views/admin/ProductManager.vue'
 import UserManager from '@/views/admin/UserManager.vue'
 import DepositManager from '@/views/admin/DepositManager.vue'
 import AllTransactions from '@/views/admin/AllTransactions.vue'
+import SuperadminLayout from '@/components/layout/SuperadminLayout.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -109,6 +110,37 @@ const router = createRouter({
           component: AllTransactions
         }
       ]
+    },
+    {
+      path: '/superadmin',
+      component: SuperadminLayout,
+      meta: { requiresAuth: true, requiresSuperadmin: true },
+      children: [
+        {
+          path: '',
+          redirect: '/superadmin/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'superadmin-dashboard',
+          component: () => import('@/views/superadmin/SuperadminDashboard.vue')
+        },
+        {
+          path: 'mitra',
+          name: 'superadmin-mitra',
+          component: () => import('@/views/superadmin/MitraManager.vue')
+        },
+        {
+          path: 'deposits',
+          name: 'superadmin-deposits',
+          component: () => import('@/views/superadmin/SystemDeposits.vue')
+        },
+        {
+          path: 'transactions',
+          name: 'superadmin-transactions',
+          component: () => import('@/views/superadmin/GlobalTransactions.vue')
+        }
+      ]
     }
   ]
 })
@@ -123,10 +155,10 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // Restore last visited route on initial load if going to root or admin root
-  if (isInitialLoad && (to.path === '/' || to.path === '/admin')) {
+  if (isInitialLoad && (to.path === '/' || to.path === '/admin' || to.path === '/superadmin')) {
     isInitialLoad = false
     const lastRoute = localStorage.getItem('lastVisitedAdminRoute')
-    if (lastRoute && lastRoute !== '/' && lastRoute !== '/admin') {
+    if (lastRoute && lastRoute !== '/' && lastRoute !== '/admin' && lastRoute !== '/superadmin') {
       return next(lastRoute)
     }
   }
@@ -137,7 +169,9 @@ router.beforeEach(async (to, _from, next) => {
   } else if (to.meta.requiresGuest && auth.user) {
     const profile = await auth.ensureProfile()
     const role = profile?.role
-    if (role === 'admin' || role === 'superadmin') {
+    if (role === 'superadmin') {
+      next('/superadmin')
+    } else if (role === 'admin') {
       next('/admin')
     } else {
       next('/')
@@ -145,10 +179,20 @@ router.beforeEach(async (to, _from, next) => {
   } else if (to.path === '/' && auth.user) {
     const profile = await auth.ensureProfile()
     const role = profile?.role
-    if (role === 'admin' || role === 'superadmin') {
+    if (role === 'superadmin') {
+      next('/superadmin')
+    } else if (role === 'admin') {
       next('/admin')
     } else {
       next()
+    }
+  } else if (to.meta.requiresSuperadmin) {
+    const profile = await auth.ensureProfile()
+    const role = profile?.role
+    if (role === 'superadmin') {
+      next()
+    } else {
+      next('/')
     }
   } else if (to.meta.requiresAdmin) {
     const profile = await auth.ensureProfile()
@@ -164,7 +208,7 @@ router.beforeEach(async (to, _from, next) => {
 })
 
 router.afterEach((to) => {
-  if (to.path.startsWith('/admin')) {
+  if (to.path.startsWith('/admin') || to.path.startsWith('/superadmin')) {
     localStorage.setItem('lastVisitedAdminRoute', to.fullPath)
   }
 })

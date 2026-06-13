@@ -27,11 +27,10 @@ const handleSignOut = async () => {
 }
 
 const menuItems = [
-  { name: 'Dashboard Mitra', path: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Produk & Markup', path: '/admin/products', icon: Package },
-  { name: 'Kasir/Staff', path: '/admin/users', icon: Users },
-  { name: 'Riwayat Saldo', path: '/admin/deposits', icon: CreditCard },
-  { name: 'Transaksi Toko', path: '/admin/transactions', icon: ArrowLeftRight }
+  { name: 'Dashboard SAAS', path: '/superadmin/dashboard', icon: LayoutDashboard },
+  { name: 'Data Mitra', path: '/superadmin/mitra', icon: Users },
+  { name: 'Sistem Deposit', path: '/superadmin/deposits', icon: CreditCard },
+  { name: 'Semua Transaksi', path: '/superadmin/transactions', icon: ArrowLeftRight }
 ]
 </script>
 
@@ -50,8 +49,8 @@ const menuItems = [
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
             </div>
             <div>
-              <div class="font-extrabold text-[15px] text-gray-800 leading-tight">Dasbor Mitra</div>
-              <div class="text-[11px] text-gray-400 font-medium">Mitra Aktif</div>
+              <div class="font-extrabold text-[15px] text-gray-800 leading-tight">Super Admin</div>
+              <div class="text-[11px] text-gray-400 font-medium">Super Admin</div>
             </div>
           </div>
           <button @click="toggleSidebar" class="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
@@ -85,11 +84,14 @@ const menuItems = [
                 </router-link>
               </li>
               
-              <!-- Spacer to push Keluar to bottom -->
-              <div class="flex-1 min-h-[16px]"></div>
-              
-              <!-- Divider -->
-              <div class="h-px bg-gray-100 mb-4 mx-2 shrink-0"></div>
+              <!-- SAAS Tag -->
+              <div v-if="isSidebarOpen" class="px-6 py-4 mt-auto border-t border-gray-100">
+                <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-100/50 relative overflow-hidden">
+                  <div class="absolute right-0 top-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                  <h4 class="text-[11px] font-bold text-indigo-800 uppercase tracking-wider mb-1">SAAS Mode</h4>
+                  <p class="text-[12px] text-indigo-600 font-medium leading-relaxed">Kelola semua Mitra di satu tempat</p>
+                </div>
+              </div>
               
               <!-- Sign Out -->
               <li class="shrink-0">

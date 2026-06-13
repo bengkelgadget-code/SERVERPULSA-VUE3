@@ -26,7 +26,7 @@ const showAddModal = ref(false)
 const addNamaToko = ref('')
 const addEmail = ref('')
 const addPassword = ref('')
-const addRole = ref('staff')
+const addRole = ref('admin')
 
 const fetchUsers = async () => {
   loading.value = true
@@ -34,7 +34,7 @@ const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .eq('admin_id', auth.user?.id)
+      .in('role', ['admin', 'superadmin'])
       .order('created_at', { ascending: false })
       
     if (error) throw error
@@ -133,7 +133,7 @@ const handleEditUser = async () => {
 
 const handleCreateUser = async () => {
   if (!addEmail.value || !addPassword.value || !addNamaToko.value) {
-    alert('Tolong isi semua kolom (Nama Staff, Email, Password)')
+    alert('Tolong isi semua kolom (Nama Toko, Email, Password)')
     return
   }
   
@@ -166,7 +166,7 @@ const handleCreateUser = async () => {
       throw new Error(errorData.error || 'Failed to create user')
     }
 
-    alert('Berhasil membuat Staff/Kasir baru!')
+    alert('Berhasil membuat Mitra/User baru!')
     showAddModal.value = false
     addNamaToko.value = ''
     addEmail.value = ''
@@ -239,7 +239,7 @@ const handleAddBalance = async () => {
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h2 class="text-2xl font-bold text-gray-800">Manajemen Kasir / Staff</h2>
+      <h2 class="text-2xl font-bold text-gray-800">Manajemen Mitra (SAAS)</h2>
       
       <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
         <!-- Search -->
@@ -260,15 +260,16 @@ const handleAddBalance = async () => {
           v-model="roleFilter"
           class="block w-full sm:w-40 pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         >
-          <option value="">All Roles</option>
-          <option value="staff">Staff / Kasir</option>
+          <option value="">Semua</option>
+          <option value="admin">Mitra</option>
+          <option value="superadmin">Superadmin</option>
         </select>
         
         <button 
           @click="showAddModal = true"
           class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
         >
-          <Plus class="w-4 h-4" /> Tambah Staff
+          <Plus class="w-4 h-4" /> Tambah Mitra
         </button>
       </div>
     </div>
@@ -464,7 +465,7 @@ const handleAddBalance = async () => {
       
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md relative z-10 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-          <h3 class="text-lg font-bold text-gray-900">Tambah Staff Baru</h3>
+          <h3 class="text-lg font-bold text-gray-900">Tambah Mitra Baru</h3>
           <button @click="showAddModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
@@ -473,7 +474,7 @@ const handleAddBalance = async () => {
         <div class="p-6">
           <form @submit.prevent="handleCreateUser" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Staff</label>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Nama Toko/Mitra</label>
               <input type="text" v-model="addNamaToko" required class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
             </div>
             
@@ -487,6 +488,14 @@ const handleAddBalance = async () => {
               <input type="password" v-model="addPassword" required minlength="6" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500" />
             </div>
             
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+              <select v-model="addRole" class="block w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500">
+                <option value="admin">Mitra</option>
+                <option value="superadmin">Superadmin</option>
+              </select>
+            </div>
+            
             <div class="flex gap-3 pt-4">
               <button type="button" @click="showAddModal = false" class="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
                 Batal
@@ -496,7 +505,7 @@ const handleAddBalance = async () => {
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Buat Staff
+                Buat Mitra
               </button>
             </div>
           </form>

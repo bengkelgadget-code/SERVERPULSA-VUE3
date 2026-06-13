@@ -3,15 +3,14 @@ import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { Users, ArrowLeftRight, CreditCard, Package } from 'lucide-vue-next'
 
-import { useAuthStore } from '@/stores/auth'
-
-const auth = useAuthStore()
-const myBalance = ref<number | null>(null)
+const digiflazzBalance = ref<number | null>(null)
+const totalSaldoMitra = ref<number | null>(null)
 const totalProfit = ref<number | null>(null)
 const stats = ref([
-  { name: 'Total Kasir/Staff', value: 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { name: 'Total Transaksi', value: 0, icon: ArrowLeftRight, color: 'text-green-600', bg: 'bg-green-100' },
-  { name: 'Riwayat Topup', value: 0, icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' }
+  { name: 'Total Users', value: 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+  { name: 'Total Transactions', value: 0, icon: ArrowLeftRight, color: 'text-green-600', bg: 'bg-green-100' },
+  { name: 'Pending Deposits', value: 0, icon: CreditCard, color: 'text-orange-600', bg: 'bg-orange-100' },
+  { name: 'Active Products', value: 0, icon: Package, color: 'text-purple-600', bg: 'bg-purple-100' }
 ])
 
 const loading = ref(true)
@@ -20,52 +19,60 @@ let realtimeChannel: any = null
 const fetchStats = async () => {
   loading.value = true
   try {
-    // Fetch my balance
-    const { data: myUser } = await supabase
-      .from('users')
-      .select('saldo')
-      .eq('id', auth.user?.id)
-      .single()
-    myBalance.value = myUser?.saldo || 0
-
-    // Fetch staff count
+    // Fetch users count
     const { count: usersCount } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .eq('admin_id', auth.user?.id)
     
-    // Fetch transactions count for my staff
-    const { data: staffData } = await supabase.from('users').select('id').eq('admin_id', auth.user?.id)
-    const staffIds = staffData?.map(u => u.id) || []
-    
-    let txCount = 0
-    let profit = 0
-    if (staffIds.length > 0) {
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        .in('user_id', staffIds)
-      txCount = count || 0
+    // Fetch transactions count
+    const { count: txCount } = await supabase
+      .from('transactions')
+      .select('*', { count: 'exact', head: true })
       
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('harga_jual, harga_modal')
-        .eq('status', 'sukses')
-        .in('user_id', staffIds)
-        
-      profit = txData?.reduce((acc, tx) => acc + (Number(tx.harga_jual) - Number(tx.harga_modal)), 0) || 0
-    }
-    
-    // Fetch my deposits count
+    // Fetch pending deposits count
     const { count: depositsCount } = await supabase
       .from('deposits')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', auth.user?.id)
+      .eq('status', 'pending')
+      
+    // Fetch active products count
+    const { count: productsCount } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
       
     stats.value[0].value = usersCount || 0
     stats.value[1].value = txCount || 0
     stats.value[2].value = depositsCount || 0
-    totalProfit.value = profit
+    stats.value[3].value = productsCount || 0
+    
+    // Fetch Total Saldo Mitra
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('saldo')
+      .eq('role', 'staff')
+    
+    totalSaldoMitra.value = usersData?.reduce((acc, user) => acc + (Number(user.saldo) || 0), 0) || 0
+
+    // Fetch Profit
+    const { data: txData } = await supabase
+      .from('transactions')
+      .select('harga_jual, harga_modal')
+      .eq('status', 'sukses')
+      
+    totalProfit.value = txData?.reduce((acc, tx) => acc + (Number(tx.harga_jual) - Number(tx.harga_modal)), 0) || 0
+    
+    // Fetch Digiflazz Balance
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const res = await fetch(`${import.meta.env.VITE_NEXTJS_API_URL}/api/admin/digiflazz-balance`, {
+        headers: { Authorization: `Bearer ${session.access_token}` }
+      })
+      const data = await res.json()
+      if (data.success) {
+        digiflazzBalance.value = data.balance
+      }
+    }
   } catch (error) {
     console.error('Error fetching stats:', error)
   } finally {
@@ -103,14 +110,24 @@ onUnmounted(() => {
 <template>
   <div class="h-full overflow-y-auto space-y-6 pb-8 pr-2">
     <!-- Saldo Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Saldo Digiflazz -->
+      <div class="bg-gradient-to-r from-[#7c3aed] to-[#a855f7] rounded-2xl p-6 text-white shadow-md shadow-purple-200">
+        <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO DIGIFLAZZ</div>
+        <div class="text-3xl font-extrabold tracking-tight">
+          <span v-if="digiflazzBalance !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(digiflazzBalance) }}</span>
+          <span v-else class="animate-pulse">Loading...</span>
+        </div>
+      </div>
+      
       <!-- Saldo Mitra -->
       <div class="bg-gradient-to-r from-[#f59e0b] to-[#d97706] rounded-2xl p-6 text-white shadow-md shadow-orange-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide flex justify-between items-center">
-          SISA SALDO ANDA
+          TOTAL SALDO MITRA
+          <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">Kewajiban SAAS</span>
         </div>
         <div class="text-3xl font-extrabold tracking-tight">
-          <span v-if="myBalance !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(myBalance) }}</span>
+          <span v-if="totalSaldoMitra !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalSaldoMitra) }}</span>
           <span v-else class="animate-pulse">Loading...</span>
         </div>
       </div>
@@ -118,7 +135,8 @@ onUnmounted(() => {
       <!-- Total Profit -->
       <div class="bg-gradient-to-r from-[#10b981] to-[#059669] rounded-2xl p-6 text-white shadow-md shadow-green-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide flex justify-between items-center">
-          TOTAL KEUNTUNGAN KASIR
+          TOTAL KEUNTUNGAN
+          <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-md">Uang Superadmin</span>
         </div>
         <div class="text-3xl font-extrabold tracking-tight">
           <span v-if="totalProfit !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(totalProfit) }}</span>
