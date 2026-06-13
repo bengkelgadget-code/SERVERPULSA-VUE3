@@ -348,21 +348,40 @@ app.post('/sync-digiflazz', async (c) => {
     }
     
     let products = [];
-    if (prepaidProducts && Array.isArray(prepaidProducts)) products = products.concat(prepaidProducts);
-    if (pascaProducts && Array.isArray(pascaProducts)) products = products.concat(pascaProducts);
+    
+    // Digiflazz sometimes returns an object with numeric keys instead of an array
+    const normalizeToArray = (data: any) => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (typeof data === 'object') return Object.values(data);
+      return [];
+    };
+
+    products = products.concat(normalizeToArray(prepaidProducts));
+    products = products.concat(normalizeToArray(pascaProducts));
 
     if (products.length === 0) {
       return c.json({ success: false, message: 'Invalid response from Digiflazz' }, 500)
     }
 
+    const supabaseService = getSupabaseService();
+    
+    // Fetch existing products to preserve harga_jual
+    const { data: existingData } = await supabaseService.from('products').select('sku_code, harga_jual');
+    const existingPrices = new Map();
+    if (existingData) {
+      existingData.forEach(p => existingPrices.set(p.sku_code, p.harga_jual));
+    }
+
     const productsToUpsert = [];
     for (const item of products) {
       if (item.buyer_product_status === false && item.seller_product_status === false) {
-        continue; // Skip completely inactive
+        continue;
       }
       
       const isActive = item.buyer_product_status === true && item.seller_product_status === true;
       const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
+      const existingJual = existingPrices.get(item.buyer_sku_code);
 
       productsToUpsert.push({
         sku_code: item.buyer_sku_code,
@@ -370,19 +389,27 @@ app.post('/sync-digiflazz', async (c) => {
         category: item.category,
         brand: item.brand,
         harga_modal: hargaModal,
+        harga_jual: existingJual !== undefined ? existingJual : hargaModal,
         is_active: isActive
       });
     }
 
-    const supabaseService = getSupabaseService();
-    // Bulk upsert in chunks of 500 to avoid request size limits
     const chunkSize = 500;
     let updatedCount = 0;
+    let lastError = null;
     for (let i = 0; i < productsToUpsert.length; i += chunkSize) {
       const chunk = productsToUpsert.slice(i, i + chunkSize);
       const { error } = await supabaseService.from('products').upsert(chunk, { onConflict: 'sku_code' });
-      if (!error) updatedCount += chunk.length;
-      else console.error('Bulk upsert error:', error);
+      if (!error) {
+        updatedCount += chunk.length;
+      } else {
+        console.error('Bulk upsert error:', error);
+        lastError = error;
+      }
+    }
+
+    if (updatedCount === 0 && lastError) {
+       return c.json({ success: false, message: 'Upsert failed: ' + lastError.message, error: lastError }, 500)
     }
 
     return c.json({ success: true, message: `Synced ${updatedCount} products from Digiflazz` })
