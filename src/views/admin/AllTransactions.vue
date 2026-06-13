@@ -13,7 +13,7 @@ const fetchTransactions = async () => {
   try {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, users(nama_toko, email)')
+      .select('*, users!user_id(nama_toko, email), staff:users!staff_id(email)')
       .order('created_at', { ascending: false })
       .limit(500) // Limit to last 500 for performance
       
@@ -40,7 +40,8 @@ const filteredTransactions = computed(() => {
       t.product_name?.toLowerCase().includes(searchLower) ||
       t.customer_no?.toLowerCase().includes(searchLower) ||
       t.users?.nama_toko?.toLowerCase().includes(searchLower) ||
-      t.users?.email?.toLowerCase().includes(searchLower)
+      t.users?.email?.toLowerCase().includes(searchLower) ||
+      t.staff?.email?.toLowerCase().includes(searchLower)
     const matchesStatus = statusFilter.value ? t.status === statusFilter.value : true
     return matchesSearch && matchesStatus
   })
@@ -133,6 +134,7 @@ const formatCurrency = (value: number) => {
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ trx.users?.nama_toko || 'Unknown' }}</div>
                 <div class="text-sm text-gray-500">{{ trx.users?.email || '' }}</div>
+                <div v-if="trx.staff" class="text-xs text-blue-600 mt-1">Kasir: {{ trx.staff.email }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm font-medium text-gray-900">{{ trx.customer_no }}</div>

@@ -3,7 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { digiflazz } from '../_shared/digiflazz.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
-const app = new Hono().basePath('/functions/v1/api')
+const app = new Hono().basePath('/api')
 
 app.use('*', async (c, next) => {
   const corsResponse = c.req.method === 'OPTIONS' ? new Response('ok', { headers: corsHeaders }) : null;
