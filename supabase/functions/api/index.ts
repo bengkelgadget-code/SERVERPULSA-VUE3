@@ -255,7 +255,7 @@ app.post('/sync-digiflazz-balance', async (c) => {
       return c.json({ error: 'Forbidden' }, 403)
     }
 
-    const digiflazzBalance = await digiflazz.cekSaldo()
+    const digiflazzBalance = await digiflazz.getBalance()
     
     if (typeof digiflazzBalance === 'number') {
       const supabaseService = getSupabaseService()
