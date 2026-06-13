@@ -34,7 +34,6 @@ const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
-      .in('role', ['admin', 'superadmin'])
       .order('created_at', { ascending: false })
       
     if (error) throw error
