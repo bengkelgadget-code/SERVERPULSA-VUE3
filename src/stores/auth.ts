@@ -61,14 +61,25 @@ export const useAuthStore = defineStore('auth', () => {
       if (data) {
         let finalData = { ...data }
         if (data.role === 'staff' && data.admin_id) {
-          const { data: adminData } = await supabase.from('users').select('saldo').eq('id', data.admin_id).single()
-          if (adminData) {
-            finalData.saldo = adminData.saldo
+          try {
+            const { data: sessionData } = await supabase.auth.getSession()
+            const token = sessionData.session?.access_token
+            if (token) {
+              const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              })
+              const resData = await res.json()
+              if (resData.success) {
+                finalData.saldo = resData.saldo
+              }
+            }
+          } catch (e) {
+            console.error('Error fetching admin balance via API:', e)
           }
         }
         console.log('Profile fetched successfully:', finalData.role)
         userProfile.value = finalData
-        setupRealtime(userId, data.admin_id)
+        setupRealtime(userId)
       } else {
         console.log('No profile data returned.')
       }
@@ -77,12 +88,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setupRealtime(userId: string, adminId?: string) {
+  function setupRealtime(userId: string) {
     if (userSubscription) {
       supabase.removeChannel(userSubscription)
-    }
-    if (adminSubscription) {
-      supabase.removeChannel(adminSubscription)
     }
 
     userSubscription = supabase.channel('user-profile-changes')
@@ -91,7 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
         (payload) => {
           console.log('User profile updated via realtime:', payload.new)
-          if (userProfile.value?.role === 'staff' && adminId) {
+          if (userProfile.value?.role === 'staff') {
             const { saldo, ...rest } = payload.new as any
             userProfile.value = { ...userProfile.value, ...rest }
           } else {
@@ -100,20 +108,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
       )
       .subscribe()
-      
-    if (adminId) {
-      adminSubscription = supabase.channel('admin-profile-changes')
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${adminId}` },
-          (payload) => {
-             if (userProfile.value) {
-                userProfile.value.saldo = (payload.new as any).saldo
-             }
-          }
-        )
-        .subscribe()
-    }
   }
 
   async function ensureProfile() {

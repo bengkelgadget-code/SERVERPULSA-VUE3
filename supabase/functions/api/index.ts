@@ -581,4 +581,26 @@ app.post('/admin-action', async (c) => {
   }
 })
 
+app.get('/get-admin-balance', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+
+  const supabase = getSupabase(c)
+  const { data: { user } } = await supabase.auth.getUser(token)
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+  
+  if (profile?.role !== 'staff' || !profile?.admin_id) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+
+  // Use service role to bypass RLS and get admin's balance
+  const supabaseService = getSupabaseService()
+  const { data: adminData } = await supabaseService.from('users').select('saldo').eq('id', profile.admin_id).single()
+  
+  return c.json({ success: true, saldo: adminData?.saldo || 0 })
+})
+
 Deno.serve(app.fetch)
