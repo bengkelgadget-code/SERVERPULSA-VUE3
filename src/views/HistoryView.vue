@@ -24,7 +24,7 @@ const fetchHistory = async () => {
   const { data } = await supabase
     .from('transactions')
     .select('*, products(product_name)')
-    .eq('user_id', auth.user?.id)
+    .or(`user_id.eq.${auth.user?.id},staff_id.eq.${auth.user?.id}`)
     .order('created_at', { ascending: false })
     .limit(50)
   
@@ -44,8 +44,7 @@ onMounted(() => {
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'transactions',
-        filter: `user_id=eq.${auth.user?.id}`
+        table: 'transactions'
       },
       (payload) => {
         // Find and update the transaction in the list

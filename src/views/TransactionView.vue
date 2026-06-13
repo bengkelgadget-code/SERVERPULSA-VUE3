@@ -107,7 +107,7 @@ const buyProduct = async () => {
     if (!res.ok || !data.success) {
       errorMsg.value = data.error || 'Gagal melakukan transaksi'
     } else {
-      router.push('/history')
+      router.replace(`/receipt/${data.transactionId}`)
     }
   } catch (e: any) {
     errorMsg.value = e.message || 'Terjadi kesalahan jaringan'

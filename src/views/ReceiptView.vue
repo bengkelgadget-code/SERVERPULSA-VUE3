@@ -79,8 +79,70 @@ const plnData = computed(() => {
   }
 })
 
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
+
 const printReceipt = () => {
   window.print()
+}
+
+const showShareModal = ref(false)
+const isSharing = ref(false)
+const receiptRef = ref<HTMLElement | null>(null)
+
+const shareReceipt = async (format: 'jpg' | 'pdf') => {
+  if (!receiptRef.value) return
+  
+  isSharing.value = true
+  showShareModal.value = false
+  
+  try {
+    const canvas = await html2canvas(receiptRef.value, {
+      scale: 2,
+      backgroundColor: '#ffffff'
+    })
+
+    let fileToShare: File
+
+    if (format === 'jpg') {
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+      if (!blob) throw new Error('Gagal membuat gambar JPG')
+      fileToShare = new File([blob], `Nota-${trx.value.sn || trx.value.ref_id}.jpg`, { type: 'image/jpeg' })
+    } else {
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width / 2, canvas.height / 2]
+      })
+      const imgData = canvas.toDataURL('image/jpeg', 1.0)
+      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
+      const pdfBlob = pdf.output('blob')
+      fileToShare = new File([pdfBlob], `Nota-${trx.value.sn || trx.value.ref_id}.pdf`, { type: 'application/pdf' })
+    }
+
+    if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+      await navigator.share({
+        title: 'Nota Transaksi',
+        text: 'Berikut adalah nota transaksi Anda.',
+        files: [fileToShare]
+      })
+    } else {
+      // Fallback: download file
+      const url = URL.createObjectURL(fileToShare)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileToShare.name
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      alert('Perangkat ini tidak mendukung fitur Share secara langsung. File telah diunduh.')
+    }
+  } catch (err: any) {
+    alert(err.message || 'Terjadi kesalahan saat memproses file')
+  } finally {
+    isSharing.value = false
+  }
 }
 </script>
 
@@ -102,62 +164,103 @@ const printReceipt = () => {
       <div v-if="loading" class="animate-spin w-8 h-8 border-[3px] border-primary-600 border-t-transparent rounded-full print:hidden"></div>
       
       <!-- THERMAL RECEIPT CONTAINER -->
-      <div v-else-if="trx" class="bg-white p-6 shadow-lg max-w-[320px] w-full mx-auto font-mono text-sm leading-tight receipt-container border border-neutral-200">
-        
-        <div class="text-center mb-4">
-          <p class="font-bold text-base">** BENGKEL GADGET **</p>
-          <p>{{ formatDate(trx.created_at) }} (CU)</p>
-        </div>
+      <div v-else-if="trx" class="w-full max-w-[320px] mx-auto pb-20 print:pb-0">
+        <div ref="receiptRef" class="bg-white p-6 shadow-lg font-mono text-sm leading-tight receipt-container border border-neutral-200">
+          
+          <div class="text-center mb-4">
+            <p class="font-bold text-base">** BENGKEL GADGET **</p>
+            <p>{{ formatDate(trx.created_at) }} (CU)</p>
+          </div>
 
-        <div class="text-center mb-4 font-bold">
-          <p v-if="isPln">STRUK PEMBELIAN LISTRIK</p>
-          <p v-if="isPln">PRABAYAR</p>
-          <p v-else>STRUK PEMBELIAN</p>
-          <p v-if="!isPln" class="uppercase">{{ trx.products?.category }}</p>
-        </div>
+          <div class="text-center mb-4 font-bold">
+            <p v-if="isPln">STRUK PEMBELIAN LISTRIK</p>
+            <p v-if="isPln">PRABAYAR</p>
+            <p v-else>STRUK PEMBELIAN</p>
+            <p v-if="!isPln" class="uppercase">{{ trx.products?.category }}</p>
+          </div>
 
-        <!-- PLN FORMAT -->
-        <div v-if="isPln" class="space-y-1 mb-4">
-          <div class="flex"><span class="w-24">IDPEL</span><span>: {{ trx.customer_no }}</span></div>
-          <div class="flex"><span class="w-24">NAMA</span><span>: {{ plnData?.nama }}</span></div>
-          <div class="flex"><span class="w-24">TRF/DAYA</span><span>: {{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
-          <div class="flex"><span class="w-24">NOMINAL</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-          <div class="flex"><span class="w-24">PPN</span><span>: RP. 0,00</span></div>
-          <div class="flex"><span class="w-24">ANGS/MAT</span><span>: RP. 0,00/0,00</span></div>
-          <div class="flex"><span class="w-24">RP TOKEN</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-          <div class="flex"><span class="w-24">JML KWH</span><span>: {{ plnData?.kwh }}</span></div>
-          <div class="flex"><span class="w-24">BIAYA ADM</span><span>: {{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
-          <div class="flex font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
-        </div>
+          <!-- PLN FORMAT -->
+          <div v-if="isPln" class="space-y-1 mb-4">
+            <div class="flex"><span class="w-24">IDPEL</span><span>: {{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24">NAMA</span><span>: {{ plnData?.nama }}</span></div>
+            <div class="flex"><span class="w-24">TRF/DAYA</span><span>: {{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
+            <div class="flex"><span class="w-24">NOMINAL</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24">PPN</span><span>: RP. 0,00</span></div>
+            <div class="flex"><span class="w-24">ANGS/MAT</span><span>: RP. 0,00/0,00</span></div>
+            <div class="flex"><span class="w-24">RP TOKEN</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24">JML KWH</span><span>: {{ plnData?.kwh }}</span></div>
+            <div class="flex"><span class="w-24">BIAYA ADM</span><span>: {{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
+            <div class="flex font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
+          </div>
 
-        <!-- NON-PLN FORMAT -->
-        <div v-else class="space-y-1 mb-4">
-          <div class="flex"><span class="w-24">PRODUK</span><span>: {{ trx.products?.product_name }}</span></div>
-          <div class="flex"><span class="w-24">NO TUJUAN</span><span>: {{ trx.customer_no }}</span></div>
-          <div v-if="trx.customer_name" class="flex"><span class="w-24">NAMA AKUN</span><span>: {{ trx.customer_name }}</span></div>
-          <div class="flex"><span class="w-24">SN / REF</span><span>: {{ trx.sn || trx.ref_id }}</span></div>
-          <div class="flex mt-2 font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
-        </div>
+          <!-- NON-PLN FORMAT -->
+          <div v-else class="space-y-1 mb-4">
+            <div class="flex"><span class="w-24">PRODUK</span><span>: {{ trx.products?.product_name }}</span></div>
+            <div class="flex"><span class="w-24">NO TUJUAN</span><span>: {{ trx.customer_no }}</span></div>
+            <div v-if="trx.customer_name" class="flex"><span class="w-24">NAMA AKUN</span><span>: {{ trx.customer_name }}</span></div>
+            <div class="flex"><span class="w-24">SN / REF</span><span>: {{ trx.sn || trx.ref_id }}</span></div>
+            <div class="flex mt-2 font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
+          </div>
 
-        <!-- TOKEN DISPLAY -->
-        <div v-if="isPln" class="text-center mt-6 mb-6">
-          <p class="mb-2">-- TOKEN --</p>
-          <div class="font-bold text-2xl tracking-widest break-words space-y-1">
-            <p>{{ plnData?.token?.split('-').slice(0,2).join('-') }}</p>
-            <p>{{ plnData?.token?.split('-').slice(2,4).join('-') }}</p>
+          <!-- TOKEN DISPLAY -->
+          <div v-if="isPln" class="text-center mt-6 mb-6">
+            <p class="mb-2">-- TOKEN --</p>
+            <div class="font-bold text-2xl tracking-widest break-words space-y-1">
+              <p>{{ plnData?.token?.split('-').slice(0,2).join('-') }}</p>
+              <p>{{ plnData?.token?.split('-').slice(2,4).join('-') }}</p>
+            </div>
+          </div>
+
+          <div class="text-center mt-6 border-t border-dashed border-black pt-4 text-xs">
+            <p>Info Hubungi Call Center 123</p>
+            <p>Atau Hubungi PLN Terdekat</p>
+            <p class="mt-3">Terima Kasih</p>
           </div>
         </div>
 
-        <div class="text-center mt-6 border-t border-dashed border-black pt-4 text-xs">
-          <p>Info Hubungi Call Center 123</p>
-          <p>Atau Hubungi PLN Terdekat</p>
-          <p class="mt-3">Terima Kasih</p>
+        <!-- Action Buttons (Hidden when printing or screenshotting) -->
+        <div class="mt-6 flex flex-col gap-3 print:hidden px-4" data-html2canvas-ignore>
+          <button @click="showShareModal = true" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
+          </button>
+          <button @click="router.push('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
+            Kembali ke Riwayat
+          </button>
         </div>
-
       </div>
 
       <div v-else class="text-center text-neutral-500">
         Transaksi tidak ditemukan
+      </div>
+    </div>
+
+    <!-- Share Format Modal -->
+    <div v-if="showShareModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
+      <div class="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="showShareModal = false"></div>
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-neutral-100">
+          <h3 class="font-bold text-center text-neutral-800">Pilih Format Nota</h3>
+        </div>
+        <div class="p-2">
+          <button @click="shareReceipt('jpg')" class="w-full text-left px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </div>
+            Kirim sebagai Gambar (JPG)
+          </button>
+          <button @click="shareReceipt('pdf')" class="w-full text-left px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            Kirim sebagai Dokumen (PDF)
+          </button>
+        </div>
+        <div class="p-2 border-t border-neutral-100">
+          <button @click="showShareModal = false" class="w-full py-2.5 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors">
+            Batal
+          </button>
+        </div>
       </div>
     </div>
   </div>
