@@ -43,8 +43,6 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  let adminSubscription: any = null
-
   async function fetchProfile(userId: string) {
     console.log('Fetching profile for:', userId)
     try {
