@@ -9,29 +9,33 @@ export const useAuthStore = defineStore('auth', () => {
   const isInitialized = ref(false)
   let userSubscription: any = null
 
-  let isInitializing = false
+  let initPromise: Promise<boolean> | null = null
 
   async function initialize() {
-    if (isInitialized.value || isInitializing) return
-    isInitializing = true
+    if (isInitialized.value) return true
+    if (initPromise) return initPromise
 
-    return new Promise((resolve) => {
+    initPromise = new Promise((resolve) => {
       supabase.auth.onAuthStateChange(async (_event, session) => {
-        user.value = session?.user || null
-        if (user.value) {
-          await fetchProfile(user.value.id)
-        } else {
-          userProfile.value = null
-          if (userSubscription) {
-            supabase.removeChannel(userSubscription)
-            userSubscription = null
+        try {
+          user.value = session?.user || null
+          if (user.value) {
+            await fetchProfile(user.value.id)
+          } else {
+            userProfile.value = null
+            if (userSubscription) {
+              supabase.removeChannel(userSubscription)
+              userSubscription = null
+            }
           }
-        }
-        
-        if (!isInitialized.value) {
-          isInitialized.value = true
-          loading.value = false
-          resolve(true)
+        } catch (err) {
+          console.error('Critical error in fetchProfile during init:', err)
+        } finally {
+          if (!isInitialized.value) {
+            isInitialized.value = true
+            loading.value = false
+            resolve(true)
+          }
         }
       })
     })
@@ -39,22 +43,26 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchProfile(userId: string) {
     console.log('Fetching profile for:', userId)
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    
-    if (error) {
-      console.error('Error fetching user profile:', error)
-    }
-    
-    if (data) {
-      console.log('Profile fetched successfully:', data.role)
-      userProfile.value = data
-      setupRealtime(userId)
-    } else {
-      console.log('No profile data returned.')
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (error) {
+        console.error('Error fetching user profile:', error)
+      }
+      
+      if (data) {
+        console.log('Profile fetched successfully:', data.role)
+        userProfile.value = data
+        setupRealtime(userId)
+      } else {
+        console.log('No profile data returned.')
+      }
+    } catch (err) {
+      console.error('Critical error in fetchProfile:', err)
     }
   }
 
