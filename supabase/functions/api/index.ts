@@ -332,7 +332,20 @@ app.post('/sync-digiflazz', async (c) => {
 
   try {
     const prepaidProducts = await digiflazz.getPriceList();
+    if (prepaidProducts && !Array.isArray(prepaidProducts) && prepaidProducts.rc) {
+      return c.json({ 
+        success: false, 
+        message: `Digiflazz Error: ${prepaidProducts.message || 'Rate limit tercapai. Coba lagi dalam 15-30 menit.'}` 
+      }, 429);
+    }
+    
     const pascaProducts = await digiflazz.getPascaList();
+    if (pascaProducts && !Array.isArray(pascaProducts) && pascaProducts.rc) {
+      return c.json({ 
+        success: false, 
+        message: `Digiflazz Error (Pasca): ${pascaProducts.message || 'Rate limit tercapai. Coba lagi dalam 15-30 menit.'}` 
+      }, 429);
+    }
     
     let products = [];
     if (prepaidProducts && Array.isArray(prepaidProducts)) products = products.concat(prepaidProducts);

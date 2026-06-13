@@ -266,7 +266,7 @@ const syncDigiflazz = async () => {
       alert(data.message)
       await fetchProducts()
     } else {
-      alert('Gagal sinkronisasi: ' + data.error)
+      alert('Gagal sinkronisasi: ' + (data.message || data.error))
     }
   } catch (err) {
     console.error(err)
