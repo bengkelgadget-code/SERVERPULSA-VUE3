@@ -17,6 +17,16 @@ const loading = ref(false)
 const customerName = ref(customerNameQuery)
 const errorMsg = ref('')
 
+const isPasca = computed(() => {
+  return product.value?.category?.toLowerCase().includes('pasca') || false
+})
+
+const pascaRefId = ref('')
+const pascaAmount = ref(0)
+const pascaAdmin = ref(0)
+const isPascaInquiryDone = ref(false)
+const pascaDesc = ref<any>(null)
+
 const paymentMethods = [
   { id: 'saldo', name: 'Saldo Aplikasi', icon: 'M3 6h18v12H3z', description: 'Potong dari saldo deposit' },
   { id: 'qris', name: 'QRIS', icon: 'M3 3h8v8H3z M13 3h8v8h-8z M3 13h8v8H3z', description: 'Bayar pakai E-Wallet/M-Banking' },
@@ -36,6 +46,7 @@ const adminFee = computed(() => {
 })
 
 const totalPrice = computed(() => {
+  if (isPasca.value) return pascaAmount.value + adminFee.value
   return (product.value?.harga_jual || 0) + adminFee.value
 })
 
@@ -45,8 +56,13 @@ onMounted(() => {
   }
   
   // If PLN name wasn't passed via query, we might need to fetch it here
-  if (product.value?.category?.toLowerCase().includes('pln') && !customerName.value && customerNo.value.length >= 11) {
+  if (product.value?.category?.toLowerCase().includes('pln') && !isPasca.value && !customerName.value && customerNo.value.length >= 11) {
     checkPLN()
+  }
+
+  // If pasca, we MUST do inquiry first to get the bill
+  if (isPasca.value && customerNo.value) {
+    inquiryPasca()
   }
 })
 
@@ -70,6 +86,43 @@ const checkPLN = async () => {
     }
   } catch (e) {
     console.error(e)
+  }
+}
+
+const inquiryPasca = async () => {
+  if (!customerNo.value) return
+  loading.value = true
+  errorMsg.value = ''
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/inquiry-pasca`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
+      body: JSON.stringify({ customer_no: customerNo.value, sku_code: sku })
+    })
+    const data = await res.json()
+    if (data.success) {
+      customerName.value = data.name || '-'
+      pascaAmount.value = data.amount
+      pascaAdmin.value = data.admin
+      pascaRefId.value = data.ref_id
+      pascaDesc.value = data.desc
+      isPascaInquiryDone.value = true
+      
+      if (data.amount === 0 || data.desc?.detail?.[0]?.lembar_tagihan === 0) {
+        errorMsg.value = 'Tagihan sudah lunas atau tidak ditemukan.'
+      }
+    } else {
+      errorMsg.value = data.message || 'Gagal mengecek tagihan'
+    }
+  } catch (e) {
+    console.error(e)
+    errorMsg.value = 'Gagal terhubung ke server'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -99,7 +152,8 @@ const buyProduct = async () => {
         customer_no: customerNo.value, 
         sku_code: sku, 
         payment_method: selectedPayment.value,
-        customer_name: customerName.value // Dikirim ke API (jika API mendukung penyimpanan nama ini)
+        customer_name: customerName.value,
+        ...(isPasca.value ? { pasca_ref_id: pascaRefId.value, pasca_amount: pascaAmount.value } : {})
       })
     })
     
@@ -166,12 +220,20 @@ const buyProduct = async () => {
         <div class="border-t border-dashed border-neutral-200 my-3"></div>
         
         <div class="space-y-2">
-          <div class="flex justify-between items-center text-sm">
+          <div class="flex justify-between items-center text-sm" v-if="isPasca">
+            <span class="text-neutral-500">Tagihan/Nominal</span>
+            <span class="font-semibold text-neutral-800">{{ formatRp(pascaAmount - pascaAdmin) }}</span>
+          </div>
+          <div class="flex justify-between items-center text-sm" v-else>
             <span class="text-neutral-500">Harga Produk</span>
             <span class="font-semibold text-neutral-800">{{ formatRp(product.harga_jual) }}</span>
           </div>
+          <div class="flex justify-between items-center text-sm" v-if="isPasca">
+            <span class="text-neutral-500">Admin Provider</span>
+            <span class="font-semibold text-neutral-800">{{ formatRp(pascaAdmin) }}</span>
+          </div>
           <div class="flex justify-between items-center text-sm">
-            <span class="text-neutral-500">Biaya Admin</span>
+            <span class="text-neutral-500">Biaya Aplikasi</span>
             <span class="font-semibold text-neutral-800">{{ adminFee === 0 ? 'Gratis' : formatRp(adminFee) }}</span>
           </div>
         </div>
@@ -217,7 +279,7 @@ const buyProduct = async () => {
     <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-3 bg-white border-t border-neutral-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe z-20">
       <button 
         @click="buyProduct" 
-        :disabled="loading || !customerNo"
+        :disabled="loading || !customerNo || (isPasca && (!isPascaInquiryDone || pascaAmount === 0))"
         class="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-between items-center active:scale-[0.98]">
         <div class="text-left">
           <p class="text-[10px] font-medium text-primary-100 mb-0.5">Total Bayar</p>

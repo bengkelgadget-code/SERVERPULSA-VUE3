@@ -71,18 +71,21 @@ export class DigiFlazzClient {
     return json.data.deposit;
   }
 
-  async createTransaction(sku_code: string, customer_no: string, ref_id: string): Promise<any> {
+  async createTransaction(sku_code: string, customer_no: string, ref_id: string, commands?: string): Promise<any> {
     const signature = this.generateSignature(ref_id);
     const isDev = this.apiKey.startsWith('dev-');
     
-    const json = await this.fetchWithProxy('/transaction', {
+    const payload: any = {
       username: this.username,
       buyer_sku_code: sku_code,
       customer_no: customer_no,
       ref_id: ref_id,
       sign: signature,
       ...(isDev ? { testing: true } : {})
-    });
+    };
+    if (commands) payload.commands = commands;
+
+    const json = await this.fetchWithProxy('/transaction', payload);
     return json.data;
   }
 
@@ -119,6 +122,24 @@ export class DigiFlazzClient {
       sign: signature
     });
     return json.data;
+  }
+
+  async getPascaList(): Promise<any> {
+    const signature = this.generateSignature('pricelist');
+    const json = await this.fetchWithProxy('/price-list', {
+      cmd: 'pasca',
+      username: this.username,
+      sign: signature
+    });
+    return json.data;
+  }
+
+  async inquiryPasca(sku_code: string, customer_no: string, ref_id: string): Promise<any> {
+    return this.createTransaction(sku_code, customer_no, ref_id, 'inq-pasca');
+  }
+
+  async payPasca(sku_code: string, customer_no: string, ref_id: string): Promise<any> {
+    return this.createTransaction(sku_code, customer_no, ref_id, 'pay-pasca');
   }
 }
 

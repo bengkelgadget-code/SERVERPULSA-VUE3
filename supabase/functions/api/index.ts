@@ -240,6 +240,52 @@ app.post('/inquiry-ewallet', async (c) => {
   }
 })
 
+app.post('/inquiry-pasca', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+
+  const supabase = getSupabase(c)
+  const { data: { user } } = await supabase.auth.getUser(token)
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  const body = await c.req.json()
+  const { customer_no, sku_code } = body
+
+  if (!customer_no || !sku_code) return c.json({ success: false, error: 'customer_no and sku_code required' }, 400)
+
+  const refId = `INQ-${sku_code}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+  try {
+    let response = await digiflazz.inquiryPasca(sku_code, customer_no, refId);
+    let attempt = 0;
+    while (response && response.rc === '03' && attempt < 4) {
+      await new Promise(r => setTimeout(r, 2500));
+      response = await digiflazz.inquiryPasca(sku_code, customer_no, refId); // same refId to poll status
+      attempt++;
+    }
+
+    if (response && response.rc && response.rc !== '00' && response.rc !== '03') {
+      return c.json({ success: false, message: response.message || 'Gagal mengecek tagihan', rc: response.rc }, 400);
+    }
+
+    if (response && response.rc === '00') {
+      return c.json({ 
+        success: true, 
+        name: response.customer_name, 
+        amount: response.selling_price || response.price,
+        admin: response.admin,
+        ref_id: refId, // return the refId to use for pay-pasca
+        desc: response.desc
+      });
+    }
+
+    return c.json({ success: false, message: 'Menunggu Server (Transaksi Pending)', rc: response.rc });
+  } catch (err: any) {
+    return c.json({ success: false, message: err.message }, 500);
+  }
+})
+
 app.post('/sync-digiflazz-balance', async (c) => {
   try {
     const authHeader = c.req.header('Authorization')
@@ -285,9 +331,16 @@ app.post('/sync-digiflazz', async (c) => {
   }
 
   try {
-    const products = await digiflazz.getPriceList()
+    const [prepaidProducts, pascaProducts] = await Promise.all([
+      digiflazz.getPriceList(),
+      digiflazz.getPascaList()
+    ]);
     
-    if (!products || !Array.isArray(products)) {
+    let products = [];
+    if (prepaidProducts && Array.isArray(prepaidProducts)) products = products.concat(prepaidProducts);
+    if (pascaProducts && Array.isArray(pascaProducts)) products = products.concat(pascaProducts);
+
+    if (products.length === 0) {
       return c.json({ success: false, message: 'Invalid response from Digiflazz' }, 500)
     }
 
@@ -298,13 +351,14 @@ app.post('/sync-digiflazz', async (c) => {
       }
       
       const isActive = item.buyer_product_status === true && item.seller_product_status === true;
+      const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
 
       const { error } = await supabase.from('products').upsert({
         sku_code: item.buyer_sku_code,
         product_name: item.product_name,
         category: item.category,
         brand: item.brand,
-        harga_modal: item.price,
+        harga_modal: hargaModal,
         is_active: isActive
         // Note: we don't overwrite harga_jual here so we don't ruin existing markup
       }, { onConflict: 'sku_code' })
@@ -334,7 +388,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
   try {
     const body = await c.req.json()
-    const { sku_code, customer_no, customer_name } = body
+    const { sku_code, customer_no, customer_name, pasca_ref_id, pasca_amount } = body
 
     if (!sku_code || !customer_no) return c.json({ error: 'sku_code and customer_no are required' }, 400)
 
@@ -367,7 +421,12 @@ app.post('/mobile/transaction/purchase', async (c) => {
       finalHargaModal = product.harga_modal // Superadmin pays Digiflazz cost directly
     }
 
-    const refId = generateRefId()
+    if (pasca_ref_id && pasca_amount !== undefined) {
+      finalHargaModal = pasca_amount;
+      finalHargaJual = pasca_amount; // You might want to add a fixed markup for pasca here later
+    }
+
+    const refId = pasca_ref_id || generateRefId()
 
     const { data: transactionId, error: rpcError } = await supabase.rpc('process_purchase', {
       p_user_id: user.id,
@@ -381,7 +440,13 @@ app.post('/mobile/transaction/purchase', async (c) => {
     if (rpcError) return c.json({ success: false, error: rpcError.message || 'Error' }, 400)
 
     try {
-      const response = await digiflazz.createTransaction(sku_code, customer_no, refId)
+      let response;
+      if (pasca_ref_id) {
+        response = await digiflazz.payPasca(sku_code, customer_no, refId);
+      } else {
+        response = await digiflazz.createTransaction(sku_code, customer_no, refId);
+      }
+      
       const dfStatus = response.status.toLowerCase()
       let dbStatus = 'pending'
       if (dfStatus === 'sukses') dbStatus = 'sukses'
