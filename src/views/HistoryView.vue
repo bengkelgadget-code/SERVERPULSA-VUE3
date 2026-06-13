@@ -34,7 +34,13 @@ const fetchHistory = async () => {
   loading.value = false
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await auth.initialize()
+  if (!auth.user) {
+    loading.value = false
+    return
+  }
+  
   fetchHistory()
 
   // Subscribe to realtime updates for this user's transactions
