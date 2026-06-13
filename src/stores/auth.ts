@@ -133,6 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     initialize,
     ensureProfile,
+    fetchProfile,
     signOut
   }
 })

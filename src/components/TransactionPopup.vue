@@ -29,15 +29,15 @@ const setupRealtime = async () => {
   realtimeChannel = supabase.channel('transaction-popup')
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` },
+      { event: 'UPDATE', schema: 'public', table: 'transactions' },
       (payload) => {
         const oldStatus = payload.old.status
         const newStatus = payload.new.status
         
-        if (oldStatus !== newStatus) {
+        if (oldStatus !== newStatus && oldStatus === 'pending') {
           showPopup(
             `Transaksi ${newStatus.toUpperCase()}`,
-            `Status pesanan Anda telah berubah menjadi ${newStatus}.`,
+            `Transaksi Anda (${payload.new.customer_no}) telah ${newStatus}.`,
             newStatus
           )
         }

@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import BottomNav from '@/components/BottomNav.vue'
+import PullToRefresh from '@/components/PullToRefresh.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -97,45 +98,10 @@ const openPopup = (trx: any) => {
 const closePopup = () => {
   router.back()
 }
-
-const checkingStatus = ref(false)
-const checkStatus = async (trx: any) => {
-  if (checkingStatus.value) return
-  checkingStatus.value = true
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) return
-
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ transaction_id: trx.id })
-    })
-    
-    const result = await res.json()
-    if (result.success) {
-      if (result.status !== trx.status) {
-        trx.status = result.status
-        trx.sn = result.sn || trx.sn
-        transactions.value = [...transactions.value]
-      }
-      alert(`Status transaksi di server Digiflazz: ${result.status.toUpperCase()}`)
-    } else {
-      alert(result.error || 'Gagal mengecek status')
-    }
-  } catch (err) {
-    console.error('Check status error:', err)
-    alert('Terjadi kesalahan saat mengecek status')
-  } finally {
-    checkingStatus.value = false
-  }
-}
 </script>
 
 <template>
+  <PullToRefresh :onRefresh="fetchHistory">
   <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
     <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10">
       <button @click="router.push('/')" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
@@ -192,11 +158,8 @@ const checkStatus = async (trx: any) => {
               <span :class="['px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider', getStatusColor(selectedTrx.status)]">
                 {{ selectedTrx.status }}
               </span>
-              <button v-if="selectedTrx.status === 'pending'" @click="checkStatus(selectedTrx)" :disabled="checkingStatus" class="p-1.5 rounded-full bg-primary-50 text-primary-600 hover:bg-primary-100 transition-colors disabled:opacity-50">
-                <svg :class="{'animate-spin': checkingStatus}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-              </button>
             </div>
-            <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Tekan tombol panah melingkar untuk cek status terbaru</p>
+            <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Menunggu respons dari server...</p>
           </div>
 
           <div class="space-y-4 text-sm">
@@ -237,4 +200,5 @@ const checkStatus = async (trx: any) => {
     </div>
 
   </div>
+  </PullToRefresh>
 </template>

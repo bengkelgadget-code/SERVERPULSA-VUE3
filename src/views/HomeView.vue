@@ -4,12 +4,24 @@ import { useAuthStore } from '@/stores/auth'
 import { useProductsStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
 import BottomNav from '@/components/BottomNav.vue'
+import PullToRefresh from '@/components/PullToRefresh.vue'
 
 const auth = useAuthStore()
 const productsStore = useProductsStore()
 const router = useRouter()
 
 const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+
+const handleRefresh = async () => {
+  if (auth.user?.id) {
+    await Promise.all([
+      auth.fetchProfile(auth.user.id),
+      productsStore.fetchProducts()
+    ])
+  } else {
+    await productsStore.fetchProducts()
+  }
+}
 
 onMounted(() => {
   productsStore.fetchProducts()
@@ -50,9 +62,10 @@ const categories = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-50 pb-24">
-    <!-- Header -->
-    <div class="bg-primary-600 text-white p-6 rounded-b-3xl shadow-md">
+  <PullToRefresh :onRefresh="handleRefresh">
+    <div class="min-h-screen bg-neutral-50 pb-24">
+      <!-- Header -->
+      <div class="bg-primary-600 text-white p-6 rounded-b-3xl shadow-md">
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-sm opacity-80">Selamat datang,</h2>
@@ -98,6 +111,7 @@ const categories = [
     
     <BottomNav />
   </div>
+  </PullToRefresh>
 </template>
 
 <style scoped>

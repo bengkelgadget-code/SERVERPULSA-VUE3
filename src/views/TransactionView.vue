@@ -107,7 +107,11 @@ const buyProduct = async () => {
     if (!res.ok || !data.success) {
       errorMsg.value = data.error || 'Gagal melakukan transaksi'
     } else {
-      router.replace(`/receipt/${data.transactionId}`)
+      if (data.status === 'pending') {
+        router.replace({ path: '/history', query: { trx: data.transactionId } })
+      } else {
+        router.replace(`/receipt/${data.transactionId}`)
+      }
     }
   } catch (e: any) {
     errorMsg.value = e.message || 'Terjadi kesalahan jaringan'

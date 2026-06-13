@@ -414,6 +414,39 @@ app.post('/mobile/transaction/purchase', async (c) => {
   }
 })
 
+app.post('/mobile/transaction/check-status', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
+  const token = authHeader.replace('Bearer ', '').trim()
+
+  const supabase = getSupabase(c)
+  const { data: { user } } = await supabase.auth.getUser(token)
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+
+  try {
+    const { transaction_id } = await c.req.json()
+    if (!transaction_id) return c.json({ error: 'transaction_id required' }, 400)
+
+    const supabaseService = getSupabaseService()
+    const { data: trx } = await supabaseService.from('transactions').select('*').eq('id', transaction_id).single()
+    if (!trx) return c.json({ error: 'Transaction not found' }, 404)
+
+    // Check status in digiflazz
+    const dfData = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id)
+    const dfStatus = dfData.status?.toLowerCase() || 'pending'
+    
+    if (dfStatus === 'sukses' && trx.status !== 'sukses') {
+      await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
+    } else if (dfStatus === 'gagal' && trx.status !== 'gagal' && !trx.is_refunded) {
+      await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
+    }
+
+    return c.json({ success: true, status: dfStatus, sn: dfData.sn })
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500)
+  }
+})
+
 app.post('/admin-action', async (c) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
@@ -625,6 +658,39 @@ app.post('/admin-action', async (c) => {
     }
 
     return c.json({ error: 'Unknown action' }, 400)
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500)
+  }
+})
+
+// Webhook from Digiflazz
+app.post('/digiflazz-webhook', async (c) => {
+  try {
+    const payload = await c.req.json()
+    const ref_id = payload?.data?.ref_id
+
+    if (!ref_id) return c.json({ error: 'Missing ref_id' }, 400)
+
+    const supabaseService = getSupabaseService()
+    
+    // Find transaction
+    const { data: trx } = await supabaseService.from('transactions').select('*').eq('ref_id', ref_id).single()
+    if (!trx) return c.json({ error: 'Transaction not found' }, 404)
+
+    // Only process if it's currently pending
+    if (trx.status === 'pending') {
+      // Verify actual status by asking Digiflazz directly to prevent webhook spoofing
+      const dfData = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id)
+      const dfStatus = dfData.status?.toLowerCase() || 'pending'
+      
+      if (dfStatus === 'sukses') {
+        await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      } else if (dfStatus === 'gagal' && !trx.is_refunded) {
+        await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
+      }
+    }
+
+    return c.json({ success: true })
   } catch (err: any) {
     return c.json({ error: err.message }, 500)
   }
