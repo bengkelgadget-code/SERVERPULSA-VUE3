@@ -23,6 +23,10 @@ const pageTitle = computed(() => {
   if (categoryParam === 'data') return 'Paket Data'
   if (categoryParam === 'telpon') return 'Telpon & SMS'
   if (categoryParam === 'pln') return 'Token PLN'
+  if (categoryParam === 'pdam') return 'Tagihan PDAM'
+  if (categoryParam === 'pln_postpaid') return 'Tagihan Listrik'
+  if (categoryParam === 'bpjs') return 'Tagihan BPJS'
+  if (['indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)) return 'Tagihan Internet'
   return 'Transaksi'
 })
 
@@ -68,7 +72,9 @@ const detectedProvider = computed(() => {
 })
 
 const filteredProducts = computed(() => {
-  if (categoryParam !== 'pln' && !detectedProvider.value) return []
+  const isPpob = ['pdam', 'pln_postpaid', 'bpjs', 'indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)
+
+  if (categoryParam !== 'pln' && !isPpob && !detectedProvider.value) return []
 
   let result = productsStore.products.filter(p => {
     // 1. Filter by category
@@ -79,11 +85,22 @@ const filteredProducts = computed(() => {
     else if (categoryParam === 'data') matchesCategory = catLower.includes('data') || catLower.includes('internet')
     else if (categoryParam === 'telpon') matchesCategory = catLower.includes('telpon') || catLower.includes('sms')
     else if (categoryParam === 'pln') matchesCategory = catLower.includes('pln')
+    else if (categoryParam === 'pdam') matchesCategory = catLower.includes('pdam')
+    else if (categoryParam === 'pln_postpaid') matchesCategory = catLower.includes('pln') && catLower.includes('pasca')
+    else if (categoryParam === 'bpjs') matchesCategory = catLower.includes('bpjs')
+    else if (['indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)) {
+       const bLower = p.brand.toLowerCase()
+       if (categoryParam === 'indihome') matchesCategory = bLower.includes('indihome') || bLower.includes('telkom')
+       else if (categoryParam === 'firstmedia') matchesCategory = bLower.includes('first media') || bLower.includes('firstmedia')
+       else if (categoryParam === 'myrepublic') matchesCategory = bLower.includes('republic')
+       else if (categoryParam === 'biznet') matchesCategory = bLower.includes('biznet')
+       else if (categoryParam === 'mncplay') matchesCategory = bLower.includes('mnc')
+    }
 
     if (!matchesCategory) return false
 
     // 2. Filter by brand/provider
-    if (categoryParam === 'pln') return true
+    if (categoryParam === 'pln' || isPpob) return true
     return p.brand.toLowerCase() === detectedProvider.value.toLowerCase()
   })
 
@@ -189,7 +206,7 @@ const pickContact = async () => {
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
     <div class="bg-primary-600 text-white py-1.5 px-2 flex items-center gap-1.5 shadow-sm sticky top-0 z-10">
-      <button @click="router.push('/')" class="p-1 -ml-1 rounded-full hover:bg-white/20 transition-colors">
+      <button @click="router.back()" class="p-1 -ml-1 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <h1 class="text-sm font-bold">{{ pageTitle }}</h1>
@@ -199,7 +216,12 @@ const pickContact = async () => {
       <!-- Input Section -->
       <div class="card p-3 bg-white rounded-2xl shadow-sm mb-3">
         <label class="block text-[11px] font-bold text-neutral-700 mb-1">
-          Nomor {{ categoryParam === 'pln' ? 'Meter / ID Pelanggan' : 'Handphone' }}
+          <span v-if="categoryParam === 'pln'">Nomor Meter / ID Pelanggan</span>
+          <span v-else-if="categoryParam === 'pdam'">Nomor Pelanggan PDAM</span>
+          <span v-else-if="categoryParam === 'pln_postpaid'">ID Pelanggan Listrik</span>
+          <span v-else-if="categoryParam === 'bpjs'">Nomor VA BPJS</span>
+          <span v-else-if="['indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)">Nomor Pelanggan Internet</span>
+          <span v-else>Nomor Handphone</span>
         </label>
         
         <input 
@@ -207,7 +229,7 @@ const pickContact = async () => {
           type="text" 
           inputmode="numeric"
           class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
-          :placeholder="categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx'" 
+          :placeholder="['pdam', 'pln_postpaid', 'bpjs', 'indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam) ? 'Masukkan ID Pelanggan' : (categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx')" 
         />
 
         <!-- Validation PLN -->
@@ -277,7 +299,7 @@ const pickContact = async () => {
       </div>
       
       <!-- Placeholder when empty -->
-      <div v-else-if="customerNo.length > 3" class="text-center py-10 text-neutral-400">
+      <div v-else-if="!['pdam', 'pln_postpaid', 'bpjs', 'indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam) && customerNo.length > 3" class="text-center py-10 text-neutral-400">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-3 opacity-20"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <p class="text-sm font-medium">Produk tidak ditemukan</p>
       </div>

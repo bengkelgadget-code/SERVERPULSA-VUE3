@@ -29,13 +29,22 @@ let realtimeChannel: any
 
 const fetchHistory = async () => {
   loading.value = true
-  const targetUserId = auth.userProfile?.role === 'staff' ? auth.userProfile?.admin_id : auth.user?.id
-  const { data } = await supabase
+  
+  let query = supabase
     .from('transactions')
     .select('*, products(product_name)')
-    .eq('user_id', targetUserId)
     .order('created_at', { ascending: false })
     .limit(50)
+
+  // If not superadmin, restrict to their own/mitra's transactions
+  if (auth.userProfile?.role !== 'superadmin') {
+    const targetUserId = auth.userProfile?.role === 'staff' ? auth.userProfile?.admin_id : auth.user?.id
+    if (targetUserId) {
+      query = query.eq('user_id', targetUserId)
+    }
+  }
+
+  const { data } = await query
   
   if (data) {
     transactions.value = data
@@ -139,7 +148,7 @@ const closePopup = () => {
   <PullToRefresh :onRefresh="fetchHistory">
   <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
     <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10">
-      <button @click="router.push('/')" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
+      <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <h1 class="text-lg font-bold">Riwayat Transaksi</h1>

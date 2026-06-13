@@ -127,7 +127,7 @@ const selectProduct = (sku: string) => {
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
     <div class="bg-primary-600 text-white py-1.5 px-2 flex items-center gap-1.5 shadow-sm sticky top-0 z-10">
-      <button @click="router.push('/ewallet')" class="p-1 -ml-1 rounded-full hover:bg-white/20 transition-colors">
+      <button @click="router.back()" class="p-1 -ml-1 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <div class="flex items-center gap-1.5">

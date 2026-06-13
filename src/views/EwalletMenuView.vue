@@ -16,7 +16,7 @@ const wallets = [
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
     <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10">
-      <button @click="router.push('/')" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
+      <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <h1 class="text-lg font-bold">Pilih E-Wallet</h1>
