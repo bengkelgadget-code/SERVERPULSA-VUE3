@@ -305,7 +305,22 @@ app.post('/sync-digiflazz-balance', async (c) => {
     
     if (typeof digiflazzBalance === 'number') {
       const supabaseService = getSupabaseService()
-      const effectiveUserId = profile.role === 'admin' ? user.id : profile.admin_id
+      
+      let effectiveUserId = null;
+      if (profile.role === 'admin') {
+        effectiveUserId = user.id;
+      } else if (profile.role === 'superadmin') {
+        const { data: adminUser } = await supabaseService.from('users').select('id').eq('role', 'admin').limit(1).single()
+        if (adminUser) {
+          effectiveUserId = adminUser.id;
+        }
+      } else if (profile.admin_id) {
+        effectiveUserId = profile.admin_id;
+      }
+
+      if (!effectiveUserId) {
+        return c.json({ error: 'Tidak ditemukan akun Mitra/Admin utama untuk disinkronkan' }, 400);
+      }
       
       await supabaseService.from('users').update({ saldo: digiflazzBalance }).eq('id', effectiveUserId)
       return c.json({ success: true, new_saldo: digiflazzBalance })
