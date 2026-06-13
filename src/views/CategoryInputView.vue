@@ -80,21 +80,24 @@ const filteredProducts = computed(() => {
     // 1. Filter by category
     let matchesCategory = false
     const catLower = p.category.toLowerCase()
+    const bLower = p.brand.toLowerCase()
+    const nLower = p.product_name.toLowerCase()
     
     if (categoryParam === 'pulsa') matchesCategory = catLower.includes('pulsa')
-    else if (categoryParam === 'data') matchesCategory = catLower.includes('data') || catLower.includes('internet')
+    else if (categoryParam === 'data') matchesCategory = catLower.includes('data') && !catLower.includes('pasca')
     else if (categoryParam === 'telpon') matchesCategory = catLower.includes('telpon') || catLower.includes('sms')
-    else if (categoryParam === 'pln') matchesCategory = catLower.includes('pln')
-    else if (categoryParam === 'pdam') matchesCategory = catLower.includes('pdam')
+    else if (categoryParam === 'pln') matchesCategory = catLower.includes('pln') && !catLower.includes('pasca')
+    else if (categoryParam === 'pdam') matchesCategory = bLower.includes('pdam') || catLower.includes('pdam')
     else if (categoryParam === 'pln_postpaid') matchesCategory = catLower.includes('pln') && catLower.includes('pasca')
-    else if (categoryParam === 'bpjs') matchesCategory = catLower.includes('bpjs')
+    else if (categoryParam === 'bpjs') matchesCategory = catLower.includes('bpjs') || bLower.includes('bpjs')
     else if (['indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)) {
-       const bLower = p.brand.toLowerCase()
-       if (categoryParam === 'indihome') matchesCategory = bLower.includes('indihome') || bLower.includes('telkom')
-       else if (categoryParam === 'firstmedia') matchesCategory = bLower.includes('first media') || bLower.includes('firstmedia')
-       else if (categoryParam === 'myrepublic') matchesCategory = bLower.includes('republic')
-       else if (categoryParam === 'biznet') matchesCategory = bLower.includes('biznet')
-       else if (categoryParam === 'mncplay') matchesCategory = bLower.includes('mnc')
+       if (catLower.includes('pasca') && (bLower.includes('internet') || bLower.includes('tv'))) {
+          if (categoryParam === 'indihome') matchesCategory = nLower.includes('indihome') || nLower.includes('speedy')
+          else if (categoryParam === 'firstmedia') matchesCategory = nLower.includes('first media') || nLower.includes('firstmedia')
+          else if (categoryParam === 'myrepublic') matchesCategory = nLower.includes('republic')
+          else if (categoryParam === 'biznet') matchesCategory = nLower.includes('biznet')
+          else if (categoryParam === 'mncplay') matchesCategory = nLower.includes('mnc')
+       }
     }
 
     if (!matchesCategory) return false
