@@ -361,12 +361,13 @@ app.post('/sync-digiflazz', async (c) => {
       });
     }
 
+    const supabaseService = getSupabaseService();
     // Bulk upsert in chunks of 500 to avoid request size limits
     const chunkSize = 500;
     let updatedCount = 0;
     for (let i = 0; i < productsToUpsert.length; i += chunkSize) {
       const chunk = productsToUpsert.slice(i, i + chunkSize);
-      const { error } = await supabase.from('products').upsert(chunk, { onConflict: 'sku_code' });
+      const { error } = await supabaseService.from('products').upsert(chunk, { onConflict: 'sku_code' });
       if (!error) updatedCount += chunk.length;
       else console.error('Bulk upsert error:', error);
     }
