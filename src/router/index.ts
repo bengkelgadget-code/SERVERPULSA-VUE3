@@ -58,6 +58,18 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/ppob',
+      name: 'ppob-menu',
+      component: () => import('@/views/PpobMenuView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/internet',
+      name: 'internet-menu',
+      component: () => import('@/views/InternetMenuView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/ewallet/:id',
       name: 'ewallet-input',
       component: () => import('@/views/EwalletInputView.vue'),
