@@ -9,15 +9,30 @@ export const useProductsStore = defineStore('products', () => {
   async function fetchProducts() {
     loading.value = true
     try {
-      // 1. Fetch all active products
-      const { data: prodData } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('category')
-        .order('harga_jual')
-
-      // 2. Determine who the Mitra is for pricing
+      let allProdData: any[] = []
+      let from = 0
+      const step = 1000
+      
+      while (true) {
+        const { data: prodData, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('is_active', true)
+          .order('category')
+          .order('harga_jual')
+          .range(from, from + step - 1)
+          
+        if (error) throw error
+        if (prodData && prodData.length > 0) {
+          allProdData = allProdData.concat(prodData)
+          if (prodData.length < step) break
+          from += step
+        } else {
+          break
+        }
+      }
+      
+      const prodData = allProdData
       const { data: { user } } = await supabase.auth.getUser()
       if (user && prodData) {
         const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()

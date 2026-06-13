@@ -331,10 +331,8 @@ app.post('/sync-digiflazz', async (c) => {
   }
 
   try {
-    const [prepaidProducts, pascaProducts] = await Promise.all([
-      digiflazz.getPriceList(),
-      digiflazz.getPascaList()
-    ]);
+    const prepaidProducts = await digiflazz.getPriceList();
+    const pascaProducts = await digiflazz.getPascaList();
     
     let products = [];
     if (prepaidProducts && Array.isArray(prepaidProducts)) products = products.concat(prepaidProducts);
@@ -344,7 +342,7 @@ app.post('/sync-digiflazz', async (c) => {
       return c.json({ success: false, message: 'Invalid response from Digiflazz' }, 500)
     }
 
-    let updatedCount = 0;
+    const productsToUpsert = [];
     for (const item of products) {
       if (item.buyer_product_status === false && item.seller_product_status === false) {
         continue; // Skip completely inactive
@@ -353,17 +351,24 @@ app.post('/sync-digiflazz', async (c) => {
       const isActive = item.buyer_product_status === true && item.seller_product_status === true;
       const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
 
-      const { error } = await supabase.from('products').upsert({
+      productsToUpsert.push({
         sku_code: item.buyer_sku_code,
         product_name: item.product_name,
         category: item.category,
         brand: item.brand,
         harga_modal: hargaModal,
         is_active: isActive
-        // Note: we don't overwrite harga_jual here so we don't ruin existing markup
-      }, { onConflict: 'sku_code' })
-      
-      if (!error) updatedCount++;
+      });
+    }
+
+    // Bulk upsert in chunks of 500 to avoid request size limits
+    const chunkSize = 500;
+    let updatedCount = 0;
+    for (let i = 0; i < productsToUpsert.length; i += chunkSize) {
+      const chunk = productsToUpsert.slice(i, i + chunkSize);
+      const { error } = await supabase.from('products').upsert(chunk, { onConflict: 'sku_code' });
+      if (!error) updatedCount += chunk.length;
+      else console.error('Bulk upsert error:', error);
     }
 
     return c.json({ success: true, message: `Synced ${updatedCount} products from Digiflazz` })

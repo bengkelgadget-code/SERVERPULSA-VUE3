@@ -21,17 +21,32 @@ let typingTimers: Record<string, any> = {}
 const fetchProducts = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .order('brand', { ascending: true })
-      
-    if (error) throw error
-    if (data) {
-      products.value = data
+    let allProdData: any[] = []
+    let from = 0
+    const step = 1000
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('brand', { ascending: true })
+        .range(from, from + step - 1)
+        
+      if (error) throw error
+      if (data && data.length > 0) {
+        allProdData = allProdData.concat(data)
+        if (data.length < step) break
+        from += step
+      } else {
+        break
+      }
+    }
+    
+    if (allProdData.length > 0) {
+      products.value = allProdData
       
       const uniqueCats = new Set<string>()
-      data.forEach(p => {
+      allProdData.forEach(p => {
         if (p.category) uniqueCats.add(p.category)
       })
       categories.value = Array.from(uniqueCats).sort()
