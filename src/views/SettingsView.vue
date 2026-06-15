@@ -73,7 +73,7 @@ const connectPrinter = async () => {
   if (devices.length > 0) {
     showPrinterModal.value = true
   } else {
-    alert('Tidak ada perangkat bluetooth yang ditemukan. Pastikan bluetooth aktif dan sudah paired dengan printer.')
+    alert('Tidak ada perangkat bluetooth yang ditemukan.\n\nPENTING: Pastikan Bluetooth AKTIF, printer MENYALA, dan LOKASI/GPS di HP Anda juga diaktifkan (syarat Android untuk scan perangkat Bluetooth).')
   }
 }
 

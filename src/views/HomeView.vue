@@ -90,16 +90,12 @@ const categories = [
     <div class="px-6 mt-6">
       <h3 class="font-bold text-xl text-neutral-800 mb-4">Layanan Kami</h3>
       
-      <div class="grid grid-cols-4 gap-4">
-        <!-- We use col-span-4 grid, but display them properly. The first 4 can be a 2x2 grid, or 5 items can be 3 + 2. Let's use flex or grid-cols-3 -->
-      </div>
-      
-      <div class="flex flex-wrap gap-4 justify-between">
+      <div class="grid grid-cols-3 gap-y-6 gap-x-4 justify-items-center">
         <div 
           v-for="cat in categories" 
           :key="cat.name"
           @click="router.push(cat.path)"
-          class="flex flex-col items-center w-[30%] cursor-pointer active:scale-95 transition-transform"
+          class="flex flex-col items-center w-full cursor-pointer active:scale-95 transition-transform"
         >
           <div :class="['w-16 h-16 rounded-2xl flex items-center justify-center mb-2 shadow-sm', cat.color]">
             <div v-html="cat.icon"></div>

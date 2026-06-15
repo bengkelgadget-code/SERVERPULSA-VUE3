@@ -210,23 +210,10 @@ const doSpeech = async () => {
             <button 
               v-if="customerNo && !showCheckButton"
               @click="customerNo = ''"
-              class="absolute right-28 p-1 text-neutral-400 hover:text-neutral-600 bg-neutral-100 rounded-full z-10"
+              class="absolute right-3 p-1 text-neutral-400 hover:text-neutral-600 bg-neutral-100 rounded-full z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
-
-            <!-- Native Features -->
-            <div class="absolute right-2 flex items-center bg-white rounded-lg px-1" v-if="!showCheckButton">
-              <button @click="doSpeech" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-red-500 animate-pulse': isListening}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-              </button>
-              <button @click="doBarcode" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-primary-600 animate-pulse': isScanning}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="12" x="7" y="6" rx="1"/></svg>
-              </button>
-              <button @click="pickContact" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
-              </button>
-            </div>
 
             <!-- Tombol Cek Nama -->
             <button 
@@ -249,17 +236,17 @@ const doSpeech = async () => {
 
         <!-- 3 Icons (Mic, Barcode, Contacts) -->
         <div class="flex items-center gap-1.5 mt-2 pt-2 border-t border-neutral-100">
-          <button @click="showAlert('Mic / Speech to Text segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+          <button @click="doSpeech" :class="['flex-1 flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors', isListening ? 'bg-red-50 text-red-600 animate-pulse' : 'bg-neutral-50 hover:bg-primary-50 hover:text-primary-600 text-neutral-500']">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" x2="12" y1="19" y2="22"></line></svg>
             <span class="text-[9px] font-bold">Suara</span>
           </button>
           
-          <button @click="showAlert('Barcode Scanner segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+          <button @click="doBarcode" :class="['flex-1 flex flex-col items-center gap-0.5 p-1 rounded-xl transition-colors', isScanning ? 'bg-primary-50 text-primary-600 animate-pulse' : 'bg-neutral-50 hover:bg-primary-50 hover:text-primary-600 text-neutral-500']">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path><line x1="7" y1="8" x2="7" y2="16"></line><line x1="12" y1="8" x2="12" y2="16"></line><line x1="17" y1="8" x2="17" y2="16"></line></svg>
             <span class="text-[9px] font-bold">Scan</span>
           </button>
           
-          <button @click="showAlert('Ambil dari Kontak segera hadir')" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
+          <button @click="pickContact" class="flex-1 flex flex-col items-center gap-0.5 p-1 bg-neutral-50 rounded-xl hover:bg-primary-50 hover:text-primary-600 transition-colors text-neutral-500">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             <span class="text-[9px] font-bold">Kontak</span>
           </button>

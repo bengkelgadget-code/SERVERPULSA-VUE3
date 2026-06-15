@@ -79,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
         console.log('Profile fetched successfully:', finalData.role)
         userProfile.value = finalData
-        setupRealtime(userId)
+        setupRealtime(userId, data.admin_id)
       } else {
         console.log('No profile data returned.')
       }
@@ -88,12 +88,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setupRealtime(userId: string) {
+  function setupRealtime(userId: string, adminId?: string) {
     if (userSubscription) {
       supabase.removeChannel(userSubscription)
     }
 
-    userSubscription = supabase.channel('user-profile-changes')
+    let channel = supabase.channel('user-profile-changes')
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
@@ -107,7 +107,22 @@ export const useAuthStore = defineStore('auth', () => {
           }
         }
       )
-      .subscribe()
+      
+    // Jika staff, dengarkan juga perubahan tabel admin untuk update saldo
+    if (adminId) {
+      channel = channel.on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${adminId}` },
+        (payload) => {
+          console.log('Admin profile updated via realtime (syncing balance):', payload.new)
+          if (userProfile.value && payload.new.saldo !== undefined) {
+            userProfile.value = { ...userProfile.value, saldo: payload.new.saldo }
+          }
+        }
+      )
+    }
+
+    userSubscription = channel.subscribe()
   }
 
   async function ensureProfile() {

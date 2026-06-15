@@ -1,12 +1,38 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { App as CapacitorApp } from '@capacitor/app'
+import { Toast } from '@capacitor/toast'
+import { Capacitor } from '@capacitor/core'
 import TransactionPopup from '@/components/TransactionPopup.vue'
 
 const auth = useAuthStore()
+const router = useRouter()
+let lastBackPress = 0
 
 onMounted(() => {
   auth.initialize()
+  
+  if (Capacitor.isNativePlatform()) {
+    CapacitorApp.addListener('backButton', () => {
+      const currentPath = router.currentRoute.value.path
+      if (currentPath === '/' || currentPath === '/login' || currentPath === '/riwayat' || currentPath === '/settings') {
+        const now = Date.now()
+        if (now - lastBackPress < 2000) {
+          CapacitorApp.exitApp()
+        } else {
+          lastBackPress = now
+          Toast.show({
+            text: 'Tekan sekali lagi untuk keluar',
+            duration: 'short'
+          })
+        }
+      } else {
+        router.back()
+      }
+    })
+  }
   
   // Initialize Theme
   const savedTheme = localStorage.getItem('app_theme') || 'default'
