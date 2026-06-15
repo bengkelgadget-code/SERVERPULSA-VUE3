@@ -23,13 +23,13 @@ const navItems = [
 </script>
 
 <template>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 p-2 flex justify-center items-center gap-[15px] pb-safe z-50">
+  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 p-3 flex justify-center items-center gap-[20px] pb-safe z-50">
     <button 
       v-for="item in navItems" 
       :key="item.name"
       @click="router.push(item.path)" 
-      class="flex flex-col items-center p-2 w-20 transition-colors"
-      :class="route.path === item.path ? 'text-primary-600' : 'text-neutral-400 hover:text-primary-600'"
+      class="flex flex-col items-center p-2 w-[72px] transition-all nav-btn"
+      :class="route.path === item.path ? 'text-primary-600 nav-btn-active' : 'text-neutral-400 hover:text-primary-600'"
     >
       <div v-html="item.icon" class="mb-1"></div>
       <span class="text-[10px] font-bold">{{ item.name }}</span>

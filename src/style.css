@@ -165,3 +165,16 @@ html, body {
   color: #FFFFFF !important;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
 }
+
+/* Bottom Navigation Buttons */
+.theme-neumorph .nav-btn {
+  background-color: var(--bg-color) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: var(--neu-flat) !important;
+  border: none !important;
+}
+
+.theme-neumorph .nav-btn-active {
+  box-shadow: var(--neu-pressed) !important;
+  color: #6a7c64 !important; /* Hijau mate text for active tab */
+}
