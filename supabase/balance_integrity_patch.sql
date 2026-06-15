@@ -1,8 +1,13 @@
 -- BALANCE INTEGRITY PATCH
 -- Fixes: double refund, double deposit approval, and balance sync issues
+-- IMPORTANT: This script DROPS and recreates functions to fix parameter name conflicts
 
 -- 1. Make approve_deposit idempotent (prevent double approval)
-CREATE OR REPLACE FUNCTION public.approve_deposit(deposit_id UUID)
+DROP FUNCTION IF EXISTS public.approve_deposit(UUID);
+DROP FUNCTION IF EXISTS public.approve_deposit(deposit_id UUID);
+DROP FUNCTION IF EXISTS public.approve_deposit(p_deposit_id UUID);
+
+CREATE FUNCTION public.approve_deposit(p_deposit_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_user_id UUID;
@@ -12,7 +17,7 @@ BEGIN
   -- Lock the deposit row and check current status
   SELECT user_id, amount, status INTO v_user_id, v_amount, v_status
   FROM public.deposits
-  WHERE id = deposit_id
+  WHERE id = p_deposit_id
   FOR UPDATE;
 
   -- If already approved, do nothing (idempotent)
@@ -30,14 +35,17 @@ BEGIN
   UPDATE public.users SET saldo = saldo + v_amount WHERE id = v_user_id;
 
   -- Mark deposit as approved
-  UPDATE public.deposits SET status = 'success' WHERE id = deposit_id;
+  UPDATE public.deposits SET status = 'success' WHERE id = p_deposit_id;
 
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 2. Make refund_purchase idempotent with extra safety
-CREATE OR REPLACE FUNCTION public.refund_purchase(p_transaction_id UUID)
+DROP FUNCTION IF EXISTS public.refund_purchase(UUID);
+DROP FUNCTION IF EXISTS public.refund_purchase(p_transaction_id UUID);
+
+CREATE FUNCTION public.refund_purchase(p_transaction_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_user_id UUID;
@@ -76,7 +84,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. Make add_balance safer (prevent negative saldo)
-CREATE OR REPLACE FUNCTION public.add_balance(p_user_id UUID, p_amount NUMERIC)
+DROP FUNCTION IF EXISTS public.add_balance(UUID, NUMERIC);
+DROP FUNCTION IF EXISTS public.add_balance(p_user_id UUID, p_amount NUMERIC);
+
+CREATE FUNCTION public.add_balance(p_user_id UUID, p_amount NUMERIC)
 RETURNS BOOLEAN AS $$
 DECLARE
   v_current_saldo NUMERIC;
@@ -100,7 +111,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. Make process_purchase check for duplicate ref_id (prevent double deduction)
-CREATE OR REPLACE FUNCTION public.process_purchase(
+DROP FUNCTION IF EXISTS public.process_purchase(UUID, TEXT, TEXT, TEXT, NUMERIC, NUMERIC);
+DROP FUNCTION IF EXISTS public.process_purchase(p_user_id UUID, p_sku_code TEXT, p_customer_no TEXT, p_ref_id TEXT, p_harga_modal NUMERIC, p_harga_jual NUMERIC);
+
+CREATE FUNCTION public.process_purchase(
   p_user_id UUID,
   p_sku_code TEXT,
   p_customer_no TEXT,
@@ -169,7 +183,10 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 5. Make transfer_balance safer
-CREATE OR REPLACE FUNCTION public.transfer_balance(
+DROP FUNCTION IF EXISTS public.transfer_balance(UUID, UUID, NUMERIC);
+DROP FUNCTION IF EXISTS public.transfer_balance(p_from_user_id UUID, p_to_user_id UUID, p_amount NUMERIC);
+
+CREATE FUNCTION public.transfer_balance(
   p_from_user_id UUID,
   p_to_user_id UUID,
   p_amount NUMERIC
