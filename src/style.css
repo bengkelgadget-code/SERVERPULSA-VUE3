@@ -111,3 +111,15 @@ html, body {
 .theme-neumorph .border-b {
   border-color: transparent !important;
 }
+
+/* Custom Saldo Card */
+.theme-neumorph .saldo-card {
+  background-color: #6a577a !important; /* Ungu doff */
+  box-shadow: var(--neu-flat) !important;
+  border: none !important;
+}
+
+.theme-neumorph .saldo-card p {
+  color: #FFFFFF !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5), -1px -1px 1px rgba(255,255,255,0.2) !important;
+}
