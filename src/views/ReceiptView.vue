@@ -143,7 +143,6 @@ const printReceipt = async () => {
 
 const showShareModal = ref(false)
 const isSharing = ref(false)
-const receiptRef = ref<HTMLElement | null>(null)
 
 // Build receipt as plain canvas to avoid html2canvas CSS color issues
 const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
@@ -174,7 +173,6 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   }
   lines.push({ text: '' })
   
-  const labelW = 120
   const addRow = (label: string, value: string, bold = false) => {
     lines.push({ text: `${label.padEnd(12)}: ${value}`, bold })
   }
@@ -322,7 +320,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       
       <!-- THERMAL RECEIPT CONTAINER -->
       <div v-else-if="trx" class="w-full max-w-[320px] mx-auto pb-20 print:pb-0">
-        <div ref="receiptRef" class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
+        <div class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
           <div class="text-center mb-4">
             <p class="font-bold text-base">** BENGKEL GADGET **</p>
