@@ -4,12 +4,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { usePrinterStore } from '@/stores/printer'
 import { useBluetooth } from '@/composables/useBluetooth'
+import { Capacitor } from '@capacitor/core'
+import { Share } from '@capacitor/share'
+import { Filesystem, Directory } from '@capacitor/filesystem'
 
 const route = useRoute()
 const router = useRouter()
 const printerStore = usePrinterStore()
 const bluetooth = useBluetooth()
 const transactionId = route.params.id as string
+
+const isNative = Capacitor.getPlatform() !== 'web'
 
 const loading = ref(true)
 const trx = ref<any>(null)
@@ -125,18 +130,55 @@ const snParts = computed(() => {
 })
 
 const printReceipt = async () => {
-  if (printerStore.isConnected) {
-    const authStore = (await import('@/stores/auth')).useAuthStore()
-    const storeName = authStore.userProfile?.nama_toko || 'KONTER PULSA'
-    const text = bluetooth.formatReceipt(trx.value, storeName)
-    const success = await bluetooth.print(text)
-    if (success) {
-      alert('Struk berhasil dicetak ke printer Bluetooth.')
-    } else {
-      alert('Gagal mencetak. Pastikan printer terhubung dan nyala.')
+  if (!trx.value) return
+  
+  // Try bluetooth printing first
+  if (printerStore.connectedAddress) {
+    // Ensure printer store knows it's connected
+    printerStore.isConnected = true
+    try {
+      await bluetooth.connect(printerStore.connectedAddress)
+      const authStore = (await import('@/stores/auth')).useAuthStore()
+      const storeName = authStore.userProfile?.nama_toko || 'KONTER PULSA'
+      const text = bluetooth.formatReceipt(trx.value, storeName)
+      const success = await bluetooth.print(text)
+      if (success) {
+        alert('Struk berhasil dicetak ke printer Bluetooth.')
+        return
+      }
+    } catch (e) {
+      console.error('Bluetooth print error:', e)
+    }
+  }
+  
+  // Fallback: save as image and share/print
+  if (isNative) {
+    // On native: generate image and open share sheet for printing/sharing
+    try {
+      const canvas = await drawReceiptToCanvas()
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+      const base64Data = dataUrl.split(',')[1]
+      const fileName = `Nota-${trx.value.ref_id || 'transaksi'}.jpg`
+      
+      const saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      })
+      
+      await Share.share({
+        title: 'Cetak / Bagikan Nota',
+        text: 'Nota Transaksi',
+        url: saved.uri,
+        dialogTitle: 'Cetak / Bagikan Nota',
+      })
+    } catch (err: any) {
+      if (err.message !== 'Share canceled') {
+        alert('Gagal memproses nota: ' + (err.message || 'Unknown error'))
+      }
     }
   } else {
-    // Browser print fallback
+    // On web: use browser print
     window.print()
   }
 }
@@ -258,47 +300,91 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
     // Wait for modal animation to complete
     await new Promise(r => setTimeout(r, 300))
     
-    // Draw receipt directly to canvas (no html2canvas needed)
+    // Draw receipt directly to canvas
     const canvas = await drawReceiptToCanvas()
     
-    let fileToShare: File
+    if (isNative) {
+      // Native (Capacitor): save file to device and use native share
+      let base64Data: string
+      let fileName: string
+      let mimeType: string
+      
+      if (format === 'jpg') {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        base64Data = dataUrl.split(',')[1]
+        fileName = `Nota-${trx.value.ref_id || 'transaksi'}.jpg`
+        mimeType = 'image/jpeg'
+      } else {
+        const { jsPDF } = await import('jspdf')
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'px',
+          format: [canvas.width / 2, canvas.height / 2]
+        })
+        const imgData = canvas.toDataURL('image/jpeg', 1.0)
+        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
+        base64Data = pdf.output('datauristring').split(',')[1]
+        fileName = `Nota-${trx.value.ref_id || 'transaksi'}.pdf`
+        mimeType = 'application/pdf'
+      }
 
-    if (format === 'jpg') {
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
-      if (!blob) throw new Error('Gagal membuat gambar JPG')
-      fileToShare = new File([blob], `Nota-${trx.value.ref_id || 'transaksi'}.jpg`, { type: 'image/jpeg' })
-    } else {
-      const { jsPDF } = await import('jspdf')
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width / 2, canvas.height / 2]
+      // Write file to device cache directory
+      const saved = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
       })
-      const imgData = canvas.toDataURL('image/jpeg', 1.0)
-      pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
-      const pdfBlob = pdf.output('blob')
-      fileToShare = new File([pdfBlob], `Nota-${trx.value.ref_id || 'transaksi'}.pdf`, { type: 'application/pdf' })
-    }
-
-    if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
-      await navigator.share({
-        title: 'Nota Transaksi',
+      
+      // Open native share sheet
+      await Share.share({
+        title: 'Bagikan Nota',
         text: 'Berikut adalah nota transaksi Anda.',
-        files: [fileToShare]
+        url: saved.uri,
+        dialogTitle: 'Bagikan Nota',
       })
     } else {
-      const url = URL.createObjectURL(fileToShare)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileToShare.name
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      alert('File telah diunduh.')
+      // Web: download file or use Web Share API
+      let fileToShare: File
+
+      if (format === 'jpg') {
+        const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
+        if (!blob) throw new Error('Gagal membuat gambar JPG')
+        fileToShare = new File([blob], `Nota-${trx.value.ref_id || 'transaksi'}.jpg`, { type: 'image/jpeg' })
+      } else {
+        const { jsPDF } = await import('jspdf')
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'px',
+          format: [canvas.width / 2, canvas.height / 2]
+        })
+        const imgData = canvas.toDataURL('image/jpeg', 1.0)
+        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
+        const pdfBlob = pdf.output('blob')
+        fileToShare = new File([pdfBlob], `Nota-${trx.value.ref_id || 'transaksi'}.pdf`, { type: 'application/pdf' })
+      }
+
+      if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
+        await navigator.share({
+          title: 'Nota Transaksi',
+          text: 'Berikut adalah nota transaksi Anda.',
+          files: [fileToShare]
+        })
+      } else {
+        const url = URL.createObjectURL(fileToShare)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileToShare.name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        alert('File telah diunduh.')
+      }
     }
   } catch (err: any) {
-    alert(err.message || 'Terjadi kesalahan saat memproses file')
+    if (err.message !== 'Share canceled') {
+      alert(err.message || 'Terjadi kesalahan saat memproses file')
+    }
   } finally {
     isSharing.value = false
   }
