@@ -34,7 +34,7 @@ watch(customerNo, async (newVal) => {
     // Cek diam-diam ke database lokal
     try {
       const cleanNo = newVal.replace(/[^0-9]/g, '')
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('ewallet_names')
         .select('customer_name')
         .eq('customer_no', cleanNo)
