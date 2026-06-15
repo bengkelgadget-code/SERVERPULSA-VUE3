@@ -34,13 +34,14 @@ html, body {
 
 /* Neumorphism Theme Variables & Overrides */
 .theme-neumorph {
-  --bg-color: #E8E0D5;
+  --bg-color: #EBE3D9; /* Lighter, warmer tone matching Image 2 */
   --text-color: #6D635B;
-  --neu-dark: #C5BCB2;
+  --neu-dark: #CFC5BA;
   --neu-light: #FFFFFF;
-  --neu-accent: #E5A999; /* Soft peach from the image */
+  --neu-accent: #E5A999;
   
-  --neu-flat: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  /* Thicker, softer shadows to maximize the floating 3D effect like Image 2 */
+  --neu-flat: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
   --neu-pressed: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
 }
 
@@ -50,17 +51,27 @@ html, body {
 }
 
 .theme-neumorph .bg-white,
-.theme-neumorph .bg-neutral-50,
-.theme-neumorph .bg-primary-600 {
+.theme-neumorph .bg-neutral-50 {
   background-color: var(--bg-color) !important;
 }
 
-.theme-neumorph .text-white {
+/* Normal headers (like in Token PLN, etc) become Green */
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) {
+  background-color: #6a7c64 !important;
+  color: #FFFFFF !important;
+}
+
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl).text-white,
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) * {
+  color: #FFFFFF !important;
+}
+
+.theme-neumorph .text-white:not(.bg-primary-600 *) {
   color: var(--text-color) !important;
 }
 
-.theme-neumorph .bg-primary-600.text-white {
-  color: var(--neu-accent) !important;
+.theme-neumorph .bg-primary-600.text-white:not(.rounded-b-3xl) {
+  color: #FFFFFF !important;
 }
 
 .theme-neumorph .text-neutral-800,
@@ -77,6 +88,7 @@ html, body {
   background-color: var(--bg-color) !important;
   border: none !important;
   box-shadow: var(--neu-flat) !important;
+  border-radius: 1.5rem !important; /* Softer, squishy look like Image 2 */
 }
 
 .theme-neumorph .input-field,
@@ -86,6 +98,7 @@ html, body {
   border: none !important;
   box-shadow: var(--neu-pressed) !important;
   color: var(--text-color) !important;
+  border-radius: 1.25rem !important;
 }
 
 .theme-neumorph .btn-primary,
@@ -94,6 +107,7 @@ html, body {
   color: var(--neu-accent) !important;
   border: none !important;
   box-shadow: var(--neu-flat) !important;
+  border-radius: 1.25rem !important;
 }
 
 .theme-neumorph .btn-primary:active,
