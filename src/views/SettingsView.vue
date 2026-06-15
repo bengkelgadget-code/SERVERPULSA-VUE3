@@ -41,7 +41,7 @@ const handleSave = async () => {
   isSaving.value = true
   
   try {
-    const { data: updatedData, error } = await supabase.from('users')
+    const { error } = await supabase.from('users')
       .update({ nama_toko: namaToko.value })
       .eq('id', auth.user.id)
       .select('id')
