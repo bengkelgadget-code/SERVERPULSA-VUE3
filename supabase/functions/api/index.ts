@@ -253,8 +253,20 @@ app.post('/inquiry-ewallet', async (c) => {
     } else if (provider.toUpperCase() === 'SHOPEEPAY' && rawName.includes('SPAY ')) {
       finalName = rawName.split('SPAY ')[1] || rawName;
     }
+    finalName = finalName.trim()
+    
+    // UPSERT to cache (ewallet_names) if success and name is valid
+    if (response.rc === '00' && finalName && !finalName.includes('Menunggu Server')) {
+      const supabaseService = getSupabaseService()
+      await supabaseService.from('ewallet_names').upsert({
+        customer_no: cleanCustomerNo,
+        provider: provider.toUpperCase(),
+        customer_name: finalName,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'customer_no, provider' })
+    }
 
-    return c.json({ success: true, name: finalName.trim(), rc: response.rc, price: response.price });
+    return c.json({ success: true, name: finalName, rc: response.rc, price: response.price });
   } catch (err: any) {
     return c.json({ success: false, message: err.message }, 500);
   }

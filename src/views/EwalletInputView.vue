@@ -25,12 +25,29 @@ const selectedProvider = computed(() => {
   return walletId.toUpperCase()
 })
 
-watch(customerNo, (newVal) => {
+watch(customerNo, async (newVal) => {
   ewalletName.value = ''
   showCheckButton.value = false
   clearTimeout(checkTimeout)
 
   if (newVal.length >= 10) {
+    // Cek diam-diam ke database lokal
+    try {
+      const cleanNo = newVal.replace(/[^0-9]/g, '')
+      const { data, error } = await supabase
+        .from('ewallet_names')
+        .select('customer_name')
+        .eq('customer_no', cleanNo)
+        .eq('provider', selectedProvider.value)
+        .maybeSingle()
+      
+      if (data && data.customer_name) {
+        ewalletName.value = data.customer_name
+      }
+    } catch (err) {
+      // Abaikan error (silent)
+    }
+
     checkTimeout = setTimeout(() => {
       showCheckButton.value = true
     }, 1000)
