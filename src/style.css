@@ -55,6 +55,18 @@ html, body {
   background-color: var(--bg-color) !important;
 }
 
+/* Force category icons and other light backgrounds to match the base color for the Neumorphism illusion */
+.theme-neumorph .bg-blue-100,
+.theme-neumorph .bg-yellow-100,
+.theme-neumorph .bg-green-100,
+.theme-neumorph .bg-purple-100,
+.theme-neumorph .bg-rose-100,
+.theme-neumorph .bg-orange-100,
+.theme-neumorph .bg-primary-100,
+.theme-neumorph .bg-red-100 {
+  background-color: var(--bg-color) !important;
+}
+
 /* Normal headers (like in Token PLN, etc) become Green */
 .theme-neumorph .bg-primary-600:not(.rounded-b-3xl) {
   background-color: #6a7c64 !important;
@@ -141,8 +153,8 @@ html, body {
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
   background-color: #6a7c64 !important; /* Hijau mate */
-  border-radius: 1.25rem !important; /* 4 corners rounded */
-  box-shadow: 6px 6px 15px rgba(100, 90, 80, 0.35), -6px -6px 15px rgba(255, 255, 255, 0.7), inset 1px 1px 3px rgba(255, 255, 255, 0.2) !important;
+  border-radius: 1.5rem !important; /* 4 corners rounded, even softer */
+  box-shadow: 8px 8px 20px rgba(100, 90, 80, 0.25), -4px -4px 12px rgba(255, 255, 255, 0.4), inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important;
   border: none !important;
   margin: 0 !important;
   padding: 1.25rem !important;
@@ -150,5 +162,5 @@ html, body {
 
 .theme-neumorph .saldo-card p {
   color: #FFFFFF !important;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.5) !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4) !important;
 }
