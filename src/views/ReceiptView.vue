@@ -102,7 +102,7 @@ const snParts = computed(() => {
   if (raw.includes('A/N ') && raw.includes(' | SN: ')) {
     const parts = raw.split(' | SN: ')
     const name = parts[0].replace('A/N ', '')
-    result.push({ label: 'Nama', value: name })
+    result.push({ label: 'NAMA', value: name })
     if (parts[1]) result.push({ label: 'SN', value: parts[1] })
   }
   // Try to parse "Nama: x, No: y, Reff: z" format
@@ -110,13 +110,13 @@ const snParts = computed(() => {
     const namaMatch = raw.match(/Nama:\s*([^,]+)/)
     const noMatch = raw.match(/No:\s*([^,]+)/)
     const reffMatch = raw.match(/Reff:\s*(.+)/)
-    if (namaMatch) result.push({ label: 'Nama', value: namaMatch[1].trim() })
-    if (noMatch) result.push({ label: 'No', value: noMatch[1].trim() })
-    if (reffMatch) result.push({ label: 'Reff', value: reffMatch[1].trim() })
+    if (namaMatch) result.push({ label: 'NAMA', value: namaMatch[1].trim() })
+    if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
+    if (reffMatch) result.push({ label: 'REFF', value: reffMatch[1].trim() })
   }
-  // Fallback: show raw
+  // Fallback: show raw as single line
   else {
-    result.push({ label: '', value: raw })
+    result.push({ label: 'SN / REF', value: raw })
   }
   
   return result
@@ -285,20 +285,13 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
             <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
-            <!-- SN / REF - parsed into separate lines -->
-            <div class="flex">
-              <span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span>
-              <div class="flex-1">
-                <template v-if="snParts.length > 0 && snParts[0].label">
-                  <div v-for="(part, i) in snParts" :key="i">
-                    <span v-if="i === 0">{{ part.value }}</span>
-                    <span v-else class="inline-block w-24 shrink-0"></span>
-                    <span v-if="i > 0" class="ml-0">{{ part.label }}: {{ part.value }}</span>
-                  </div>
-                </template>
-                <span v-else class="break-all">{{ trx.sn || trx.ref_id }}</span>
+            <!-- SN / REF - each part on its own line -->
+            <template v-if="snParts.length > 0 && snParts[0].label">
+              <div v-for="(part, i) in snParts" :key="i" class="flex">
+                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ part.value }}</span>
               </div>
-            </div>
+            </template>
+            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ trx.sn || trx.ref_id }}</span></div>
             <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
