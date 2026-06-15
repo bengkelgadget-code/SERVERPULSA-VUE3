@@ -48,6 +48,11 @@ const fetchTransaction = async () => {
 
 onMounted(() => {
   fetchTransaction()
+  if (route.query.share === 'true') {
+    setTimeout(() => {
+      showShareModal.value = true
+    }, 500)
+  }
 })
 
 import { formatRp as baseFormatRp } from '@/utils/format'
@@ -179,9 +184,6 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         </button>
         <h1 class="text-xl font-bold">Nota Transaksi</h1>
       </div>
-      <button @click="printReceipt" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-      </button>
     </div>
 
     <div class="flex-1 p-4 flex items-center justify-center print:p-0 print:bg-white">
@@ -205,25 +207,25 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PLN FORMAT -->
           <div v-if="isPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24">IDPEL</span><span>: {{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24">NAMA</span><span>: {{ plnData?.nama }}</span></div>
-            <div class="flex"><span class="w-24">TRF/DAYA</span><span>: {{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
-            <div class="flex"><span class="w-24">NOMINAL</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24">PPN</span><span>: RP. 0,00</span></div>
-            <div class="flex"><span class="w-24">ANGS/MAT</span><span>: RP. 0,00/0,00</span></div>
-            <div class="flex"><span class="w-24">RP TOKEN</span><span>: {{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24">JML KWH</span><span>: {{ plnData?.kwh }}</span></div>
-            <div class="flex"><span class="w-24">BIAYA ADM</span><span>: {{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
-            <div class="flex font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
+            <div class="flex font-bold"><span class="w-24 flex-shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
           <!-- NON-PLN FORMAT -->
           <div v-else class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24">PRODUK</span><span>: {{ trx.products?.product_name }}</span></div>
-            <div class="flex"><span class="w-24">NO TUJUAN</span><span>: {{ trx.customer_no }}</span></div>
-            <div v-if="trx.customer_name" class="flex"><span class="w-24">NAMA AKUN</span><span>: {{ trx.customer_name }}</span></div>
-            <div class="flex"><span class="w-24">SN / REF</span><span>: {{ trx.sn || trx.ref_id }}</span></div>
-            <div class="flex mt-2 font-bold"><span class="w-24">TOTAL BAYAR</span><span>: {{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
+            <div v-if="trx.customer_name" class="flex"><span class="w-24 flex-shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
+            <div class="flex"><span class="w-24 flex-shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.sn || trx.ref_id }}</span></div>
+            <div class="flex mt-2 font-bold"><span class="w-24 flex-shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
           <!-- TOKEN DISPLAY -->
@@ -244,9 +246,13 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
         <!-- Action Buttons (Hidden when printing or screenshotting) -->
         <div class="mt-6 flex flex-col gap-3 print:hidden px-4" data-html2canvas-ignore>
-          <button @click="showShareModal = true" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
+          <button v-if="$route.query.share === 'true'" @click="showShareModal = true" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
             {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
+          </button>
+          <button v-else @click="printReceipt" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            Cetak / Print
           </button>
           <button @click="router.push('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
             Kembali ke Riwayat
