@@ -75,7 +75,7 @@ const categories = [
       <div class="flex justify-between items-center mb-6">
         <div>
           <h2 class="text-sm opacity-80">Selamat datang,</h2>
-          <h1 class="text-xl font-bold">{{ auth.userProfile?.nama_toko || auth.user?.email }}</h1>
+          <h1 class="text-2xl font-bold">{{ auth.userProfile?.nama_toko || auth.user?.email }}</h1>
         </div>
         <!-- Removed logout button here as per user request -->
       </div>
@@ -87,8 +87,8 @@ const categories = [
     </div>
 
     <!-- Main Content -->
-    <div class="px-4 mt-6">
-      <h3 class="font-bold text-lg text-neutral-800 mb-4">Layanan Kami</h3>
+    <div class="px-6 mt-6">
+      <h3 class="font-bold text-xl text-neutral-800 mb-4">Layanan Kami</h3>
       
       <div class="grid grid-cols-4 gap-4">
         <!-- We use col-span-4 grid, but display them properly. The first 4 can be a 2x2 grid, or 5 items can be 3 + 2. Let's use flex or grid-cols-3 -->

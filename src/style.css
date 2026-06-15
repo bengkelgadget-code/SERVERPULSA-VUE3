@@ -36,13 +36,11 @@ html, body {
 .theme-neumorph {
   --bg-color: #EBE3D9; /* Lighter, warmer tone matching Image 2 */
   --text-color: #6D635B;
-  --neu-dark: #B8A99A; /* Darker shadow color for higher contrast */
+  --neu-dark: #9C8F80; /* Darker and stronger shadow for realism */
   --neu-light: #FFFFFF;
-  --neu-accent: #E5A999;
-  
-  /* Thicker, darker shadows to maximize the floating 3D effect */
-  --neu-flat: 12px 12px 24px var(--neu-dark), -10px -10px 20px var(--neu-light);
-  --neu-pressed: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
+  --neu-accent: #6a7c64;
+  --neu-flat: 8px 8px 16px var(--neu-dark), -6px -6px 12px var(--neu-light), inset 1px 1px 2px rgba(255, 255, 255, 0.2);
+  --neu-pressed: inset 6px 6px 12px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
 }
 
 .theme-neumorph body, .theme-neumorph {
@@ -167,7 +165,7 @@ html, body {
 
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
-  background-color: #6a7c64 !important; /* Hijau mate */
+  background-color: #FF6B35 !important; /* Orange neon doff */
   border-radius: 1.5rem !important; /* 4 corners rounded, even softer */
   box-shadow: 12px 12px 24px rgba(100, 90, 80, 0.4), -8px -8px 16px rgba(255, 255, 255, 0.5), inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important; /* Thicker and darker shadow */
   border: none !important;
@@ -180,9 +178,14 @@ html, body {
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
 }
 
-/* Increase balance font by 3px (text-3xl is normally 30px) */
+/* Increase Saldo Deposit label by 2px (text-sm is 14px -> 16px) */
+.theme-neumorph .saldo-card p.text-sm {
+  font-size: 16px !important;
+}
+
+/* Increase balance font by 5px (text-3xl is normally 30px -> 35px) */
 .theme-neumorph .saldo-card p.text-3xl {
-  font-size: 33px !important;
+  font-size: 35px !important;
 }
 
 /* Increase header font by 5px and uppercase */
@@ -196,20 +199,29 @@ html, body {
   font-size: 25px !important;
 }
 
-.theme-neumorph .bg-primary-600 h1,
-.theme-neumorph .bg-primary-600 h2 {
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) h1,
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) h2 {
   text-transform: uppercase !important;
 }
 
 /* Bottom Navigation Buttons */
 .theme-neumorph .nav-btn {
   background-color: var(--bg-color) !important;
-  border-radius: 1.25rem !important;
+  border-radius: 16px !important;
   box-shadow: var(--neu-flat) !important;
-  border: none !important;
+  margin-bottom: 6px !important; /* Lowered, only small gap for shadow */
+  padding: 8px !important;
 }
 
 .theme-neumorph .nav-btn-active {
-  box-shadow: var(--neu-pressed) !important;
-  color: #6a7c64 !important; /* Hijau mate text for active tab */
+  background-color: #6a7c64 !important; /* Hijau mate */
+  color: #FFFFFF !important;
+  box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(255,255,255,0.2) !important;
+}
+
+.theme-neumorph .fixed.bottom-0 {
+  background-color: var(--bg-color) !important;
+  border: none !important; /* Remove separator line */
+  box-shadow: none !important; /* Remove top shadow to make it seamless */
+  padding-bottom: 12px !important; /* Reduced bottom padding */
 }

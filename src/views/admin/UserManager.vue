@@ -259,7 +259,7 @@ const handleAddBalance = async () => {
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h2 class="text-2xl font-bold text-gray-800">Manajemen Kasir / Staff</h2>
+      <h2 class="text-3xl font-bold text-gray-800">Manajemen Kasir / Staff</h2>
       
       <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
         <!-- Search -->

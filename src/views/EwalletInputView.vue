@@ -159,7 +159,7 @@ const selectProduct = (sku: string) => {
         <div :class="['w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold', walletInfo.icon]">
           {{ walletInfo.letter }}
         </div>
-        <h1 class="text-sm font-bold">Topup {{ walletInfo.name }}</h1>
+        <h1 class="text-lg font-bold">Topup {{ walletInfo.name }}</h1>
       </div>
     </div>
 
@@ -229,7 +229,7 @@ const selectProduct = (sku: string) => {
         </div>
       </div>
 
-      <h3 class="font-bold text-neutral-800 mb-2 mt-4 ml-1">Pilih Nominal</h3>
+      <h3 class="font-bold text-lg text-neutral-800 mb-2 mt-4 ml-1">Pilih Nominal</h3>
 
       <!-- Product List -->
       <div v-if="filteredProducts.length > 0" class="space-y-3">

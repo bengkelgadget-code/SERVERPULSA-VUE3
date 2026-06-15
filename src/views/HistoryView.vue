@@ -152,7 +152,7 @@ const closePopup = () => {
       <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h1 class="text-lg font-bold">Riwayat Transaksi</h1>
+      <h1 class="text-xl font-bold">Riwayat Transaksi</h1>
     </div>
 
     <div class="p-4 flex-1">
@@ -190,7 +190,7 @@ const closePopup = () => {
       <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
         
         <div class="bg-neutral-50 border-b border-neutral-100 p-4 flex justify-between items-center relative">
-          <h2 class="font-bold text-neutral-800 text-lg">Detail Transaksi</h2>
+          <h2 class="font-bold text-neutral-800 text-xl">Detail Transaksi</h2>
           <button @click="closePopup" class="p-1.5 bg-neutral-200/50 hover:bg-neutral-200 rounded-full text-neutral-600 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>

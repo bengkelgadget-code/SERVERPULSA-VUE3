@@ -44,7 +44,7 @@ const handleLogin = async () => {
   <div class="min-h-screen flex items-center justify-center p-4">
     <div class="card w-full max-w-sm space-y-6">
       <div class="text-center">
-        <h1 class="text-2xl font-bold text-primary-600">KONTER APP</h1>
+        <h1 class="text-3xl font-bold text-primary-600">KONTER APP</h1>
         <p class="text-neutral-500 text-sm mt-1">Masuk untuk transaksi pulsa</p>
       </div>
 

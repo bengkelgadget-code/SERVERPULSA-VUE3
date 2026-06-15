@@ -297,7 +297,7 @@ const syncDigiflazz = async () => {
     <!-- Header -->
     <div class="flex items-center justify-between shrink-0">
       <div>
-        <h1 class="text-2xl font-extrabold text-gray-800">Product Catalog</h1>
+        <h1 class="text-3xl font-extrabold text-gray-800">Product Catalog</h1>
         <p class="text-[13px] text-gray-500 mt-1">{{ products.length }} produk terdaftar</p>
       </div>
       <button 

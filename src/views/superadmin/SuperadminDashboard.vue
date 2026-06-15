@@ -186,7 +186,7 @@ onUnmounted(() => {
 
     <!-- Overview Section -->
     <div class="flex justify-between items-center mt-10 mb-6">
-      <h2 class="text-xl font-bold text-neutral-800">Overview</h2>
+      <h2 class="text-2xl font-bold text-neutral-800">Overview</h2>
       <div class="flex gap-2">
         <button 
           @click="syncMitraBalance" 
@@ -228,7 +228,7 @@ onUnmounted(() => {
     
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <router-link to="/superadmin/deposits" class="flex flex-col items-center justify-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors group">
             <CreditCard class="w-8 h-8 text-gray-400 group-hover:text-blue-500 mb-2" />

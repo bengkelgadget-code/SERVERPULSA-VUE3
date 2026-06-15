@@ -117,7 +117,7 @@ const deleteFavorite = async (id: string) => {
       <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h1 class="text-lg font-bold">Daftar Favorit</h1>
+      <h1 class="text-xl font-bold">Daftar Favorit</h1>
     </div>
 
     <div class="p-4">
@@ -138,7 +138,7 @@ const deleteFavorite = async (id: string) => {
           @click="selectFavorite(fav.customer_no)"
         >
           <div>
-            <h3 class="font-bold text-neutral-800 text-lg uppercase">{{ fav.name }}</h3>
+            <h3 class="font-bold text-neutral-800 text-xl uppercase">{{ fav.name }}</h3>
             <p class="text-base font-bold text-neutral-600 font-mono mt-1">{{ fav.customer_no }}</p>
           </div>
           <div class="flex gap-2">
@@ -164,7 +164,7 @@ const deleteFavorite = async (id: string) => {
     <!-- Modal Form -->
     <div v-if="showAddModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl animate-in fade-in zoom-in-95 duration-200">
-        <h2 class="text-lg font-bold mb-4">{{ editingId ? 'Edit Favorit' : 'Tambah Favorit' }}</h2>
+        <h2 class="text-xl font-bold mb-4">{{ editingId ? 'Edit Favorit' : 'Tambah Favorit' }}</h2>
         
         <div class="space-y-4">
           <div>

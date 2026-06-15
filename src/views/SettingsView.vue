@@ -71,13 +71,13 @@ const doLogout = async () => {
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
     <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10">
-      <h1 class="text-lg font-bold ml-2">Pengaturan</h1>
+      <h1 class="text-xl font-bold ml-2">Pengaturan</h1>
     </div>
 
     <div class="p-4 space-y-6">
       <!-- Profile Settings -->
       <div class="card p-5 shadow-sm bg-white rounded-2xl">
-        <h3 class="font-bold text-neutral-800 mb-4 border-b pb-2">Profil Mitra</h3>
+        <h3 class="font-bold text-lg text-neutral-800 mb-4 border-b pb-2">Profil Mitra</h3>
         
         <div class="space-y-4">
           <div>
@@ -106,7 +106,7 @@ const doLogout = async () => {
 
       <!-- Tampilan Aplikasi -->
       <div class="card p-5 shadow-sm bg-white rounded-2xl">
-        <h3 class="font-bold text-neutral-800 mb-4 border-b pb-2">Tampilan Aplikasi</h3>
+        <h3 class="font-bold text-lg text-neutral-800 mb-4 border-b pb-2">Tampilan Aplikasi</h3>
         
         <div>
           <label class="block text-sm font-semibold text-neutral-700 mb-2">Pilih Tema</label>
@@ -123,7 +123,7 @@ const doLogout = async () => {
 
       <!-- Printer Settings -->
       <div class="card p-5 shadow-sm bg-white rounded-2xl">
-        <h3 class="font-bold text-neutral-800 mb-4 border-b pb-2">Hardware & Perangkat</h3>
+        <h3 class="font-bold text-lg text-neutral-800 mb-4 border-b pb-2">Hardware & Perangkat</h3>
         
         <div class="flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-100">
           <div class="flex items-center gap-3">

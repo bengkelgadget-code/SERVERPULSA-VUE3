@@ -154,7 +154,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
         </button>
-        <h1 class="text-lg font-bold">Nota Transaksi</h1>
+        <h1 class="text-xl font-bold">Nota Transaksi</h1>
       </div>
       <button @click="printReceipt" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -241,7 +241,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       <div class="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="showShareModal = false"></div>
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-200">
         <div class="p-4 border-b border-neutral-100">
-          <h3 class="font-bold text-center text-neutral-800">Pilih Format Nota</h3>
+          <h3 class="font-bold text-lg text-center text-neutral-800">Pilih Format Nota</h3>
         </div>
         <div class="p-2">
           <button @click="shareReceipt('jpg')" class="w-full text-left px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3">

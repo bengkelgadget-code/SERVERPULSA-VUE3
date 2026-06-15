@@ -49,7 +49,7 @@ const internetProviders = [
       <button @click="router.back()" class="p-1 -ml-1 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h1 class="text-sm font-bold">Tagihan Internet</h1>
+      <h1 class="text-lg font-bold">Tagihan Internet</h1>
     </div>
 
     <div class="p-3">

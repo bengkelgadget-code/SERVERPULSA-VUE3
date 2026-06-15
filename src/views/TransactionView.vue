@@ -182,7 +182,7 @@ const buyProduct = async () => {
       <button @click="router.back()" class="p-1.5 -ml-1.5 rounded-full hover:bg-white/20 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
-      <h1 class="text-base font-bold">Checkout Pembayaran</h1>
+      <h1 class="text-lg font-bold">Checkout Pembayaran</h1>
     </div>
 
     <div class="p-3 space-y-3" v-if="product">
