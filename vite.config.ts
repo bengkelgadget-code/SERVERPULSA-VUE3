@@ -10,4 +10,8 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    target: ['es2020', 'chrome87', 'safari14'],
+    chunkSizeWarningLimit: 1000,
+  }
 })

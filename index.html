@@ -4,7 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>server-pulsa</title>
+    <title>Konter Pulsa - Kasir</title>
+    <script>
+      window.addEventListener('error', function(e) {
+        alert('JS Error: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        alert('Promise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason));
+      });
+    </script>
   </head>
   <body>
     <div id="app"></div>
