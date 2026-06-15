@@ -118,10 +118,10 @@ app.post('/webhook/digiflazz', async (c) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     )
 
-    // Check if transaction exists and is pending
+    // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
-      .select('status')
+      .select('status, is_refunded')
       .eq('id', data.ref_id)
       .single()
 
@@ -139,8 +139,8 @@ app.post('/webhook/digiflazz', async (c) => {
 
     if (error) return c.json({ error: 'Database update failed' }, 500)
     
-    // If failed via webhook, trigger refund
-    if (data.status.toLowerCase() === 'gagal') {
+    // If failed via webhook, trigger refund (only if not already refunded)
+    if (data.status.toLowerCase() === 'gagal' && !tx.is_refunded) {
        await supabase.rpc('refund_purchase', { p_transaction_id: data.ref_id })
     }
     
@@ -347,9 +347,25 @@ app.post('/sync-digiflazz-balance', async (c) => {
       if (profile.role === 'admin') {
         effectiveUserId = user.id;
       } else if (profile.role === 'superadmin') {
-        const { data: adminUser } = await supabaseService.from('users').select('id').eq('role', 'admin').limit(1).single()
-        if (adminUser) {
-          effectiveUserId = adminUser.id;
+        // Get ALL admin users to properly distribute the balance
+        const { data: allAdmins } = await supabaseService.from('users').select('id, saldo').eq('role', 'admin')
+        
+        if (!allAdmins || allAdmins.length === 0) {
+          return c.json({ error: 'Tidak ditemukan akun Mitra/Admin untuk disinkronkan' }, 400);
+        }
+        
+        if (allAdmins.length === 1) {
+          // Single admin: set their saldo to Digiflazz balance
+          effectiveUserId = allAdmins[0].id;
+        } else {
+          // Multiple admins: set the first admin's saldo to (Digiflazz - sum of other admins' saldos)
+          // This ensures Total Saldo Mitra = Digiflazz balance
+          const firstAdmin = allAdmins[0];
+          const otherAdminsTotal = allAdmins.slice(1).reduce((acc, a) => acc + (Number(a.saldo) || 0), 0);
+          const firstAdminSaldo = digiflazzBalance - otherAdminsTotal;
+          
+          await supabaseService.from('users').update({ saldo: firstAdminSaldo }).eq('id', firstAdmin.id)
+          return c.json({ success: true, new_saldo: firstAdminSaldo, total_mitra: digiflazzBalance, admin_id: firstAdmin.id })
         }
       } else if (profile.admin_id) {
         effectiveUserId = profile.admin_id;
@@ -550,32 +566,54 @@ app.post('/mobile/transaction/purchase', async (c) => {
         response = await digiflazz.createTransaction(sku_code, cleanCustomerNo, refId);
       }
       
-      const dfStatus = response.status.toLowerCase()
+      const dfStatusRaw = (response.status || '').toLowerCase()
       let dbStatus = 'pending'
-      if (dfStatus === 'sukses') dbStatus = 'sukses'
-      if (dfStatus === 'gagal') dbStatus = 'gagal'
+      if (dfStatusRaw === 'sukses' || dfStatusRaw.includes('sukses')) dbStatus = 'sukses'
+      if (dfStatusRaw === 'gagal' || dfStatusRaw.includes('gagal')) dbStatus = 'gagal'
 
       let finalSn = response.sn || null;
       if (customer_name) {
         finalSn = finalSn ? `A/N ${customer_name} | SN: ${finalSn}` : `A/N ${customer_name}`;
       }
 
+      const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+
       await supabase.from('transactions').update({
         status: dbStatus,
         sn: finalSn,
+        message: response.message || null,
         updated_at: new Date().toISOString(),
       }).eq('id', transactionId)
 
       if (dbStatus === 'gagal') {
-        const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+        // Check if not already refunded before refunding
+        const { data: txCheck } = await supabaseService.from('transactions').select('is_refunded').eq('id', transactionId).single()
+        if (!txCheck?.is_refunded) {
+          await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+        }
         return c.json({ success: false, error: `Transaction failed: ${response.message}`, status: dbStatus, ref_id: refId })
       }
 
       return c.json({ success: true, transactionId, status: dbStatus, ref_id: refId, sn: response.sn, harga_jual: finalHargaJual })
-    } catch (digiflazzError) {
+    } catch (digiflazzError: any) {
+      // Digiflazz call threw an error — mark transaction as gagal and refund
       console.error('DigiFlazz call failed:', digiflazzError)
-      return c.json({ success: true, transactionId, status: 'pending', ref_id: refId, note: 'Waiting for confirmation', harga_jual: finalHargaJual })
+      const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+      
+      // Update status to gagal so it doesn't stay pending forever
+      await supabaseService.from('transactions').update({
+        status: 'gagal',
+        message: `Digiflazz error: ${digiflazzError?.message || 'Unknown error'}`,
+        updated_at: new Date().toISOString(),
+      }).eq('id', transactionId)
+
+      // Refund the deducted balance
+      const { data: txCheck } = await supabaseService.from('transactions').select('is_refunded').eq('id', transactionId).single()
+      if (!txCheck?.is_refunded) {
+        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+      }
+      
+      return c.json({ success: false, error: `Digiflazz error: ${digiflazzError?.message || 'Unknown error'}`, status: 'gagal', ref_id: refId, harga_jual: finalHargaJual })
     }
   } catch (error: any) {
     return c.json({ error: error.message }, 500)
