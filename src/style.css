@@ -114,8 +114,8 @@ html, body {
 
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
-  background-color: #6a577a !important; /* Ungu doff */
-  box-shadow: var(--neu-flat) !important;
+  background-color: #6a7c64 !important; /* Hijau mate */
+  box-shadow: 5px 5px 12px #C5BCB2, -5px -5px 12px rgba(255, 255, 255, 0.6), inset 1px 1px 2px rgba(255, 255, 255, 0.15) !important;
   border: none !important;
 }
 

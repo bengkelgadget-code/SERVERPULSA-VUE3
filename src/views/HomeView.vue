@@ -80,7 +80,7 @@ const categories = [
         <!-- Removed logout button here as per user request -->
       </div>
       
-      <div class="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20 saldo-card mx-[2px]">
+      <div class="p-4 rounded-xl saldo-card mx-[2px]">
         <p class="text-sm opacity-90 mb-1 font-bold">Saldo Deposit</p>
         <p class="text-3xl font-extrabold tracking-tight">{{ formatRp(auth.userProfile?.saldo || 0) }}</p>
       </div>
