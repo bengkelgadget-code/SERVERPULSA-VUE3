@@ -93,7 +93,7 @@ const plnData = computed(() => {
   }
 })
 
-// Parse SN/REF data into structured parts for clean display
+// Parse SN/REF data into structured parts for clean display (skip NAMA - already shown as NAMA AKUN)
 const snParts = computed(() => {
   const raw = trx.value?.sn || trx.value?.ref_id || ''
   const result: { label: string; value: string }[] = []
@@ -101,16 +101,12 @@ const snParts = computed(() => {
   // Try to parse "A/N name | SN: sn_value" format
   if (raw.includes('A/N ') && raw.includes(' | SN: ')) {
     const parts = raw.split(' | SN: ')
-    const name = parts[0].replace('A/N ', '')
-    result.push({ label: 'NAMA', value: name })
     if (parts[1]) result.push({ label: 'SN', value: parts[1] })
   }
   // Try to parse "Nama: x, No: y, Reff: z" format
   else if (raw.includes('Nama:') && raw.includes('Reff:')) {
-    const namaMatch = raw.match(/Nama:\s*([^,]+)/)
     const noMatch = raw.match(/No:\s*([^,]+)/)
     const reffMatch = raw.match(/Reff:\s*(.+)/)
-    if (namaMatch) result.push({ label: 'NAMA', value: namaMatch[1].trim() })
     if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
     if (reffMatch) result.push({ label: 'REFF', value: reffMatch[1].trim() })
   }
