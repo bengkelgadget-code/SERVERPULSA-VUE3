@@ -9,6 +9,12 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
+    SpeechRecognition: {
+      language: "id-ID",
+    },
+    BarcodeScanning: {
+      formats: ['QR_CODE', 'EAN_13', 'CODE_128']
+    }
   },
 };
 

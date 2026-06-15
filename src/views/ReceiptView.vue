@@ -2,9 +2,13 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
+import { usePrinterStore } from '@/stores/printer'
+import { useBluetooth } from '@/composables/useBluetooth'
 
 const route = useRoute()
 const router = useRouter()
+const printerStore = usePrinterStore()
+const bluetooth = useBluetooth()
 const transactionId = route.params.id as string
 
 const loading = ref(true)
@@ -83,8 +87,21 @@ const plnData = computed(() => {
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 
-const printReceipt = () => {
-  window.print()
+const printReceipt = async () => {
+  if (printerStore.isConnected) {
+    const authStore = (await import('@/stores/auth')).useAuthStore()
+    const storeName = authStore.userProfile?.nama_toko || 'KONTER PULSA'
+    const text = bluetooth.formatReceipt(trx.value, storeName)
+    const success = await bluetooth.print(text)
+    if (success) {
+      alert('Struk berhasil dicetak ke printer Bluetooth.')
+    } else {
+      alert('Gagal mencetak. Pastikan printer terhubung dan nyala.')
+    }
+  } else {
+    // Fallback to browser print if no bluetooth printer is connected
+    window.print()
+  }
 }
 
 const showShareModal = ref(false)

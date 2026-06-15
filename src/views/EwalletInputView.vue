@@ -3,10 +3,17 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { supabase } from '@/lib/supabase'
+import { useContacts } from '@/composables/useContacts'
+import { useBarcodeScanner } from '@/composables/useBarcodeScanner'
+import { useSpeechToText } from '@/composables/useSpeechToText'
 
 const route = useRoute()
 const router = useRouter()
 const productsStore = useProductsStore()
+
+const { pickContact: pickNativeContact } = useContacts()
+const { scan: scanBarcode, isScanning } = useBarcodeScanner()
+const { startListening, isListening } = useSpeechToText()
 
 const showAlert = (msg: string) => window.alert(msg)
 
@@ -146,6 +153,27 @@ const selectProduct = (sku: string) => {
   }
   router.push(url)
 }
+
+const pickContact = async () => {
+  const result = await pickNativeContact()
+  if (result) {
+    customerNo.value = result
+  }
+}
+
+const doBarcode = async () => {
+  const result = await scanBarcode()
+  if (result) {
+    customerNo.value = result.replace(/[^0-9]/g, '')
+  }
+}
+
+const doSpeech = async () => {
+  const result = await startListening()
+  if (result) {
+    customerNo.value = result
+  }
+}
 </script>
 
 <template>
@@ -174,17 +202,31 @@ const selectProduct = (sku: string) => {
               type="tel" 
               pattern="[0-9]*"
               inputmode="numeric"
-              class="w-full text-lg font-bold text-neutral-800 border-2 border-neutral-200 rounded-xl px-4 py-3 focus:border-primary-500 focus:ring-0 transition-colors pr-24"
+              class="w-full text-lg font-bold text-neutral-800 border-2 border-neutral-200 rounded-xl px-4 py-3 focus:border-primary-500 focus:ring-0 transition-colors"
+              :class="showCheckButton ? 'pr-24' : 'pr-32'"
               placeholder="Contoh: 08123456789"
             />
             
             <button 
               v-if="customerNo && !showCheckButton"
               @click="customerNo = ''"
-              class="absolute right-4 p-1 text-neutral-400 hover:text-neutral-600 bg-neutral-100 rounded-full"
+              class="absolute right-28 p-1 text-neutral-400 hover:text-neutral-600 bg-neutral-100 rounded-full z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
+
+            <!-- Native Features -->
+            <div class="absolute right-2 flex items-center bg-white rounded-lg px-1" v-if="!showCheckButton">
+              <button @click="doSpeech" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-red-500 animate-pulse': isListening}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+              </button>
+              <button @click="doBarcode" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-primary-600 animate-pulse': isScanning}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="12" x="7" y="6" rx="1"/></svg>
+              </button>
+              <button @click="pickContact" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+              </button>
+            </div>
 
             <!-- Tombol Cek Nama -->
             <button 

@@ -3,10 +3,17 @@ import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { supabase } from '@/lib/supabase'
+import { useContacts } from '@/composables/useContacts'
+import { useBarcodeScanner } from '@/composables/useBarcodeScanner'
+import { useSpeechToText } from '@/composables/useSpeechToText'
 
 const route = useRoute()
 const router = useRouter()
 const productsStore = useProductsStore()
+
+const { pickContact: pickNativeContact } = useContacts()
+const { scan: scanBarcode, isScanning } = useBarcodeScanner()
+const { startListening, isListening } = useSpeechToText()
 
 const showAlert = (msg: string) => window.alert(msg)
 
@@ -185,30 +192,23 @@ const selectProduct = (sku: string) => {
 }
 
 const pickContact = async () => {
-  if (!('contacts' in navigator && 'ContactsManager' in window)) {
-    showAlert('Browser Anda tidak mendukung fitur ambil kontak. Silakan ketik manual.')
-    return
+  const result = await pickNativeContact()
+  if (result) {
+    customerNo.value = result
   }
-  
-  try {
-    const props = ['name', 'tel']
-    const opts = { multiple: false }
-    const contacts = await (navigator as any).contacts.select(props, opts)
-    
-    if (contacts.length > 0 && contacts[0].tel && contacts[0].tel.length > 0) {
-      let phone = contacts[0].tel[0]
-      // Clean up the phone number
-      phone = phone.replace(/[^0-9+]/g, '')
-      if (phone.startsWith('+62')) {
-        phone = '0' + phone.slice(3)
-      } else if (phone.startsWith('62')) {
-        phone = '0' + phone.slice(2)
-      }
-      
-      customerNo.value = phone
-    }
-  } catch (ex) {
-    console.error('Failed to pick contact', ex)
+}
+
+const doBarcode = async () => {
+  const result = await scanBarcode()
+  if (result) {
+    customerNo.value = result.replace(/[^0-9]/g, '') // typically numbers only for pln/phone
+  }
+}
+
+const doSpeech = async () => {
+  const result = await startListening()
+  if (result) {
+    customerNo.value = result
   }
 }
 
@@ -236,13 +236,26 @@ const pickContact = async () => {
           <span v-else>Nomor Handphone</span>
         </label>
         
-        <input 
-          v-model="customerNo" 
-          type="text" 
-          inputmode="numeric"
-          class="input-field text-lg font-bold tracking-wider py-2.5 px-3 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
-          :placeholder="['pdam', 'pln_postpaid', 'bpjs', 'indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam) ? 'Masukkan ID Pelanggan' : (categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx')" 
-        />
+        <div class="relative">
+          <input 
+            v-model="customerNo" 
+            type="text" 
+            inputmode="numeric"
+            class="input-field text-lg font-bold tracking-wider py-2.5 pl-3 pr-28 w-full bg-neutral-50 rounded-xl border border-neutral-200 focus:bg-white focus:border-primary-500 transition-colors" 
+            :placeholder="['pdam', 'pln_postpaid', 'bpjs', 'indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam) ? 'Masukkan ID Pelanggan' : (categoryParam === 'pln' ? '5123xxxxxxx' : '0812xxxxxxx')" 
+          />
+          <div class="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+            <button @click="doSpeech" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-red-500 animate-pulse': isListening}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            </button>
+            <button @click="doBarcode" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors" :class="{'text-primary-600 animate-pulse': isScanning}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="10" height="12" x="7" y="6" rx="1"/></svg>
+            </button>
+            <button @click="pickContact" class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+            </button>
+          </div>
+        </div>
 
         <!-- Validation PLN -->
         <div v-if="categoryParam === 'pln' && (plnLoading || plnName)" class="mt-3">

@@ -2,15 +2,19 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePrinterStore } from '@/stores/printer'
+import { useBluetooth } from '@/composables/useBluetooth'
 import BottomNav from '@/components/BottomNav.vue'
 import { supabase } from '@/lib/supabase'
 
 const router = useRouter()
 const auth = useAuthStore()
+const printerStore = usePrinterStore()
+const bluetooth = useBluetooth()
 
 const namaToko = ref('')
 const alamat = ref('')
-const isPrinterConnected = ref(false)
+const showPrinterModal = ref(false)
 
 onMounted(() => {
   namaToko.value = auth.userProfile?.nama_toko || ''
@@ -57,8 +61,31 @@ const handleSave = async () => {
   }
 }
 
-const connectPrinter = () => {
-  alert('Fitur Koneksi Bluetooth Printer segera hadir!')
+const connectPrinter = async () => {
+  if (printerStore.isConnected) {
+    await bluetooth.disconnect()
+    printerStore.clearDevice()
+    alert('Printer terputus')
+    return
+  }
+
+  const devices = await bluetooth.scanDevices()
+  if (devices.length > 0) {
+    showPrinterModal.value = true
+  } else {
+    alert('Tidak ada perangkat bluetooth yang ditemukan. Pastikan bluetooth aktif dan sudah paired dengan printer.')
+  }
+}
+
+const selectPrinter = async (address: string, name: string) => {
+  showPrinterModal.value = false
+  const success = await bluetooth.connect(address)
+  if (success) {
+    printerStore.saveDevice(address, name)
+    alert(`Berhasil terhubung ke ${name}`)
+  } else {
+    alert('Gagal terhubung ke printer')
+  }
 }
 
 const doLogout = async () => {
@@ -132,14 +159,35 @@ const doLogout = async () => {
             </div>
             <div>
               <p class="font-bold text-sm text-neutral-800">Printer Thermal Bluetooth</p>
-              <p class="text-xs" :class="isPrinterConnected ? 'text-green-600' : 'text-neutral-500'">
-                {{ isPrinterConnected ? 'Terhubung (POS-58)' : 'Belum terhubung' }}
+              <p class="text-xs" :class="printerStore.isConnected ? 'text-green-600' : 'text-neutral-500'">
+                {{ printerStore.isConnected ? 'Terhubung: ' + printerStore.connectedName : 'Belum terhubung' }}
               </p>
             </div>
           </div>
-          <button @click="connectPrinter" class="text-sm font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg">
-            {{ isPrinterConnected ? 'Putus' : 'Hubungkan' }}
+          <button @click="connectPrinter" :disabled="bluetooth.isConnecting.value || bluetooth.isScanning.value" class="text-sm font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg disabled:opacity-50">
+            {{ bluetooth.isScanning.value ? 'Scanning...' : bluetooth.isConnecting.value ? 'Menghubungkan...' : printerStore.isConnected ? 'Putus' : 'Hubungkan' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Printer Selection Modal -->
+      <div v-if="showPrinterModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl w-full max-w-sm max-h-[80vh] flex flex-col">
+          <div class="p-4 border-b flex items-center justify-between">
+            <h3 class="font-bold text-lg">Pilih Printer</h3>
+            <button @click="showPrinterModal = false" class="text-neutral-500 hover:text-neutral-800">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="p-4 overflow-y-auto">
+            <div v-if="bluetooth.devices.value.length === 0" class="text-center py-4 text-neutral-500">
+              Tidak ada perangkat ditemukan
+            </div>
+            <div v-for="dev in bluetooth.devices.value" :key="dev.address" @click="selectPrinter(dev.address, dev.name)" class="p-3 border-b border-neutral-100 active:bg-neutral-50 rounded-lg cursor-pointer flex flex-col gap-1">
+              <span class="font-bold text-neutral-800">{{ dev.name }}</span>
+              <span class="text-xs text-neutral-500">{{ dev.address }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
