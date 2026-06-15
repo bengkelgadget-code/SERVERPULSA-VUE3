@@ -307,13 +307,11 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       // Native (Capacitor): save file to device and use native share
       let base64Data: string
       let fileName: string
-      let mimeType: string
       
       if (format === 'jpg') {
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
         base64Data = dataUrl.split(',')[1]
         fileName = `Nota-${trx.value.ref_id || 'transaksi'}.jpg`
-        mimeType = 'image/jpeg'
       } else {
         const { jsPDF } = await import('jspdf')
         const pdf = new jsPDF({
@@ -325,7 +323,6 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
         base64Data = pdf.output('datauristring').split(',')[1]
         fileName = `Nota-${trx.value.ref_id || 'transaksi'}.pdf`
-        mimeType = 'application/pdf'
       }
 
       // Write file to device cache directory
