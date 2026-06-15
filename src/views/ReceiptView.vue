@@ -30,7 +30,6 @@ const fetchTransaction = async () => {
     const isOwner = data.user_id === user?.id
     const isStaffWhoMadeIt = data.staff_id === user?.id
     const isAdmin = profile?.role === 'superadmin' || profile?.role === 'admin'
-    // Staff can view receipts from their admin's transactions
     const isStaffUnderAdmin = profile?.role === 'staff' && profile?.admin_id === data.user_id
 
     if (!isOwner && !isStaffWhoMadeIt && !isAdmin && !isStaffUnderAdmin) {
@@ -81,7 +80,6 @@ const plnData = computed(() => {
   
   const snParts = trx.value.sn.split('/')
   let token = snParts[0] || '-'
-  // Format token into 4 groups of 4
   if (token.length >= 16 && !token.includes('-')) {
     token = token.match(/.{1,4}/g)?.join('-') || token
   }
@@ -93,6 +91,35 @@ const plnData = computed(() => {
     daya: snParts[3] || '-',
     kwh: snParts[4] || '-',
   }
+})
+
+// Parse SN/REF data into structured parts for clean display
+const snParts = computed(() => {
+  const raw = trx.value?.sn || trx.value?.ref_id || ''
+  const result: { label: string; value: string }[] = []
+
+  // Try to parse "A/N name | SN: sn_value" format
+  if (raw.includes('A/N ') && raw.includes(' | SN: ')) {
+    const parts = raw.split(' | SN: ')
+    const name = parts[0].replace('A/N ', '')
+    result.push({ label: 'Nama', value: name })
+    if (parts[1]) result.push({ label: 'SN', value: parts[1] })
+  }
+  // Try to parse "Nama: x, No: y, Reff: z" format
+  else if (raw.includes('Nama:') && raw.includes('Reff:')) {
+    const namaMatch = raw.match(/Nama:\s*([^,]+)/)
+    const noMatch = raw.match(/No:\s*([^,]+)/)
+    const reffMatch = raw.match(/Reff:\s*(.+)/)
+    if (namaMatch) result.push({ label: 'Nama', value: namaMatch[1].trim() })
+    if (noMatch) result.push({ label: 'No', value: noMatch[1].trim() })
+    if (reffMatch) result.push({ label: 'Reff', value: reffMatch[1].trim() })
+  }
+  // Fallback: show raw
+  else {
+    result.push({ label: '', value: raw })
+  }
+  
+  return result
 })
 
 import html2canvas from 'html2canvas'
@@ -110,7 +137,6 @@ const printReceipt = async () => {
       alert('Gagal mencetak. Pastikan printer terhubung dan nyala.')
     }
   } else {
-    // Fallback to browser print if no bluetooth printer is connected
     window.print()
   }
 }
@@ -125,11 +151,43 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
   isSharing.value = true
   showShareModal.value = false
   
+  // Wait for modal to close and UI to settle
+  await new Promise(r => setTimeout(r, 300))
+  
   try {
-    const canvas = await html2canvas(receiptRef.value, {
-      scale: 2,
-      backgroundColor: '#ffffff'
+    // Clone the receipt element to avoid Tailwind CSS color function issues
+    const clone = receiptRef.value.cloneNode(true) as HTMLElement
+    clone.style.position = 'fixed'
+    clone.style.left = '-9999px'
+    clone.style.top = '0'
+    clone.style.width = receiptRef.value.offsetWidth + 'px'
+    clone.style.backgroundColor = '#ffffff'
+    clone.style.color = '#000000'
+    clone.style.fontFamily = 'monospace'
+    clone.style.fontSize = '12px'
+    clone.style.lineHeight = '1.3'
+    clone.style.padding = '24px'
+    clone.style.border = 'none'
+    clone.style.boxShadow = 'none'
+    
+    // Remove any Tailwind classes that use modern CSS color functions
+    clone.querySelectorAll('*').forEach(el => {
+      const htmlEl = el as HTMLElement
+      htmlEl.className = ''
+      htmlEl.style.color = '#000000'
+      htmlEl.style.backgroundColor = 'transparent'
     })
+    
+    document.body.appendChild(clone)
+    
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      logging: false,
+    })
+    
+    document.body.removeChild(clone)
 
     let fileToShare: File
 
@@ -156,7 +214,6 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         files: [fileToShare]
       })
     } else {
-      // Fallback: download file
       const url = URL.createObjectURL(fileToShare)
       const a = document.createElement('a')
       a.href = url
@@ -177,6 +234,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
 <template>
   <div class="min-h-screen bg-neutral-100 flex flex-col font-sans">
+    <!-- Header -->
     <div class="bg-primary-600 text-white p-4 flex items-center justify-between shadow-sm sticky top-0 z-10 print:hidden">
       <div class="flex items-center gap-4">
         <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
@@ -184,6 +242,9 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         </button>
         <h1 class="text-xl font-bold">Nota Transaksi</h1>
       </div>
+      <button @click="printReceipt" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors" title="Cetak">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      </button>
     </div>
 
     <div class="flex-1 p-4 flex items-center justify-center print:p-0 print:bg-white">
@@ -191,7 +252,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       
       <!-- THERMAL RECEIPT CONTAINER -->
       <div v-else-if="trx" class="w-full max-w-[320px] mx-auto pb-20 print:pb-0">
-        <div ref="receiptRef" class="bg-white p-6 shadow-lg font-mono text-sm leading-tight receipt-container border border-neutral-200">
+        <div ref="receiptRef" class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
           <div class="text-center mb-4">
             <p class="font-bold text-base">** BENGKEL GADGET **</p>
@@ -207,25 +268,38 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PLN FORMAT -->
           <div v-if="isPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 flex-shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
-            <div class="flex font-bold"><span class="w-24 flex-shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00</span></div>
+            <div class="flex"><span class="w-24 shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
+            <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
+            <div class="flex font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
           <!-- NON-PLN FORMAT -->
           <div v-else class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 flex-shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div v-if="trx.customer_name" class="flex"><span class="w-24 flex-shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
-            <div class="flex"><span class="w-24 flex-shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.sn || trx.ref_id }}</span></div>
-            <div class="flex mt-2 font-bold"><span class="w-24 flex-shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
+            <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
+            <!-- SN / REF - parsed into separate lines -->
+            <div class="flex">
+              <span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span>
+              <div class="flex-1">
+                <template v-if="snParts.length > 0 && snParts[0].label">
+                  <div v-for="(part, i) in snParts" :key="i">
+                    <span v-if="i === 0">{{ part.value }}</span>
+                    <span v-else class="inline-block w-24 shrink-0"></span>
+                    <span v-if="i > 0" class="ml-0">{{ part.label }}: {{ part.value }}</span>
+                  </div>
+                </template>
+                <span v-else class="break-all">{{ trx.sn || trx.ref_id }}</span>
+              </div>
+            </div>
+            <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
           <!-- TOKEN DISPLAY -->
@@ -244,15 +318,15 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
           </div>
         </div>
 
-        <!-- Action Buttons (Hidden when printing or screenshotting) -->
+        <!-- Action Buttons -->
         <div class="mt-6 flex flex-col gap-3 print:hidden px-4" data-html2canvas-ignore>
-          <button v-if="$route.query.share === 'true'" @click="showShareModal = true" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
-          </button>
-          <button v-else @click="printReceipt" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
+          <button @click="printReceipt" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Cetak / Print
+          </button>
+          <button @click="showShareModal = true" :disabled="isSharing" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
           </button>
           <button @click="router.push('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
             Kembali ke Riwayat
@@ -266,37 +340,46 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
     </div>
 
     <!-- Share Format Modal -->
-    <div v-if="showShareModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 print:hidden">
-      <div class="absolute inset-0 bg-neutral-900/40 backdrop-blur-sm" @click="showShareModal = false"></div>
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-200">
-        <div class="p-4 border-b border-neutral-100">
-          <h3 class="font-bold text-lg text-center text-neutral-800">Pilih Format Nota</h3>
-        </div>
-        <div class="p-2">
-          <button @click="shareReceipt('jpg')" class="w-full text-left px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            </div>
-            Kirim sebagai Gambar (JPG)
-          </button>
-          <button @click="shareReceipt('pdf')" class="w-full text-left px-4 py-3 hover:bg-primary-50 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            </div>
-            Kirim sebagai Dokumen (PDF)
-          </button>
-        </div>
-        <div class="p-2 border-t border-neutral-100">
-          <button @click="showShareModal = false" class="w-full py-2.5 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors">
-            Batal
-          </button>
+    <Teleport to="body">
+      <div v-if="showShareModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 print:hidden">
+        <div class="absolute inset-0 bg-black/50" @click="showShareModal = false"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden relative z-10">
+          <div class="p-4 border-b border-neutral-100">
+            <h3 class="font-bold text-lg text-center text-neutral-800">Pilih Format Nota</h3>
+          </div>
+          <div class="p-2">
+            <button @click="shareReceipt('jpg')" :disabled="isSharing" class="w-full text-left px-4 py-3 hover:bg-neutral-100 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3 disabled:opacity-50">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              </div>
+              Kirim sebagai Gambar (JPG)
+            </button>
+            <button @click="shareReceipt('pdf')" :disabled="isSharing" class="w-full text-left px-4 py-3 hover:bg-neutral-100 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3 disabled:opacity-50">
+              <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              </div>
+              Kirim sebagai Dokumen (PDF)
+            </button>
+          </div>
+          <div class="p-2 border-t border-neutral-100">
+            <button @click="showShareModal = false" :disabled="isSharing" class="w-full py-2.5 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors disabled:opacity-50">
+              Batal
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+.receipt-container {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+.receipt-container * {
+  color: #000000 !important;
+}
 @media print {
   @page { margin: 0; }
   body { margin: 0; background-color: white; }
