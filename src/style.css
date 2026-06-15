@@ -71,8 +71,20 @@ html, body {
 .theme-neumorph .bg-primary-600:not(.rounded-b-3xl) {
   background-color: #6a7c64 !important;
   color: #FFFFFF !important;
-  padding-top: 14px !important;
-  padding-bottom: 14px !important;
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+  min-height: 48px !important; /* Ensure consistency */
+}
+
+/* Standardize the back buttons on all headers so they don't stretch the container */
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) button {
+  padding: 4px !important;
+  margin-left: 0 !important;
+}
+
+.theme-neumorph .bg-primary-600:not(.rounded-b-3xl) button svg {
+  width: 20px !important;
+  height: 20px !important;
 }
 
 .theme-neumorph .bg-primary-600:not(.rounded-b-3xl).text-white,
