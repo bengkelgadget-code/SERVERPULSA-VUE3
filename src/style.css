@@ -71,6 +71,8 @@ html, body {
 .theme-neumorph .bg-primary-600:not(.rounded-b-3xl) {
   background-color: #6a7c64 !important;
   color: #FFFFFF !important;
+  padding-top: 14px !important;
+  padding-bottom: 14px !important;
 }
 
 .theme-neumorph .bg-primary-600:not(.rounded-b-3xl).text-white,
