@@ -40,8 +40,9 @@ onMounted(() => {
   fetchTransaction()
 })
 
+import { formatRp as baseFormatRp } from '@/utils/format'
 const formatRp = (val: number) => {
-  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val).replace('Rp', 'RP.')
+  return baseFormatRp(val).replace('Rp', 'RP.')
 }
 
 const formatDate = (dateStr: string) => {

@@ -10,7 +10,7 @@ const auth = useAuthStore()
 const productsStore = useProductsStore()
 const router = useRouter()
 
-const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+import { formatRp } from '@/utils/format'
 
 const handleRefresh = async () => {
   if (auth.user?.id) {

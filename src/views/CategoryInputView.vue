@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { supabase } from '@/lib/supabase'
@@ -16,7 +16,11 @@ const plnName = ref('')
 const plnLoading = ref(false)
 let checkTimeout: any = null
 
-const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+onUnmounted(() => {
+  if (checkTimeout) clearTimeout(checkTimeout)
+})
+
+import { formatRp } from '@/utils/format'
 
 const pageTitle = computed(() => {
   if (categoryParam === 'pulsa') return 'Isi Pulsa'

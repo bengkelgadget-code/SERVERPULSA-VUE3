@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isInitialized = ref(false)
   let userSubscription: any = null
 
+  let authSubscription: any = null
   let initPromise: Promise<boolean> | null = null
 
   async function initialize() {
@@ -16,7 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (initPromise) return initPromise
 
     initPromise = new Promise((resolve) => {
-      supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
         Promise.resolve().then(async () => {
           try {
             user.value = session?.user || null
@@ -40,6 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
           }
         })
       })
+      authSubscription = subscription
     })
   }
 
@@ -118,6 +120,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function signOut() {
+    if (authSubscription) {
+      authSubscription.unsubscribe()
+      authSubscription = null
+    }
+    localStorage.removeItem('lastVisitedAdminRoute')
+    
     await supabase.auth.signOut()
     user.value = null
     userProfile.value = null

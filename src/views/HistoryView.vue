@@ -15,7 +15,7 @@ const loading = ref(true)
 const selectedTrxId = computed(() => route.query.trx as string | undefined)
 const selectedTrx = computed(() => transactions.value.find(t => t.id === selectedTrxId.value) || null)
 
-const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+import { formatRp } from '@/utils/format'
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr)
   return `${d.toLocaleDateString('id-ID')} ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute:'2-digit' })}`
@@ -103,7 +103,8 @@ onMounted(async () => {
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'transactions'
+        table: 'transactions',
+        filter: `user_id=eq.${auth.user.id}`
       },
       (payload) => {
         const idx = transactions.value.findIndex(t => t.id === payload.new.id)

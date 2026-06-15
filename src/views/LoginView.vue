@@ -25,9 +25,8 @@ const handleLogin = async () => {
     loading.value = false
   } else if (data.user) {
     const authStore = useAuthStore()
-    // Explicitly fetch profile to avoid race condition with store's onAuthStateChange
-    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single()
-    authStore.userProfile = profile
+    authStore.user = data.user
+    const profile = await authStore.ensureProfile()
     
     loading.value = false
     if (profile?.role === 'superadmin') {

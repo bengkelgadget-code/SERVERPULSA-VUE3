@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 import { supabase } from '@/lib/supabase'
@@ -16,6 +16,10 @@ const showCheckButton = ref(false)
 const ewalletName = ref('')
 const isChecking = ref(false)
 let checkTimeout: any = null
+
+onUnmounted(() => {
+  if (checkTimeout) clearTimeout(checkTimeout)
+})
 
 const selectedProvider = computed(() => {
   return walletId.toUpperCase()
@@ -73,7 +77,7 @@ const checkEwallet = async () => {
   }
 }
 
-const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+import { formatRp } from '@/utils/format'
 
 const pageTitle = computed(() => {
   return walletId.charAt(0).toUpperCase() + walletId.slice(1)

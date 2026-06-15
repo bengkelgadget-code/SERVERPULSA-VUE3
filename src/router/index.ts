@@ -158,6 +158,10 @@ const router = createRouter({
           component: () => import('@/views/superadmin/GlobalTransactions.vue')
         }
       ]
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
   ]
 })
@@ -183,45 +187,47 @@ router.beforeEach(async (to, _from, next) => {
   
   if (to.meta.requiresAuth && !auth.user) {
     next('/login')
-  } else if (to.meta.requiresGuest && auth.user) {
-    const profile = await auth.ensureProfile()
-    const role = profile?.role
-    if (role === 'superadmin') {
-      next('/superadmin')
-    } else if (role === 'admin') {
-      next('/admin')
-    } else {
-      next('/')
-    }
-  } else if (to.path === '/' && auth.user) {
-    const profile = await auth.ensureProfile()
-    const role = profile?.role
-    if (role === 'superadmin') {
-      next('/superadmin')
-    } else if (role === 'admin') {
-      next('/admin')
-    } else {
-      next()
-    }
-  } else if (to.meta.requiresSuperadmin) {
-    const profile = await auth.ensureProfile()
-    const role = profile?.role
-    if (role === 'superadmin') {
-      next()
-    } else {
-      next('/')
-    }
-  } else if (to.meta.requiresAdmin) {
-    const profile = await auth.ensureProfile()
-    const role = profile?.role
-    if (role === 'admin' || role === 'superadmin') {
-      next()
-    } else {
-      next('/')
-    }
-  } else {
-    next()
+    return
   }
+  
+  if (auth.user) {
+    const profile = await auth.ensureProfile()
+    const role = profile?.role
+
+    if (to.meta.requiresGuest) {
+      if (role === 'superadmin') {
+        next('/superadmin')
+      } else if (role === 'admin') {
+        next('/admin')
+      } else {
+        next('/')
+      }
+      return
+    }
+
+    if (to.path === '/') {
+      if (role === 'superadmin') {
+        next('/superadmin')
+      } else if (role === 'admin') {
+        next('/admin')
+      } else {
+        next()
+      }
+      return
+    }
+
+    if (to.meta.requiresSuperadmin && role !== 'superadmin') {
+      next('/')
+      return
+    }
+
+    if (to.meta.requiresAdmin && role !== 'admin' && role !== 'superadmin') {
+      next('/')
+      return
+    }
+  }
+
+  next()
 })
 
 router.afterEach((to) => {

@@ -33,10 +33,12 @@ export class DigiFlazzClient {
       const proxyUrl = `http://${auth}${proxyHost}:${proxyPort}`;
       // @ts-ignore: Deno createHttpClient is available in Edge Runtime
       client = typeof Deno.createHttpClient === 'function' ? Deno.createHttpClient({ proxy: { url: proxyUrl } }) : undefined;
-      console.log('Is Deno.createHttpClient available?', typeof Deno.createHttpClient, client ? 'Client created' : 'Client NOT created');
     }
 
     const bodyString = JSON.stringify(body);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method: 'POST',
@@ -45,15 +47,30 @@ export class DigiFlazzClient {
           'Content-Length': bodyString.length.toString()
         },
         body: bodyString,
-        client
+        client,
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`DigiFlazz Error ${response.status}: ${errorText}`);
       }
 
-      return await response.json();
+      let json;
+      try {
+        json = await response.json();
+      } catch (e) {
+        throw new Error('Invalid JSON response from Digiflazz');
+      }
+      return json;
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        throw new Error('Digiflazz API timeout after 30s');
+      }
+      throw err;
     } finally {
       if (client) {
         client.close();
@@ -68,6 +85,7 @@ export class DigiFlazzClient {
       username: this.username,
       sign: signature
     });
+    if (!json?.data) return null;
     return json.data.deposit;
   }
 
@@ -86,6 +104,7 @@ export class DigiFlazzClient {
     if (commands) payload.commands = commands;
 
     const json = await this.fetchWithProxy('/transaction', payload);
+    if (!json?.data) throw new Error('Invalid response from Digiflazz');
     return json.data;
   }
 
@@ -121,6 +140,7 @@ export class DigiFlazzClient {
       username: this.username,
       sign: signature
     });
+    if (!json?.data) return [];
     return json.data;
   }
 
@@ -131,6 +151,7 @@ export class DigiFlazzClient {
       username: this.username,
       sign: signature
     });
+    if (!json?.data) return [];
     return json.data;
   }
 

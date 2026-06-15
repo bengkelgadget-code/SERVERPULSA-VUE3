@@ -139,6 +139,7 @@ onMounted(() => {
 
 import { onUnmounted } from 'vue'
 onUnmounted(() => {
+  if (fetchTimeout) clearTimeout(fetchTimeout)
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel)
   }

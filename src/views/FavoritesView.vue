@@ -99,8 +99,13 @@ const saveFavorite = async () => {
 
 const deleteFavorite = async (id: string) => {
   if (window.confirm('Hapus favorit ini?')) {
-    await supabase.from('favorites').delete().eq('id', id)
-    fetchFavorites()
+    const { error } = await supabase.from('favorites').delete().eq('id', id)
+    if (error) {
+      window.alert('Gagal menghapus favorit')
+      console.error(error)
+    } else {
+      fetchFavorites()
+    }
   }
 }
 </script>

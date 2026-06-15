@@ -5,8 +5,14 @@ import { supabase } from '@/lib/supabase'
 export const useProductsStore = defineStore('products', () => {
   const products = ref<any[]>([])
   const loading = ref(false)
+  const lastFetchTime = ref<number>(0)
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-  async function fetchProducts() {
+  async function fetchProducts(force = false) {
+    if (!force && products.value.length > 0 && Date.now() - lastFetchTime.value < CACHE_TTL) {
+      return // Use cached data
+    }
+    
     loading.value = true
     try {
       let allProdData: any[] = []
@@ -65,6 +71,7 @@ export const useProductsStore = defineStore('products', () => {
 
       if (prodData) {
         products.value = prodData
+        lastFetchTime.value = Date.now()
       }
     } catch (err) {
       console.error('Error fetching products with pricing:', err)

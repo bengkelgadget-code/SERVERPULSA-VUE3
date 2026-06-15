@@ -48,8 +48,8 @@ const connectPrinter = () => {
   alert('Fitur Koneksi Bluetooth Printer segera hadir!')
 }
 
-const doLogout = () => {
-  auth.signOut()
+const doLogout = async () => {
+  await auth.signOut()
   router.push('/login')
 }
 </script>

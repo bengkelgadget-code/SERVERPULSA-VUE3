@@ -34,7 +34,7 @@ const paymentMethods = [
 
 const selectedPayment = ref('saldo')
 
-const formatRp = (val: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+import { formatRp } from '@/utils/format'
 
 const product = computed(() => {
   return productsStore.products.find(p => p.sku_code === sku)

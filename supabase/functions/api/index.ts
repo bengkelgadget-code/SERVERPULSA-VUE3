@@ -6,15 +6,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 const app = new Hono().basePath('/api')
 
 app.use('*', async (c, next) => {
-  const origin = c.req.header('origin') || '*'
-  const corsResponse = c.req.method === 'OPTIONS' ? new Response('ok', { 
-    headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin } 
-  }) : null;
+  const origin = c.req.header('origin')
+  const headers = corsHeaders(origin)
   
-  if (corsResponse) return corsResponse;
-  await next();
-  Object.entries(corsHeaders).forEach(([k, v]) => {
-    c.res.headers.set(k, k === 'Access-Control-Allow-Origin' ? origin : v)
+  if (c.req.method === 'OPTIONS') {
+    return new Response('ok', { headers })
+  }
+  
+  await next()
+  Object.entries(headers).forEach(([k, v]) => {
+    c.res.headers.set(k, v)
   })
 })
 
@@ -49,14 +50,21 @@ app.get('/admin/digiflazz-balance', async (c) => {
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   
   if (!user) {
-    return c.json({ error: 'Unauthorized', details: authError }, 401)
+    console.error('Auth error:', authError)
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+
+  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+    return c.json({ error: 'Forbidden' }, 403)
   }
 
   try {
     const balance = await digiflazz.getBalance()
     return c.json({ success: true, balance })
   } catch (error: any) {
-    return c.json({ success: false, error: error.message }, 500)
+    console.error('Balance error:', error)
+    return c.json({ success: false, error: 'Internal server error' }, 500)
   }
 })
 
@@ -91,13 +99,15 @@ app.post('/webhook/digiflazz', async (c) => {
     const signature = c.req.header('x-hub-signature') || c.req.header('x-digiflazz-signature');
     const secret = Deno.env.get('DIGIFLAZZ_WEBHOOK_SECRET');
 
-    // Only enforce signature check if secret is configured
-    if (secret && signature) {
-      const isValid = await verifyDigiflazzSignature(rawBody, signature, secret);
-      if (!isValid) return c.json({ error: 'Invalid signature' }, 401);
-    } else if (secret && !signature) {
+    if (!secret) {
+      return c.json({ error: 'Webhook not configured' }, 500);
+    }
+    if (!signature) {
       return c.json({ error: 'Missing signature header' }, 401);
     }
+    
+    const isValid = await verifyDigiflazzSignature(rawBody, signature, secret);
+    if (!isValid) return c.json({ error: 'Invalid signature' }, 401);
 
     const body = JSON.parse(rawBody);
     const { data } = body
@@ -161,7 +171,12 @@ app.post('/inquiry-pln', async (c) => {
 
   if (!customer_no) return c.json({ success: false, error: 'Customer number required' }, 400)
 
-  const result = await digiflazz.inquiryPln(customer_no)
+  const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
+  if (!cleanCustomerNo || cleanCustomerNo.length < 4) {
+    return c.json({ error: 'Invalid customer number' }, 400)
+  }
+
+  const result = await digiflazz.inquiryPln(cleanCustomerNo)
   if (result) {
     return c.json({ success: true, name: result.name, segment_power: result.segment_power })
   }
@@ -182,6 +197,11 @@ app.post('/inquiry-ewallet', async (c) => {
 
   if (!customer_no || !provider) return c.json({ success: false, error: 'Customer number and provider required' }, 400)
 
+  const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
+  if (!cleanCustomerNo || cleanCustomerNo.length < 4) {
+    return c.json({ error: 'Invalid customer number' }, 400)
+  }
+
   const skuMapping: Record<string, string> = {
     'DANA': 'CEKDANA',
     'OVO': 'CEKOVO',
@@ -194,11 +214,11 @@ app.post('/inquiry-ewallet', async (c) => {
   const refId = `CEK${provider.toUpperCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   try {
-    let response = await digiflazz.createTransaction(buyerSkuCode, customer_no, refId);
+    let response = await digiflazz.createTransaction(buyerSkuCode, cleanCustomerNo, refId);
     let attempt = 0;
     while (response && response.rc === '03' && attempt < 4) {
       await new Promise(r => setTimeout(r, 2500));
-      response = await digiflazz.createTransaction(buyerSkuCode, customer_no, refId); // same refId to poll status
+      response = await digiflazz.createTransaction(buyerSkuCode, cleanCustomerNo, refId); // same refId to poll status
       attempt++;
     }
 
@@ -252,16 +272,21 @@ app.post('/inquiry-pasca', async (c) => {
   const body = await c.req.json()
   const { customer_no, sku_code } = body
 
-  if (!customer_no || !sku_code) return c.json({ success: false, error: 'customer_no and sku_code required' }, 400)
+  if (!customer_no || !sku_code) return c.json({ success: false, error: 'Customer number and sku code required' }, 400)
 
-  const refId = `INQ-${sku_code}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
+  if (!cleanCustomerNo || cleanCustomerNo.length < 4) {
+    return c.json({ error: 'Invalid customer number' }, 400)
+  }
+
+  const refId = `INQPASCA-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
   try {
-    let response = await digiflazz.inquiryPasca(sku_code, customer_no, refId);
+    let response = await digiflazz.inquiryPasca(sku_code, cleanCustomerNo, refId);
     let attempt = 0;
     while (response && response.rc === '03' && attempt < 4) {
       await new Promise(r => setTimeout(r, 2500));
-      response = await digiflazz.inquiryPasca(sku_code, customer_no, refId); // same refId to poll status
+      response = await digiflazz.inquiryPasca(sku_code, cleanCustomerNo, refId); // same refId to poll status
       attempt++;
     }
 
@@ -453,6 +478,11 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
     if (!sku_code || !customer_no) return c.json({ error: 'sku_code and customer_no are required' }, 400)
 
+    const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
+    if (!cleanCustomerNo || cleanCustomerNo.length < 4) {
+      return c.json({ error: 'Invalid customer number' }, 400)
+    }
+
     const { data: product, error: productError } = await supabase
       .from('products').select('harga_modal, harga_jual, is_active').eq('sku_code', sku_code).single()
 
@@ -503,9 +533,9 @@ app.post('/mobile/transaction/purchase', async (c) => {
     try {
       let response;
       if (pasca_ref_id) {
-        response = await digiflazz.payPasca(sku_code, customer_no, refId);
+        response = await digiflazz.payPasca(sku_code, cleanCustomerNo, refId);
       } else {
-        response = await digiflazz.createTransaction(sku_code, customer_no, refId);
+        response = await digiflazz.createTransaction(sku_code, cleanCustomerNo, refId);
       }
       
       const dfStatus = response.status.toLowerCase()
@@ -557,8 +587,13 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const { data: trx } = await supabaseService.from('transactions').select('*').eq('id', transaction_id).single()
     if (!trx) return c.json({ error: 'Transaction not found' }, 404)
 
+      if (trx.user_id !== user.id && trx.staff_id !== user.id) {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+
     // Check status in digiflazz
-    const dfData = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id)
+    const cleanCustomerNo = String(trx.customer_no).replace(/[^0-9]/g, '');
+    const dfData = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id)
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
@@ -668,6 +703,10 @@ app.post('/admin-action', async (c) => {
     }
     
     if (action === 'create_user') {
+      if (!payload.password || payload.password.length < 8) {
+        return c.json({ error: 'Password minimal 8 karakter' }, 400)
+      }
+
       // Validate requested role based on caller
       let newRole = payload.role;
       if (callerProfile.role === 'admin') {
@@ -757,6 +796,10 @@ app.post('/admin-action', async (c) => {
     if (action === 'add_balance') {
       const { user_id, amount } = payload
       
+      if (typeof amount !== 'number' || amount <= 0 || amount > 100000000) {
+        return c.json({ error: 'Invalid amount' }, 400)
+      }
+      
       // Ensure only superadmin or admin can add balance
       // Superadmin can add balance to anyone. Admin can add balance to their staff.
       if (callerProfile.role === 'admin') {
@@ -765,14 +808,14 @@ app.post('/admin-action', async (c) => {
           return c.json({ error: 'Forbidden. You can only add balance to your own staff.' }, 403)
         }
         
-        // Admin must have enough balance to transfer
-        const { data: adminData } = await supabaseService.from('users').select('saldo').eq('id', user.id).single()
-        if (!adminData || adminData.saldo < amount) {
-          return c.json({ error: 'Insufficient balance' }, 400)
-        }
-        
-        // Deduct admin balance
-        await supabaseService.rpc('add_balance', { p_user_id: user.id, p_amount: -amount })
+        // Transfer using RPC to ensure atomicity
+        const { error } = await supabaseService.rpc('transfer_balance', {
+          p_from_user_id: user.id,
+          p_to_user_id: user_id,
+          p_amount: amount
+        })
+        if (error) throw error
+        return c.json({ success: true })
       }
       
       const { error } = await supabaseService.rpc('add_balance', {
@@ -789,38 +832,6 @@ app.post('/admin-action', async (c) => {
   }
 })
 
-// Webhook from Digiflazz
-app.post('/digiflazz-webhook', async (c) => {
-  try {
-    const payload = await c.req.json()
-    const ref_id = payload?.data?.ref_id
-
-    if (!ref_id) return c.json({ error: 'Missing ref_id' }, 400)
-
-    const supabaseService = getSupabaseService()
-    
-    // Find transaction
-    const { data: trx } = await supabaseService.from('transactions').select('*').eq('ref_id', ref_id).single()
-    if (!trx) return c.json({ error: 'Transaction not found' }, 404)
-
-    // Only process if it's currently pending
-    if (trx.status === 'pending') {
-      // Verify actual status by asking Digiflazz directly to prevent webhook spoofing
-      const dfData = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id)
-      const dfStatus = dfData.status?.toLowerCase() || 'pending'
-      
-      if (dfStatus === 'sukses') {
-        await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
-      } else if (dfStatus === 'gagal' && !trx.is_refunded) {
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
-      }
-    }
-
-    return c.json({ success: true })
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500)
-  }
-})
 
 app.get('/get-admin-balance', async (c) => {
   try {

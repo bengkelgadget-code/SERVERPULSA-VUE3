@@ -29,7 +29,7 @@ const setupRealtime = async () => {
   realtimeChannel = supabase.channel('transaction-popup')
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'transactions' },
+      { event: 'UPDATE', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` },
       (payload) => {
         const oldStatus = payload.old.status
         const newStatus = payload.new.status

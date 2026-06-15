@@ -121,8 +121,8 @@ const formatCurrency = (value: number) => {
         >
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
-          <option value="Sukses">Sukses</option>
-          <option value="Gagal">Gagal</option>
+          <option value="sukses">Sukses</option>
+          <option value="gagal">Gagal</option>
         </select>
         
         <button 
