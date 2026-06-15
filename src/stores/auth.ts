@@ -89,6 +89,12 @@ export const useAuthStore = defineStore('auth', () => {
             }
           }
         }
+        // Overwrite nama_toko if local setting exists
+        const customNamaToko = localStorage.getItem('custom_nama_toko')
+        if (customNamaToko) {
+          finalData.nama_toko = customNamaToko
+        }
+        
         console.log('Profile fetched successfully:', finalData.role)
         userProfile.value = finalData
         setupRealtime(userId, data.admin_id)

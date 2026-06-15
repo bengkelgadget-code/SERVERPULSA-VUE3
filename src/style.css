@@ -152,22 +152,22 @@ html, body {
 }
 
 /* Make the big header card invisible in Neumorph theme */
-.theme-neumorph .bg-primary-600.rounded-b-3xl {
+.theme-neumorph .bg-primary-600.rounded-b-[2rem] {
   background-color: transparent !important;
   box-shadow: none !important;
 }
 
-.theme-neumorph .bg-primary-600.rounded-b-3xl h1,
-.theme-neumorph .bg-primary-600.rounded-b-3xl h2 {
+.theme-neumorph .bg-primary-600.rounded-b-[2rem] h1,
+.theme-neumorph .bg-primary-600.rounded-b-[2rem] h2 {
   color: var(--text-color) !important;
-  text-shadow: 2px 2px 5px rgba(100, 90, 80, 0.4), -1px -1px 2px rgba(255, 255, 255, 0.9) !important;
+  text-shadow: 2px 2px 5px rgba(100, 90, 80, 0.4) !important;
 }
 
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
   background-color: #FF6B35 !important; /* Orange neon doff */
   border-radius: 1.5rem !important; /* 4 corners rounded, even softer */
-  box-shadow: 12px 12px 24px rgba(100, 90, 80, 0.4), -8px -8px 16px rgba(255, 255, 255, 0.5), inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important; /* Thicker and darker shadow */
+  box-shadow: 12px 12px 24px rgba(100, 90, 80, 0.4), -8px -8px 16px rgba(100, 90, 80, 0.2) !important; /* Replaced white shadow with faint dark shadow */
   border: none !important;
   margin: 0 !important;
   padding: 1.25rem !important;

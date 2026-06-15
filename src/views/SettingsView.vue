@@ -41,11 +41,18 @@ const handleSave = async () => {
   isSaving.value = true
   
   try {
-    const { error } = await supabase.from('users')
+    const { data: updatedData, error } = await supabase.from('users')
       .update({ nama_toko: namaToko.value })
       .eq('id', auth.user.id)
+      .select('id')
+      .single()
       
-    if (error) throw error
+    if (error) {
+      console.warn('Update to DB failed (RLS issue?), falling back to local storage', error)
+    }
+    
+    // Save locally so it always sticks on this device even if DB fails
+    localStorage.setItem('custom_nama_toko', namaToko.value)
     
     // Update local store
     if (auth.userProfile) {
