@@ -36,13 +36,13 @@ html, body {
 .theme-neumorph {
   --bg-color: #EBE3D9; /* Lighter, warmer tone matching Image 2 */
   --text-color: #6D635B;
-  --neu-dark: #CFC5BA;
+  --neu-dark: #B8A99A; /* Darker shadow color for higher contrast */
   --neu-light: #FFFFFF;
   --neu-accent: #E5A999;
   
-  /* Thicker, softer shadows to maximize the floating 3D effect like Image 2 */
-  --neu-flat: 8px 8px 16px var(--neu-dark), -8px -8px 16px var(--neu-light);
-  --neu-pressed: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+  /* Thicker, darker shadows to maximize the floating 3D effect */
+  --neu-flat: 12px 12px 24px var(--neu-dark), -10px -10px 20px var(--neu-light);
+  --neu-pressed: inset 8px 8px 16px var(--neu-dark), inset -8px -8px 16px var(--neu-light);
 }
 
 .theme-neumorph body, .theme-neumorph {
@@ -128,7 +128,8 @@ html, body {
 }
 
 .theme-neumorph .shadow-sm,
-.theme-neumorph .shadow-md {
+.theme-neumorph .shadow-md,
+.theme-neumorph .shadow-lg {
   box-shadow: var(--neu-flat) !important;
 }
 
@@ -147,14 +148,14 @@ html, body {
 .theme-neumorph .bg-primary-600.rounded-b-3xl h1,
 .theme-neumorph .bg-primary-600.rounded-b-3xl h2 {
   color: var(--text-color) !important;
-  text-shadow: 2px 2px 5px rgba(100, 90, 80, 0.3), -1px -1px 2px rgba(255, 255, 255, 0.8) !important;
+  text-shadow: 2px 2px 5px rgba(100, 90, 80, 0.4), -1px -1px 2px rgba(255, 255, 255, 0.9) !important;
 }
 
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
   background-color: #6a7c64 !important; /* Hijau mate */
   border-radius: 1.5rem !important; /* 4 corners rounded, even softer */
-  box-shadow: 8px 8px 20px rgba(100, 90, 80, 0.25), -4px -4px 12px rgba(255, 255, 255, 0.4), inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 12px 12px 24px rgba(100, 90, 80, 0.4), -8px -8px 16px rgba(255, 255, 255, 0.5), inset 1px 1px 2px rgba(255, 255, 255, 0.1) !important; /* Thicker and darker shadow */
   border: none !important;
   margin: 0 !important;
   padding: 1.25rem !important;
@@ -162,5 +163,5 @@ html, body {
 
 .theme-neumorph .saldo-card p {
   color: #FFFFFF !important;
-  text-shadow: 1px 1px 3px rgba(0,0,0,0.4) !important;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
 }
