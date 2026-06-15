@@ -7,6 +7,14 @@ const auth = useAuthStore()
 
 onMounted(() => {
   auth.initialize()
+  
+  // Initialize Theme
+  const savedTheme = localStorage.getItem('app_theme') || 'default'
+  if (savedTheme === 'neumorph') {
+    document.body.classList.add('theme-neumorph')
+  } else {
+    document.body.classList.remove('theme-neumorph')
+  }
 })
 </script>
 

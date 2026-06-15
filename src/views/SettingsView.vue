@@ -15,7 +15,20 @@ const isPrinterConnected = ref(false)
 onMounted(() => {
   namaToko.value = auth.userProfile?.nama_toko || ''
   alamat.value = 'Jl. Contoh Alamat No 123' // Placeholder, if we add address to DB later
+  selectedTheme.value = localStorage.getItem('app_theme') || 'default'
 })
+
+const selectedTheme = ref('default')
+
+const changeTheme = (theme: string) => {
+  selectedTheme.value = theme
+  localStorage.setItem('app_theme', theme)
+  if (theme === 'neumorph') {
+    document.body.classList.add('theme-neumorph')
+  } else {
+    document.body.classList.remove('theme-neumorph')
+  }
+}
 
 const isSaving = ref(false)
 
@@ -62,6 +75,48 @@ const doLogout = async () => {
     </div>
 
     <div class="p-4 space-y-6">
+      <!-- Tampilan Aplikasi -->
+      <div class="card p-5 shadow-sm bg-white rounded-2xl">
+        <h3 class="font-bold text-neutral-800 mb-4 border-b pb-2">Tampilan Aplikasi</h3>
+        
+        <div class="space-y-3">
+          <label class="flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors"
+                 :class="selectedTheme === 'default' ? 'border-primary-500 bg-primary-50' : 'border-neutral-200 bg-white'"
+                 @click="changeTheme('default')">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-neutral-800">Bawaan (Default)</p>
+                <p class="text-xs text-neutral-500">Desain modern standar</p>
+              </div>
+            </div>
+            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                 :class="selectedTheme === 'default' ? 'border-primary-600' : 'border-neutral-300'">
+              <div v-if="selectedTheme === 'default'" class="w-2.5 h-2.5 bg-primary-600 rounded-full"></div>
+            </div>
+          </label>
+
+          <label class="flex items-center justify-between p-3 border rounded-xl cursor-pointer transition-colors"
+                 :class="selectedTheme === 'neumorph' ? 'border-primary-500 bg-[#E8E0D5]' : 'border-neutral-200 bg-white'"
+                 @click="changeTheme('neumorph')">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center" style="background-color:#E8E0D5; box-shadow: 2px 2px 5px #c5bcba, -2px -2px 5px #ffffff; color: #E5A999">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+              </div>
+              <div>
+                <p class="font-bold text-sm text-neutral-800">Neumorphism</p>
+                <p class="text-xs text-neutral-500">Desain timbul elegan (Soft UI)</p>
+              </div>
+            </div>
+            <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
+                 :class="selectedTheme === 'neumorph' ? 'border-primary-600' : 'border-neutral-300'">
+              <div v-if="selectedTheme === 'neumorph'" class="w-2.5 h-2.5 bg-primary-600 rounded-full"></div>
+            </div>
+          </label>
+        </div>
+      </div>
       <!-- Profile Settings -->
       <div class="card p-5 shadow-sm bg-white rounded-2xl">
         <h3 class="font-bold text-neutral-800 mb-4 border-b pb-2">Profil Mitra</h3>

@@ -31,3 +31,83 @@ html, body {
     @apply bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all active:scale-95 disabled:opacity-50;
   }
 }
+
+/* Neumorphism Theme Variables & Overrides */
+.theme-neumorph {
+  --bg-color: #E8E0D5;
+  --text-color: #6D635B;
+  --neu-dark: #C5BCB2;
+  --neu-light: #FFFFFF;
+  --neu-accent: #E5A999; /* Soft peach from the image */
+  
+  --neu-flat: 6px 6px 12px var(--neu-dark), -6px -6px 12px var(--neu-light);
+  --neu-pressed: inset 6px 6px 12px var(--neu-dark), inset -6px -6px 12px var(--neu-light);
+}
+
+.theme-neumorph body, .theme-neumorph {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.theme-neumorph .bg-white,
+.theme-neumorph .bg-neutral-50,
+.theme-neumorph .bg-primary-600 {
+  background-color: var(--bg-color) !important;
+}
+
+.theme-neumorph .text-white {
+  color: var(--text-color) !important;
+}
+
+.theme-neumorph .bg-primary-600.text-white {
+  color: var(--neu-accent) !important;
+}
+
+.theme-neumorph .text-neutral-800,
+.theme-neumorph .text-neutral-700,
+.theme-neumorph .text-neutral-600,
+.theme-neumorph .text-neutral-500 {
+  color: var(--text-color) !important;
+}
+
+/* Re-style core components */
+.theme-neumorph .card,
+.theme-neumorph .bg-white.rounded-xl,
+.theme-neumorph .bg-white.rounded-2xl {
+  background-color: var(--bg-color) !important;
+  border: none !important;
+  box-shadow: var(--neu-flat) !important;
+}
+
+.theme-neumorph .input-field,
+.theme-neumorph input,
+.theme-neumorph textarea {
+  background-color: var(--bg-color) !important;
+  border: none !important;
+  box-shadow: var(--neu-pressed) !important;
+  color: var(--text-color) !important;
+}
+
+.theme-neumorph .btn-primary,
+.theme-neumorph button.bg-primary-100 {
+  background-color: var(--bg-color) !important;
+  color: var(--neu-accent) !important;
+  border: none !important;
+  box-shadow: var(--neu-flat) !important;
+}
+
+.theme-neumorph .btn-primary:active,
+.theme-neumorph button.bg-primary-100:active {
+  box-shadow: var(--neu-pressed) !important;
+}
+
+.theme-neumorph .shadow-sm,
+.theme-neumorph .shadow-md {
+  box-shadow: var(--neu-flat) !important;
+}
+
+.theme-neumorph .border,
+.theme-neumorph .border-t,
+.theme-neumorph .border-b {
+  border-color: transparent !important;
+}
