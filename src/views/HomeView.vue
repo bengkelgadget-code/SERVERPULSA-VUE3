@@ -5,6 +5,7 @@ import { useProductsStore } from '@/stores/products'
 import { useRouter } from 'vue-router'
 import BottomNav from '@/components/BottomNav.vue'
 import PullToRefresh from '@/components/PullToRefresh.vue'
+import { supabase } from '@/lib/supabase'
 
 const auth = useAuthStore()
 const productsStore = useProductsStore()
@@ -14,8 +15,9 @@ import { formatRp } from '@/utils/format'
 
 const handleRefresh = async () => {
   if (auth.user?.id) {
+    const { data: sessionData } = await supabase.auth.getSession()
     await Promise.all([
-      auth.fetchProfile(auth.user.id),
+      auth.fetchProfile(auth.user.id, sessionData.session?.access_token),
       productsStore.fetchProducts()
     ])
   } else {
@@ -26,7 +28,9 @@ const handleRefresh = async () => {
 onMounted(() => {
   productsStore.fetchProducts()
   if (auth.user?.id) {
-    auth.fetchProfile(auth.user.id)
+    supabase.auth.getSession().then(({ data }) => {
+      auth.fetchProfile(auth.user.id, data.session?.access_token)
+    })
   }
 })
 

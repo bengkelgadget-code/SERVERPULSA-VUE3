@@ -27,7 +27,13 @@ const fetchTransaction = async () => {
     const user = authStore.user
     const profile = authStore.userProfile
 
-    if (data.user_id !== user?.id && profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+    const isOwner = data.user_id === user?.id
+    const isStaffWhoMadeIt = data.staff_id === user?.id
+    const isAdmin = profile?.role === 'superadmin' || profile?.role === 'admin'
+    // Staff can view receipts from their admin's transactions
+    const isStaffUnderAdmin = profile?.role === 'staff' && profile?.admin_id === data.user_id
+
+    if (!isOwner && !isStaffWhoMadeIt && !isAdmin && !isStaffUnderAdmin) {
       alert('Unauthorized access to receipt')
       router.push('/')
       return

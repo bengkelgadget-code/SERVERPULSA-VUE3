@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
           try {
             user.value = session?.user || null
             if (user.value) {
-              await fetchProfile(user.value.id)
+              await fetchProfile(user.value.id, session?.access_token)
             } else {
               userProfile.value = null
               if (userSubscription) {
@@ -45,7 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  async function fetchProfile(userId: string) {
+  async function fetchProfile(userId: string, providedToken?: string) {
     console.log('Fetching profile for:', userId)
     try {
       const { data, error } = await supabase
@@ -62,18 +62,26 @@ export const useAuthStore = defineStore('auth', () => {
         let finalData = { ...data }
         if (data.role === 'staff' && data.admin_id) {
           try {
-            const { data: sessionData } = await supabase.auth.getSession()
-            const token = sessionData.session?.access_token
-            if (token) {
-              const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              })
-              const resData = await res.json()
-              if (resData.success) {
-                finalData.saldo = resData.saldo
-              } else {
-                throw new Error('API returned success=false')
-              }
+            // Use provided token first, fallback to getSession()
+            let token = providedToken
+            if (!token) {
+              const { data: sessionData } = await supabase.auth.getSession()
+              token = sessionData.session?.access_token
+            }
+            if (!token) {
+              throw new Error('No auth token available — cannot fetch admin balance')
+            }
+            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (!res.ok) {
+              throw new Error(`API returned HTTP ${res.status}`)
+            }
+            const resData = await res.json()
+            if (resData.success) {
+              finalData.saldo = resData.saldo
+            } else {
+              throw new Error(`API returned success=false: ${resData.error || 'unknown'}`)
             }
           } catch (e) {
             console.error('Error fetching admin balance via API, using fallback:', e)
@@ -146,7 +154,8 @@ export const useAuthStore = defineStore('auth', () => {
   async function ensureProfile() {
     if (userProfile.value) return userProfile.value
     if (user.value) {
-      await fetchProfile(user.value.id)
+      const { data: sessionData } = await supabase.auth.getSession()
+      await fetchProfile(user.value.id, sessionData.session?.access_token)
       return userProfile.value
     }
     return null
