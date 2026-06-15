@@ -14,6 +14,8 @@ const transactionId = route.params.id as string
 const loading = ref(true)
 const trx = ref<any>(null)
 
+const isShareMode = computed(() => route.query.share === 'true')
+
 const fetchTransaction = async () => {
   loading.value = true
   const { data } = await supabase
@@ -50,7 +52,7 @@ onMounted(() => {
   if (route.query.share === 'true') {
     setTimeout(() => {
       showShareModal.value = true
-    }, 500)
+    }, 800)
   }
 })
 
@@ -93,7 +95,7 @@ const plnData = computed(() => {
   }
 })
 
-// Parse SN/REF data into structured parts for clean display (skip NAMA - already shown as NAMA AKUN)
+// Parse SN/REF data into structured parts for clean display
 const snParts = computed(() => {
   const raw = trx.value?.sn || trx.value?.ref_id || ''
   const result: { label: string; value: string }[] = []
@@ -101,12 +103,16 @@ const snParts = computed(() => {
   // Try to parse "A/N name | SN: sn_value" format
   if (raw.includes('A/N ') && raw.includes(' | SN: ')) {
     const parts = raw.split(' | SN: ')
+    const name = parts[0].replace('A/N ', '')
+    result.push({ label: 'NAMA', value: name })
     if (parts[1]) result.push({ label: 'SN', value: parts[1] })
   }
   // Try to parse "Nama: x, No: y, Reff: z" format
   else if (raw.includes('Nama:') && raw.includes('Reff:')) {
+    const namaMatch = raw.match(/Nama:\s*([^,]+)/)
     const noMatch = raw.match(/No:\s*([^,]+)/)
     const reffMatch = raw.match(/Reff:\s*(.+)/)
+    if (namaMatch) result.push({ label: 'NAMA', value: namaMatch[1].trim() })
     if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
     if (reffMatch) result.push({ label: 'REFF', value: reffMatch[1].trim() })
   }
@@ -117,9 +123,6 @@ const snParts = computed(() => {
   
   return result
 })
-
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
 
 const printReceipt = async () => {
   if (printerStore.isConnected) {
@@ -133,6 +136,7 @@ const printReceipt = async () => {
       alert('Gagal mencetak. Pastikan printer terhubung dan nyala.')
     }
   } else {
+    // Browser print fallback
     window.print()
   }
 }
@@ -141,57 +145,132 @@ const showShareModal = ref(false)
 const isSharing = ref(false)
 const receiptRef = ref<HTMLElement | null>(null)
 
+// Build receipt as plain canvas to avoid html2canvas CSS color issues
+const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  
+  const w = 640
+  const pad = 40
+  const lineH = 22
+  const font = '13px monospace'
+  const fontBold = 'bold 13px monospace'
+  const fontTitle = 'bold 16px monospace'
+  const fontSmall = '11px monospace'
+  
+  // Build lines
+  const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
+  
+  lines.push({ text: '** BENGKEL GADGET **', bold: true, center: true, font: fontTitle })
+  lines.push({ text: `${formatDate(trx.value.created_at)} (CU)`, center: true })
+  lines.push({ text: '' })
+  
+  if (isPln.value) {
+    lines.push({ text: 'STRUK PEMBELIAN LISTRIK', bold: true, center: true })
+    lines.push({ text: 'PRABAYAR', bold: true, center: true })
+  } else {
+    lines.push({ text: 'STRUK PEMBELIAN', bold: true, center: true })
+    lines.push({ text: (trx.value.products?.category || '').toUpperCase(), bold: true, center: true })
+  }
+  lines.push({ text: '' })
+  
+  const labelW = 120
+  const addRow = (label: string, value: string, bold = false) => {
+    lines.push({ text: `${label.padEnd(12)}: ${value}`, bold })
+  }
+  
+  if (isPln.value) {
+    addRow('IDPEL', trx.value.customer_no)
+    addRow('NAMA', plnData.value?.nama || '-')
+    addRow('TRF/DAYA', `${plnData.value?.tarif || '-'}/${plnData.value?.daya || '-'}`)
+    addRow('NOMINAL', formatRp(trx.value.products?.harga_modal || 0))
+    addRow('PPN', 'RP. 0,00')
+    addRow('ANGS/MAT', 'RP. 0,00/0,00')
+    addRow('RP TOKEN', formatRp(trx.value.products?.harga_modal || 0))
+    addRow('JML KWH', plnData.value?.kwh || '-')
+    addRow('BIAYA ADM', formatRp(trx.value.harga_jual - (trx.value.products?.harga_modal || 0)))
+    addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
+  } else {
+    addRow('PRODUK', trx.value.products?.product_name || '')
+    addRow('NO TUJUAN', trx.value.customer_no)
+    if (trx.value.customer_name) {
+      addRow('NAMA AKUN', trx.value.customer_name)
+    }
+    for (const part of snParts.value) {
+      addRow(part.label, part.value)
+    }
+    lines.push({ text: '' })
+    addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
+  }
+  
+  if (isPln.value && plnData.value) {
+    lines.push({ text: '' })
+    lines.push({ text: '-- TOKEN --', center: true })
+    const t = plnData.value.token || ''
+    const parts = t.split('-')
+    if (parts.length >= 4) {
+      lines.push({ text: `${parts[0]}-${parts[1]}`, bold: true, center: true, font: 'bold 22px monospace' })
+      lines.push({ text: `${parts[2]}-${parts[3]}`, bold: true, center: true, font: 'bold 22px monospace' })
+    } else {
+      lines.push({ text: t, bold: true, center: true, font: 'bold 22px monospace' })
+    }
+  }
+  
+  lines.push({ text: '' })
+  lines.push({ text: '--------------------------------' })
+  lines.push({ text: 'Info Hubungi Call Center 123', center: true, font: fontSmall })
+  lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: fontSmall })
+  lines.push({ text: '' })
+  lines.push({ text: 'Terima Kasih', center: true, font: fontSmall })
+  
+  // Calculate height
+  const totalH = lines.length * lineH + pad * 2
+  canvas.width = w
+  canvas.height = totalH
+  
+  // Draw background
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, w, totalH)
+  
+  // Draw lines
+  let y = pad
+  for (const line of lines) {
+    ctx.font = line.font || (line.bold ? fontBold : font)
+    ctx.fillStyle = '#000000'
+    
+    if (line.center) {
+      const textW = ctx.measureText(line.text).width
+      ctx.fillText(line.text, (w - textW) / 2, y)
+    } else {
+      ctx.fillText(line.text, pad, y)
+    }
+    y += lineH
+  }
+  
+  return canvas
+}
+
 const shareReceipt = async (format: 'jpg' | 'pdf') => {
-  if (!receiptRef.value) return
+  if (!trx.value) return
   
   isSharing.value = true
   showShareModal.value = false
   
-  // Wait for modal to close and UI to settle
-  await new Promise(r => setTimeout(r, 300))
-  
   try {
-    // Clone the receipt element to avoid Tailwind CSS color function issues
-    const clone = receiptRef.value.cloneNode(true) as HTMLElement
-    clone.style.position = 'fixed'
-    clone.style.left = '-9999px'
-    clone.style.top = '0'
-    clone.style.width = receiptRef.value.offsetWidth + 'px'
-    clone.style.backgroundColor = '#ffffff'
-    clone.style.color = '#000000'
-    clone.style.fontFamily = 'monospace'
-    clone.style.fontSize = '12px'
-    clone.style.lineHeight = '1.3'
-    clone.style.padding = '24px'
-    clone.style.border = 'none'
-    clone.style.boxShadow = 'none'
+    // Wait for modal animation to complete
+    await new Promise(r => setTimeout(r, 300))
     
-    // Remove any Tailwind classes that use modern CSS color functions
-    clone.querySelectorAll('*').forEach(el => {
-      const htmlEl = el as HTMLElement
-      htmlEl.className = ''
-      htmlEl.style.color = '#000000'
-      htmlEl.style.backgroundColor = 'transparent'
-    })
+    // Draw receipt directly to canvas (no html2canvas needed)
+    const canvas = await drawReceiptToCanvas()
     
-    document.body.appendChild(clone)
-    
-    const canvas = await html2canvas(clone, {
-      scale: 2,
-      backgroundColor: '#ffffff',
-      useCORS: true,
-      logging: false,
-    })
-    
-    document.body.removeChild(clone)
-
     let fileToShare: File
 
     if (format === 'jpg') {
       const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9))
       if (!blob) throw new Error('Gagal membuat gambar JPG')
-      fileToShare = new File([blob], `Nota-${trx.value.sn || trx.value.ref_id}.jpg`, { type: 'image/jpeg' })
+      fileToShare = new File([blob], `Nota-${trx.value.ref_id || 'transaksi'}.jpg`, { type: 'image/jpeg' })
     } else {
+      const { jsPDF } = await import('jspdf')
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
@@ -200,7 +279,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       const imgData = canvas.toDataURL('image/jpeg', 1.0)
       pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width / 2, canvas.height / 2)
       const pdfBlob = pdf.output('blob')
-      fileToShare = new File([pdfBlob], `Nota-${trx.value.sn || trx.value.ref_id}.pdf`, { type: 'application/pdf' })
+      fileToShare = new File([pdfBlob], `Nota-${trx.value.ref_id || 'transaksi'}.pdf`, { type: 'application/pdf' })
     }
 
     if (navigator.canShare && navigator.canShare({ files: [fileToShare] })) {
@@ -218,7 +297,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      alert('Perangkat ini tidak mendukung fitur Share secara langsung. File telah diunduh.')
+      alert('File telah diunduh.')
     }
   } catch (err: any) {
     alert(err.message || 'Terjadi kesalahan saat memproses file')
@@ -230,17 +309,12 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
 <template>
   <div class="min-h-screen bg-neutral-100 flex flex-col font-sans">
-    <!-- Header -->
-    <div class="bg-primary-600 text-white p-4 flex items-center justify-between shadow-sm sticky top-0 z-10 print:hidden">
-      <div class="flex items-center gap-4">
-        <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <h1 class="text-xl font-bold">Nota Transaksi</h1>
-      </div>
-      <button @click="printReceipt" class="p-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors" title="Cetak">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+    <!-- Header (no print button) -->
+    <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10 print:hidden">
+      <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
+      <h1 class="text-xl font-bold">Nota Transaksi</h1>
     </div>
 
     <div class="flex-1 p-4 flex items-center justify-center print:p-0 print:bg-white">
@@ -284,7 +358,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
               <div v-for="(part, i) in snParts" :key="i" class="flex">
-                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ part.value }}</span>
+                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ part.value }}</span>
               </div>
             </template>
             <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ trx.sn || trx.ref_id }}</span></div>
@@ -307,16 +381,22 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
           </div>
         </div>
 
-        <!-- Action Buttons -->
+        <!-- Action Buttons: show print OR share based on route, not both -->
         <div class="mt-6 flex flex-col gap-3 print:hidden px-4" data-html2canvas-ignore>
-          <button @click="printReceipt" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Cetak / Print
-          </button>
-          <button @click="showShareModal = true" :disabled="isSharing" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
-          </button>
+          <!-- Print mode: show print + back -->
+          <template v-if="!isShareMode">
+            <button @click="printReceipt" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+              Cetak / Print
+            </button>
+          </template>
+          <!-- Share mode: show share + back -->
+          <template v-else>
+            <button @click="showShareModal = true" :disabled="isSharing" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+              {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
+            </button>
+          </template>
           <button @click="router.push('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
             Kembali ke Riwayat
           </button>
@@ -330,28 +410,27 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
     <!-- Share Format Modal -->
     <Teleport to="body">
-      <div v-if="showShareModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 print:hidden">
-        <div class="absolute inset-0 bg-black/50" @click="showShareModal = false"></div>
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden relative z-10">
-          <div class="p-4 border-b border-neutral-100">
-            <h3 class="font-bold text-lg text-center text-neutral-800">Pilih Format Nota</h3>
+      <div v-if="showShareModal" class="share-modal-overlay" @click.self="showShareModal = false">
+        <div class="share-modal-box">
+          <div style="padding: 16px; border-bottom: 1px solid #f0f0f0;">
+            <h3 style="font-weight: bold; font-size: 18px; text-align: center; color: #333;">Pilih Format Nota</h3>
           </div>
-          <div class="p-2">
-            <button @click="shareReceipt('jpg')" :disabled="isSharing" class="w-full text-left px-4 py-3 hover:bg-neutral-100 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3 disabled:opacity-50">
-              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+          <div style="padding: 8px;">
+            <button @click="shareReceipt('jpg')" :disabled="isSharing" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: none; background: none; cursor: pointer; border-radius: 12px; font-size: 14px; font-weight: 500; color: #333;" class="share-option">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
               </div>
               Kirim sebagai Gambar (JPG)
             </button>
-            <button @click="shareReceipt('pdf')" :disabled="isSharing" class="w-full text-left px-4 py-3 hover:bg-neutral-100 rounded-xl transition-colors font-medium text-neutral-700 flex items-center gap-3 disabled:opacity-50">
-              <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <button @click="shareReceipt('pdf')" :disabled="isSharing" style="width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: none; background: none; cursor: pointer; border-radius: 12px; font-size: 14px; font-weight: 500; color: #333;" class="share-option">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: #fee2e2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
               </div>
               Kirim sebagai Dokumen (PDF)
             </button>
           </div>
-          <div class="p-2 border-t border-neutral-100">
-            <button @click="showShareModal = false" :disabled="isSharing" class="w-full py-2.5 text-sm font-bold text-neutral-500 hover:bg-neutral-50 rounded-xl transition-colors disabled:opacity-50">
+          <div style="padding: 8px; border-top: 1px solid #f0f0f0;">
+            <button @click="showShareModal = false" :disabled="isSharing" style="width: 100%; padding: 10px; border: none; background: none; cursor: pointer; border-radius: 12px; font-size: 13px; font-weight: bold; color: #999;">
               Batal
             </button>
           </div>
@@ -369,6 +448,33 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 .receipt-container * {
   color: #000000 !important;
 }
+
+/* Share modal - pure CSS centering, no Tailwind color functions */
+.share-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+.share-modal-box {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 320px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+.share-option:hover {
+  background-color: #f5f5f5 !important;
+}
+
 @media print {
   @page { margin: 0; }
   body { margin: 0; background-color: white; }
