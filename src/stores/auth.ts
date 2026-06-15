@@ -71,10 +71,22 @@ export const useAuthStore = defineStore('auth', () => {
               const resData = await res.json()
               if (resData.success) {
                 finalData.saldo = resData.saldo
+              } else {
+                throw new Error('API returned success=false')
               }
             }
           } catch (e) {
-            console.error('Error fetching admin balance via API:', e)
+            console.error('Error fetching admin balance via API, using fallback:', e)
+            // Fallback: Try to query directly if RLS allows or we just get what we can
+            const { data: adminData } = await supabase
+              .from('users')
+              .select('saldo')
+              .eq('id', data.admin_id)
+              .single()
+              
+            if (adminData && adminData.saldo !== undefined) {
+              finalData.saldo = adminData.saldo
+            }
           }
         }
         console.log('Profile fetched successfully:', finalData.role)
