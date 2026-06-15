@@ -112,11 +112,25 @@ html, body {
   border-color: transparent !important;
 }
 
+.theme-neumorph .bg-primary-600 {
+  background-color: #6a7c64 !important; /* Hijau mate */
+  color: #FFFFFF !important;
+}
+
+.theme-neumorph .bg-primary-600 h1,
+.theme-neumorph .bg-primary-600 h2 {
+  color: #FFFFFF !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.3) !important;
+}
+
 /* Custom Saldo Card */
 .theme-neumorph .saldo-card {
-  background-color: #6a7c64 !important; /* Hijau mate */
-  box-shadow: 6px 6px 14px rgba(100, 90, 80, 0.3), inset 1px 1px 3px rgba(255, 255, 255, 0.25) !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
   border: none !important;
+  margin: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .theme-neumorph .saldo-card p {
