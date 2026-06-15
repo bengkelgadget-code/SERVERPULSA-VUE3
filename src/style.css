@@ -171,20 +171,20 @@ html, body {
   font-size: 33px !important;
 }
 
-/* Increase header font by 2px and capitalize */
+/* Increase header font by 5px and uppercase */
 .theme-neumorph .bg-primary-600 h1.text-lg,
 .theme-neumorph .bg-primary-600 h2.text-lg {
-  font-size: 20px !important;
+  font-size: 23px !important;
 }
 
 .theme-neumorph .bg-primary-600 h1.text-xl,
 .theme-neumorph .bg-primary-600 h2.text-xl {
-  font-size: 22px !important;
+  font-size: 25px !important;
 }
 
 .theme-neumorph .bg-primary-600 h1,
 .theme-neumorph .bg-primary-600 h2 {
-  text-transform: capitalize !important;
+  text-transform: uppercase !important;
 }
 
 /* Bottom Navigation Buttons */
