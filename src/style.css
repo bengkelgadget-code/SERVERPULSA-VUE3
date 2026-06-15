@@ -166,6 +166,27 @@ html, body {
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5) !important;
 }
 
+/* Increase balance font by 3px (text-3xl is normally 30px) */
+.theme-neumorph .saldo-card p.text-3xl {
+  font-size: 33px !important;
+}
+
+/* Increase header font by 2px and capitalize */
+.theme-neumorph .bg-primary-600 h1.text-lg,
+.theme-neumorph .bg-primary-600 h2.text-lg {
+  font-size: 20px !important;
+}
+
+.theme-neumorph .bg-primary-600 h1.text-xl,
+.theme-neumorph .bg-primary-600 h2.text-xl {
+  font-size: 22px !important;
+}
+
+.theme-neumorph .bg-primary-600 h1,
+.theme-neumorph .bg-primary-600 h2 {
+  text-transform: capitalize !important;
+}
+
 /* Bottom Navigation Buttons */
 .theme-neumorph .nav-btn {
   background-color: var(--bg-color) !important;
