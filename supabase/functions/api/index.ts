@@ -648,8 +648,11 @@ app.post('/mobile/transaction/check-status', async (c) => {
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
       await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
-    } else if (dfStatus === 'gagal' && trx.status !== 'gagal' && !trx.is_refunded) {
-      await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
+    } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
+      if (!trx.is_refunded) {
+        await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
+      }
+      await supabaseService.from('transactions').update({ status: 'gagal', is_refunded: true, sn: dfData.sn, message: dfData.message, updated_at: new Date().toISOString() }).eq('id', trx.id)
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })

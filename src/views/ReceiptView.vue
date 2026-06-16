@@ -184,11 +184,11 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   
   const w = 384 // Standard 58mm printer width (8 dots/mm * 48mm)
   const pad = 24
-  const lineH = 22
-  const font = '13px monospace'
-  const fontBold = 'bold 13px monospace'
-  const fontTitle = 'bold 16px monospace'
-  const fontSmall = '11px monospace'
+  const lineH = 26
+  const font = '17px monospace'
+  const fontBold = 'bold 17px monospace'
+  const fontTitle = 'bold 20px monospace'
+  const fontSmall = '15px monospace'
   
   // Build lines
   const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
@@ -212,7 +212,17 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   lines.push({ text: '' })
   
   const addRow = (label: string, value: string, bold = false) => {
-    lines.push({ text: `${label.padEnd(12)}: ${value}`, bold })
+    const maxValLen = 18
+    if (value.length > maxValLen) {
+      lines.push({ text: `${label.padEnd(12)}: ${value.substring(0, maxValLen)}`, bold })
+      let remaining = value.substring(maxValLen)
+      while (remaining.length > 0) {
+        lines.push({ text: `              ${remaining.substring(0, maxValLen)}`, bold })
+        remaining = remaining.substring(maxValLen)
+      }
+    } else {
+      lines.push({ text: `${label.padEnd(12)}: ${value}`, bold })
+    }
   }
   
   if (isPln.value) {
@@ -233,7 +243,7 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
       addRow('NAMA AKUN', trx.value.customer_name)
     }
     for (const part of snParts.value) {
-      addRow(part.label, truncateVal(part.value, 35))
+      addRow(part.label, part.value)
     }
     lines.push({ text: '' })
     addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
