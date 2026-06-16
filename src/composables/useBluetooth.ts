@@ -119,6 +119,54 @@ export function useBluetooth() {
     return text
   }
 
+  function formatLines(lines: { text: string; bold?: boolean; center?: boolean; font?: string }[]): string {
+    const ESC = '\x1b'
+    const LF = '\n'
+    const GS = '\x1d'
+    const INIT = ESC + '@'
+    const ALIGN_CENTER = ESC + 'a' + '\x01'
+    const ALIGN_LEFT = ESC + 'a' + '\x00'
+    const BOLD_ON = ESC + 'E' + '\x01'
+    const BOLD_OFF = ESC + 'E' + '\x00'
+    const SIZE_NORMAL = GS + '!' + '\x00'
+    const SIZE_LARGE = GS + '!' + '\x11'
+    
+    let result = INIT
+    
+    for (const line of lines) {
+      if (!line.text) {
+        result += LF
+        continue
+      }
+      
+      let prefix = ''
+      let suffix = ''
+      
+      if (line.center) {
+        prefix += ALIGN_CENTER
+      } else {
+        prefix += ALIGN_LEFT
+      }
+      
+      if (line.bold) {
+        prefix += BOLD_ON
+        suffix += BOLD_OFF
+      }
+
+      if (line.font && (line.font.includes('20px') || line.font.includes('22px'))) {
+         prefix += SIZE_LARGE
+         suffix += SIZE_NORMAL // reset
+      } else {
+         prefix += SIZE_NORMAL
+      }
+      
+      result += prefix + line.text + suffix + LF
+    }
+    
+    result += LF + LF + LF
+    return result
+  }
+
   return {
     devices,
     connectedDevice,
@@ -128,6 +176,7 @@ export function useBluetooth() {
     connect,
     disconnect,
     print,
-    formatReceipt
+    formatReceipt,
+    formatLines
   }
 }

@@ -154,11 +154,8 @@ const printReceipt = async () => {
     try {
       await bluetooth.connect(printerStore.connectedAddress)
       
-      const authStore = (await import('@/stores/auth')).useAuthStore()
-      const storeName = authStore.userProfile?.nama_toko 
-        || localStorage.getItem('custom_nama_toko') 
-        || 'KONTER PULSA'
-      const text = bluetooth.formatReceipt(trx.value, storeName)
+      const lines = await buildReceiptLines()
+      const text = bluetooth.formatLines(lines)
       
       const success = await bluetooth.print(text)
       if (!success) {
@@ -177,20 +174,9 @@ const printReceipt = async () => {
 const showShareModal = ref(false)
 const isSharing = ref(false)
 
-// Build receipt as plain canvas to avoid html2canvas CSS color issues
-const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')!
-  
-  const w = 384 // Standard 58mm printer width (8 dots/mm * 48mm)
-  const pad = 24
-  const lineH = 26
-  const font = '17px monospace'
-  const fontBold = 'bold 17px monospace'
+const buildReceiptLines = async () => {
   const fontTitle = 'bold 20px monospace'
   const fontSmall = '15px monospace'
-  
-  // Build lines
   const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
   
   const authStore = (await import('@/stores/auth')).useAuthStore()
@@ -268,6 +254,22 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: fontSmall })
   lines.push({ text: '' })
   lines.push({ text: 'Terima Kasih', center: true, font: fontSmall })
+
+  return lines
+}
+
+// Build receipt as plain canvas to avoid html2canvas CSS color issues
+const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')!
+  
+  const w = 384 // Standard 58mm printer width (8 dots/mm * 48mm)
+  const pad = 24
+  const lineH = 26
+  const font = '17px monospace'
+  const fontBold = 'bold 17px monospace'
+  
+  const lines = await buildReceiptLines()
   
   // Calculate height
   const totalH = lines.length * lineH + pad * 2
