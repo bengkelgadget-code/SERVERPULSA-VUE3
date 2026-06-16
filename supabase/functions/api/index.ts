@@ -121,7 +121,7 @@ app.post('/webhook/digiflazz', async (c) => {
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
-      .select('status, is_refunded')
+      .select('status')
       .eq('id', data.ref_id)
       .single()
 
@@ -139,8 +139,8 @@ app.post('/webhook/digiflazz', async (c) => {
 
     if (error) return c.json({ error: 'Database update failed' }, 500)
     
-    // If failed via webhook, trigger refund (only if not already refunded)
-    if (data.status.toLowerCase() === 'gagal' && !tx.is_refunded) {
+    // If failed via webhook, trigger refund (only if not already failed)
+    if (data.status.toLowerCase() === 'gagal' && tx.status !== 'gagal') {
        await supabase.rpc('refund_purchase', { p_transaction_id: data.ref_id })
     }
     
@@ -587,8 +587,8 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
       if (dbStatus === 'gagal') {
         // Check if not already refunded before refunding
-        const { data: txCheck } = await supabaseService.from('transactions').select('is_refunded').eq('id', transactionId).single()
-        if (!txCheck?.is_refunded) {
+        const { data: txCheck } = await supabaseService.from('transactions').select('status').eq('id', transactionId).single()
+        if (txCheck?.status !== 'gagal') {
           await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
         }
         return c.json({ success: false, error: `Transaction failed: ${response.message}`, status: dbStatus, ref_id: refId })
@@ -608,8 +608,8 @@ app.post('/mobile/transaction/purchase', async (c) => {
       }).eq('id', transactionId)
 
       // Refund the deducted balance
-      const { data: txCheck } = await supabaseService.from('transactions').select('is_refunded').eq('id', transactionId).single()
-      if (!txCheck?.is_refunded) {
+      const { data: txCheck } = await supabaseService.from('transactions').select('status').eq('id', transactionId).single()
+      if (txCheck?.status !== 'gagal') {
         await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
       }
       
@@ -649,10 +649,8 @@ app.post('/mobile/transaction/check-status', async (c) => {
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
       await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
-      if (!trx.is_refunded) {
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
-      }
-      await supabaseService.from('transactions').update({ status: 'gagal', is_refunded: true, sn: dfData.sn, message: dfData.message, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
+      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || null, message: dfData.message || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })

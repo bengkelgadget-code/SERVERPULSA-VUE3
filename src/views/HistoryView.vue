@@ -47,17 +47,10 @@ const fetchHistory = async () => {
   const { data } = await query
   
   if (data) {
-    // Fix status: if pending but is_refunded=true, show as gagal immediately
-    const fixed = data.map(t => {
-      if (t.status === 'pending' && t.is_refunded) {
-        return { ...t, status: 'gagal' }
-      }
-      return t
-    })
-    transactions.value = fixed
+    transactions.value = data
     
     // Auto-check only truly pending transactions (not refunded) in the background
-    const pendingTrx = fixed.filter(t => t.status === 'pending')
+    const pendingTrx = data.filter(t => t.status === 'pending')
     if (pendingTrx.length > 0) {
       checkPendingStatuses(pendingTrx)
     }
@@ -85,9 +78,6 @@ const checkPendingStatuses = async (pendingTrx: any[]) => {
         if (idx !== -1) {
           transactions.value[idx].status = result.status
           transactions.value[idx].sn = result.sn || transactions.value[idx].sn
-          if (result.status === 'gagal') {
-            transactions.value[idx].is_refunded = true
-          }
           transactions.value = [...transactions.value]
         }
       }
