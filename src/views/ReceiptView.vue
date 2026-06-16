@@ -3,18 +3,25 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { usePrinterStore } from '@/stores/printer'
+import { useAuthStore } from '@/stores/auth'
 import { useBluetooth } from '@/composables/useBluetooth'
 import { Capacitor } from '@capacitor/core'
-import { Share } from '@capacitor/share'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 
 const route = useRoute()
 const router = useRouter()
 const printerStore = usePrinterStore()
+const authStore = useAuthStore()
 const bluetooth = useBluetooth()
 const transactionId = route.params.id as string
 
 const isNative = Capacitor.getPlatform() !== 'web'
+
+const storeName = computed(() => {
+  return authStore.userProfile?.nama_toko 
+    || localStorage.getItem('custom_nama_toko') 
+    || 'KONTER PULSA'
+})
 
 const loading = ref(true)
 const trx = ref<any>(null)
@@ -30,7 +37,6 @@ const fetchTransaction = async () => {
     .single()
   
   if (data) {
-    const authStore = (await import('@/stores/auth')).useAuthStore()
     const user = authStore.user
     const profile = authStore.userProfile
 
@@ -129,53 +135,38 @@ const snParts = computed(() => {
   return result
 })
 
+// Truncate long values (e.g. REFF) for display
+const truncateVal = (val: string, max = 30) => {
+  if (!val) return '-'
+  return val.length > max ? val.substring(0, max) + '...' : val
+}
+
 const printReceipt = async () => {
   if (!trx.value) return
   
-  // Try bluetooth printing first
-  if (printerStore.connectedAddress) {
-    // Ensure printer store knows it's connected
+  if (isNative) {
+    if (!printerStore.connectedAddress) {
+      alert('Printer Bluetooth belum dihubungkan. Silakan hubungkan printer di menu Pengaturan terlebih dahulu.')
+      return
+    }
+    
     printerStore.isConnected = true
     try {
       await bluetooth.connect(printerStore.connectedAddress)
+      
       const authStore = (await import('@/stores/auth')).useAuthStore()
-      const storeName = authStore.userProfile?.nama_toko || 'KONTER PULSA'
+      const storeName = authStore.userProfile?.nama_toko 
+        || localStorage.getItem('custom_nama_toko') 
+        || 'KONTER PULSA'
       const text = bluetooth.formatReceipt(trx.value, storeName)
+      
       const success = await bluetooth.print(text)
-      if (success) {
-        alert('Struk berhasil dicetak ke printer Bluetooth.')
-        return
+      if (!success) {
+        alert('Gagal mencetak. Pastikan printer menyala dan terjangkau.')
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Bluetooth print error:', e)
-    }
-  }
-  
-  // Fallback: save as image and share/print
-  if (isNative) {
-    // On native: generate image and open share sheet for printing/sharing
-    try {
-      const canvas = await drawReceiptToCanvas()
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
-      const base64Data = dataUrl.split(',')[1]
-      const fileName = `Nota-${trx.value.ref_id || 'transaksi'}.jpg`
-      
-      const saved = await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Cache,
-      })
-      
-      await Share.share({
-        title: 'Cetak / Bagikan Nota',
-        text: 'Nota Transaksi',
-        url: saved.uri,
-        dialogTitle: 'Cetak / Bagikan Nota',
-      })
-    } catch (err: any) {
-      if (err.message !== 'Share canceled') {
-        alert('Gagal memproses nota: ' + (err.message || 'Unknown error'))
-      }
+      alert('Gagal menyambung ke printer: ' + (e.message || e))
     }
   } else {
     // On web: use browser print
@@ -191,8 +182,8 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
   
-  const w = 640
-  const pad = 40
+  const w = 384 // Standard 58mm printer width (8 dots/mm * 48mm)
+  const pad = 24
   const lineH = 22
   const font = '13px monospace'
   const fontBold = 'bold 13px monospace'
@@ -202,7 +193,12 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   // Build lines
   const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
   
-  lines.push({ text: '** BENGKEL GADGET **', bold: true, center: true, font: fontTitle })
+  const authStore = (await import('@/stores/auth')).useAuthStore()
+  const storeName = authStore.userProfile?.nama_toko 
+    || localStorage.getItem('custom_nama_toko') 
+    || 'KONTER PULSA'
+
+  lines.push({ text: `** ${storeName.toUpperCase()} **`, bold: true, center: true, font: fontTitle })
   lines.push({ text: `${formatDate(trx.value.created_at)} (CU)`, center: true })
   lines.push({ text: '' })
   
@@ -237,7 +233,7 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
       addRow('NAMA AKUN', trx.value.customer_name)
     }
     for (const part of snParts.value) {
-      addRow(part.label, part.value)
+      addRow(part.label, truncateVal(part.value, 35))
     }
     lines.push({ text: '' })
     addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
@@ -326,19 +322,29 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       }
 
       // Write file to device cache directory
-      const saved = await Filesystem.writeFile({
+      await Filesystem.writeFile({
         path: fileName,
         data: base64Data,
         directory: Directory.Cache,
       })
       
-      // Open native share sheet
-      await Share.share({
-        title: 'Bagikan Nota',
-        text: 'Berikut adalah nota transaksi Anda.',
-        url: saved.uri,
-        dialogTitle: 'Bagikan Nota',
+      // Get FileProvider-compatible URI for Android sharing
+      const fileUri = await Filesystem.getUri({
+        directory: Directory.Cache,
+        path: fileName,
       })
+      
+      // Use 'files' array (not 'url') so Android can share local files
+      const SharePlugin = (Capacitor as any).Plugins?.Share
+      if (SharePlugin) {
+        await SharePlugin.share({
+          title: 'Bagikan Nota',
+          files: [fileUri.uri],
+          dialogTitle: 'Bagikan Nota',
+        })
+      } else {
+        alert('Fitur berbagi tidak tersedia.')
+      }
     } else {
       // Web: download file or use Web Share API
       let fileToShare: File
@@ -402,11 +408,11 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       <div v-if="loading" class="animate-spin w-8 h-8 border-[3px] border-primary-600 border-t-transparent rounded-full print:hidden"></div>
       
       <!-- THERMAL RECEIPT CONTAINER -->
-      <div v-else-if="trx" class="w-full max-w-[320px] mx-auto pb-20 print:pb-0">
+      <div v-else-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0">
         <div class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
           <div class="text-center mb-4">
-            <p class="font-bold text-base">** BENGKEL GADGET **</p>
+            <p class="font-bold text-base">** {{ storeName.toUpperCase() }} **</p>
             <p>{{ formatDate(trx.created_at) }} (CU)</p>
           </div>
 
@@ -439,10 +445,10 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
               <div v-for="(part, i) in snParts" :key="i" class="flex">
-                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ part.value }}</span>
+                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(part.value) }}</span>
               </div>
             </template>
-            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ trx.sn || trx.ref_id }}</span></div>
+            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(trx.sn || trx.ref_id || '') }}</span></div>
             <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
           </div>
 
