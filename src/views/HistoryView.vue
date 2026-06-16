@@ -96,17 +96,20 @@ onMounted(async () => {
   
   fetchHistory()
 
-  // Subscribe to realtime updates for this user's transactions
+  // Subscribe to realtime updates for this user's transactions (as owner or staff)
+  const userId = auth.user.id
   realtimeChannel = supabase.channel('transaction-updates')
     .on(
       'postgres_changes',
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'transactions',
-        filter: `user_id=eq.${auth.user.id}`
+        table: 'transactions'
       },
       (payload) => {
+        // Only process if this transaction belongs to the current user
+        if (payload.new.user_id !== userId && payload.new.staff_id !== userId) return
+        
         const idx = transactions.value.findIndex(t => t.id === payload.new.id)
         if (idx !== -1) {
           payload.new.products = transactions.value[idx].products
