@@ -25,6 +25,7 @@ const storeName = computed(() => {
 
 const loading = ref(true)
 const trx = ref<any>(null)
+const customHargaJual = ref(0)
 
 const isShareMode = computed(() => route.query.share === 'true')
 
@@ -51,6 +52,7 @@ const fetchTransaction = async () => {
       return
     }
     trx.value = data
+    customHargaJual.value = data.harga_jual
   } else {
     alert('Transaction not found')
     router.push('/')
@@ -228,8 +230,8 @@ const buildReceiptLines = async () => {
     addRow('ANGS/MAT', 'RP. 0,00/0,00')
     addRow('RP TOKEN', formatRp(trx.value.products?.harga_modal || 0))
     addRow('JML KWH', plnData.value?.kwh || '-')
-    addRow('BIAYA ADM', formatRp(trx.value.harga_jual - (trx.value.products?.harga_modal || 0)))
-    addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
+    addRow('BIAYA ADM', formatRp(customHargaJual.value - (trx.value.products?.harga_modal || 0)))
+    addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else {
     addRow('PRODUK', trx.value.products?.product_name || '')
     addRow('NO TUJUAN', trx.value.customer_no)
@@ -240,17 +242,17 @@ const buildReceiptLines = async () => {
       addRow(part.label, part.value)
     }
     lines.push({ text: '' })
-    addRow('TOTAL BAYAR', formatRp(trx.value.harga_jual), true)
+    addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   }
   
   if (isPln.value && plnData.value) {
     lines.push({ text: '' })
     lines.push({ text: '-- TOKEN --', center: true })
     const t = plnData.value.token || ''
-    const parts = t.split('-')
-    if (parts.length >= 4) {
-      lines.push({ text: `${parts[0]}-${parts[1]}`, bold: true, center: true, font: 'bold 22px monospace' })
-      lines.push({ text: `${parts[2]}-${parts[3]}`, bold: true, center: true, font: 'bold 22px monospace' })
+    const parts = t.replace(/-/g, '').match(/.{1,4}/g) || []
+    if (parts.length >= 5) {
+      lines.push({ text: `${parts[0]}-${parts[1]}-${parts[2]}`, bold: true, center: true, font: 'bold 22px monospace' })
+      lines.push({ text: `${parts[3]}-${parts[4]}`, bold: true, center: true, font: 'bold 22px monospace' })
     } else {
       lines.push({ text: t, bold: true, center: true, font: 'bold 22px monospace' })
     }
@@ -424,11 +426,22 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       <h1 class="text-xl font-bold">Nota Transaksi</h1>
     </div>
 
-    <div class="flex-1 p-4 flex items-center justify-center print:p-0 print:bg-white">
-      <div v-if="loading" class="animate-spin w-8 h-8 border-[3px] border-primary-600 border-t-transparent rounded-full print:hidden"></div>
+    <div class="flex-1 p-4 flex flex-col items-center justify-start print:p-0 print:bg-white overflow-y-auto">
+      <div v-if="loading" class="animate-spin w-8 h-8 mt-10 border-[3px] border-primary-600 border-t-transparent rounded-full print:hidden"></div>
       
+      <!-- Editor Bayar -->
+      <div v-if="trx" class="w-full max-w-[320px] mb-4 print:hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Sesuaikan Total Bayar</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span class="text-gray-500 sm:text-sm">Rp</span>
+          </div>
+          <input type="number" v-model.number="customHargaJual" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+        </div>
+      </div>
+
       <!-- THERMAL RECEIPT CONTAINER -->
-      <div v-else-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0">
+      <div v-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0 shrink-0">
         <div class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
           <div class="text-center mb-4">
@@ -453,8 +466,8 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
             <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual - (trx.products?.harga_modal || 0)) }}</span></div>
-            <div class="flex font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual - (trx.products?.harga_modal || 0)) }}</span></div>
+            <div class="flex font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual) }}</span></div>
           </div>
 
           <!-- NON-PLN FORMAT -->
@@ -469,15 +482,18 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
               </div>
             </template>
             <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(trx.sn || trx.ref_id || '') }}</span></div>
-            <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_jual) }}</span></div>
+            <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual) }}</span></div>
           </div>
 
           <!-- TOKEN DISPLAY -->
           <div v-if="isPln" class="text-center mt-6 mb-6">
             <p class="mb-2">-- TOKEN --</p>
             <div class="font-bold text-2xl tracking-widest break-words space-y-1">
-              <p>{{ plnData?.token?.split('-').slice(0,2).join('-') }}</p>
-              <p>{{ plnData?.token?.split('-').slice(2,4).join('-') }}</p>
+              <template v-if="plnData?.token?.replace(/-/g, '').match(/.{1,4}/g)?.length >= 5">
+                <p>{{ plnData?.token?.replace(/-/g, '').match(/.{1,4}/g)?.slice(0,3).join('-') }}</p>
+                <p>{{ plnData?.token?.replace(/-/g, '').match(/.{1,4}/g)?.slice(3,5).join('-') }}</p>
+              </template>
+              <p v-else>{{ plnData?.token }}</p>
             </div>
           </div>
 

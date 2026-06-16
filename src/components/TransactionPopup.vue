@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { LocalNotifications } from '@capacitor/local-notifications'
+import { Capacitor } from '@capacitor/core'
+
 const isVisible = ref(false)
 const transactionInfo = ref({ title: '', message: '', status: '' })
 let timeoutId: any = null
@@ -9,6 +12,14 @@ let realtimeChannel: any = null
 onMounted(async () => {
   // Setup realtime listener for transactions table where user_id = current user
   setupRealtime()
+  
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await LocalNotifications.requestPermissions()
+    } catch (e) {
+      console.warn('Local notifications permission not granted')
+    }
+  }
 })
 
 let retryCount = 0
@@ -46,15 +57,32 @@ const setupRealtime = async () => {
     .subscribe()
 }
 
-const showPopup = (title: string, message: string, status: string) => {
+const showPopup = async (title: string, message: string, status: string) => {
   transactionInfo.value = { title, message, status }
   isVisible.value = true
   
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: title,
+            body: message,
+            id: new Date().getTime(),
+            schedule: { at: new Date(Date.now() + 50) },
+          }
+        ]
+      })
+    } catch (e) {
+      console.error('Failed to show local notification', e)
+    }
+  }
+
   if (timeoutId) clearTimeout(timeoutId)
   
   timeoutId = setTimeout(() => {
     isVisible.value = false
-  }, 3000) // Tampilkan selama 3 detik
+  }, 4000) // Tampilkan selama 4 detik
 }
 
 onUnmounted(() => {
