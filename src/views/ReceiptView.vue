@@ -26,6 +26,28 @@ const storeName = computed(() => {
 const loading = ref(true)
 const trx = ref<any>(null)
 const customHargaJual = ref(0)
+const showEditModal = ref(false)
+const tempHargaJualDisplay = ref('')
+
+const openEditModal = () => {
+  tempHargaJualDisplay.value = new Intl.NumberFormat('id-ID').format(customHargaJual.value).replace(/[\u00A0\u202F]/g, ' ')
+  showEditModal.value = true
+}
+
+const onHargaJualInput = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  let val = target.value.replace(/\D/g, '')
+  if (!val) val = '0'
+  tempHargaJualDisplay.value = new Intl.NumberFormat('id-ID').format(parseInt(val, 10)).replace(/[\u00A0\u202F]/g, ' ')
+}
+
+const saveHargaJual = () => {
+  const numericVal = parseInt(tempHargaJualDisplay.value.replace(/\D/g, ''), 10)
+  if (!isNaN(numericVal)) {
+    customHargaJual.value = numericVal
+  }
+  showEditModal.value = false
+}
 
 const isShareMode = computed(() => route.query.share === 'true')
 
@@ -428,17 +450,6 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
     <div class="flex-1 p-4 flex flex-col items-center justify-start print:p-0 print:bg-white overflow-y-auto">
       <div v-if="loading" class="animate-spin w-8 h-8 mt-10 border-[3px] border-primary-600 border-t-transparent rounded-full print:hidden"></div>
-      
-      <!-- Editor Bayar -->
-      <div v-if="trx" class="w-full max-w-[320px] mb-4 print:hidden">
-        <label class="block text-sm font-medium text-gray-700 mb-1">Sesuaikan Total Bayar</label>
-        <div class="relative">
-          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span class="text-gray-500 sm:text-sm">Rp</span>
-          </div>
-          <input type="number" v-model.number="customHargaJual" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
-        </div>
-      </div>
 
       <!-- THERMAL RECEIPT CONTAINER -->
       <div v-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0 shrink-0">
@@ -467,7 +478,13 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual - (trx.products?.harga_modal || 0)) }}</span></div>
-            <div class="flex font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual) }}</span></div>
+            <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
+              <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
+              <span class="flex-1 break-words flex items-center gap-1 mt-1">
+                {{ formatRp(customHargaJual) }}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 print:hidden"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </span>
+            </div>
           </div>
 
           <!-- NON-PLN FORMAT -->
@@ -482,7 +499,13 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
               </div>
             </template>
             <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(trx.sn || trx.ref_id || '') }}</span></div>
-            <div class="flex mt-2 font-bold"><span class="w-24 shrink-0">TOTAL BAYAR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual) }}</span></div>
+            <div class="flex mt-2 font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
+              <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
+              <span class="flex-1 break-words flex items-center gap-1 mt-1">
+                {{ formatRp(customHargaJual) }}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 print:hidden"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </span>
+            </div>
           </div>
 
           <!-- TOKEN DISPLAY -->
@@ -560,6 +583,34 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
         </div>
       </div>
     </Teleport>
+    
+    <!-- Edit Harga Jual Modal -->
+    <div v-if="showEditModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 print:hidden">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <h3 class="font-bold text-gray-800 text-lg">Ubah Total Bayar</h3>
+          <button @click="showEditModal = false" class="text-gray-400 hover:text-gray-600 bg-white rounded-full p-1 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="p-5 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Nominal (Rp)</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span class="text-gray-500 font-medium">Rp</span>
+              </div>
+              <input type="text" v-model="tempHargaJualDisplay" @input="onHargaJualInput" inputmode="numeric" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-bold text-lg" />
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Biaya admin akan otomatis disesuaikan.</p>
+          </div>
+          <div class="flex gap-3 pt-2">
+            <button @click="showEditModal = false" class="flex-1 py-3 px-4 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors">Batal</button>
+            <button @click="saveHargaJual" class="flex-1 py-3 px-4 bg-primary-600 text-white font-bold rounded-xl shadow-lg shadow-primary-600/30 hover:bg-primary-700 transition-all active:scale-95">Simpan</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
