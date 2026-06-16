@@ -6,5 +6,5 @@ export const formatRp = (val: number | string | null | undefined): string => {
     style: 'currency',
     currency: 'IDR',
     maximumFractionDigits: 0
-  }).format(num)
+  }).format(num).replace(/[\u00A0\u202F]/g, ' ')
 }

@@ -180,11 +180,19 @@ const buildReceiptLines = async () => {
   const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
   
   const authStore = (await import('@/stores/auth')).useAuthStore()
-  const storeName = authStore.userProfile?.nama_toko 
+  let storeName = authStore.userProfile?.nama_toko 
     || localStorage.getItem('custom_nama_toko') 
     || 'KONTER PULSA'
+  storeName = storeName.toUpperCase()
 
-  lines.push({ text: `** ${storeName.toUpperCase()} **`, bold: true, center: true, font: fontTitle })
+  let finalStoreNameFont = fontTitle
+  if (storeName.length > 20) {
+    finalStoreNameFont = fontSmall
+  } else if (storeName.length > 14) {
+    finalStoreNameFont = 'bold 17px monospace'
+  }
+
+  lines.push({ text: storeName, bold: true, center: true, font: finalStoreNameFont })
   lines.push({ text: `${formatDate(trx.value.created_at)} (CU)`, center: true })
   lines.push({ text: '' })
   

@@ -139,9 +139,12 @@ app.post('/webhook/digiflazz', async (c) => {
 
     if (error) return c.json({ error: 'Database update failed' }, 500)
     
-    // If failed via webhook, trigger refund (only if not already failed)
     if (data.status.toLowerCase() === 'gagal' && tx.status !== 'gagal') {
-       await supabase.rpc('refund_purchase', { p_transaction_id: data.ref_id })
+       // Manual refund using add_balance to avoid broken refund_purchase RPC
+       const { data: trxCheck } = await supabase.from('transactions').select('user_id, harga_modal, status').eq('id', data.ref_id).single()
+       if (trxCheck && trxCheck.status !== 'gagal') {
+         await supabase.rpc('add_balance', { p_user_id: trxCheck.user_id, p_amount: trxCheck.harga_modal })
+       }
     }
     
     return c.json({ success: true })
@@ -587,9 +590,9 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
       if (dbStatus === 'gagal') {
         // Check if not already refunded before refunding
-        const { data: txCheck } = await supabaseService.from('transactions').select('status').eq('id', transactionId).single()
-        if (txCheck?.status !== 'gagal') {
-          await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+        const { data: txCheck } = await supabaseService.from('transactions').select('user_id, harga_modal, status').eq('id', transactionId).single()
+        if (txCheck && txCheck.status !== 'gagal') {
+          await supabaseService.rpc('add_balance', { p_user_id: txCheck.user_id, p_amount: txCheck.harga_modal })
         }
         return c.json({ success: false, error: `Transaction failed: ${response.message}`, status: dbStatus, ref_id: refId })
       }
@@ -608,9 +611,9 @@ app.post('/mobile/transaction/purchase', async (c) => {
       }).eq('id', transactionId)
 
       // Refund the deducted balance
-      const { data: txCheck } = await supabaseService.from('transactions').select('status').eq('id', transactionId).single()
-      if (txCheck?.status !== 'gagal') {
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+      const { data: txCheck } = await supabaseService.from('transactions').select('user_id, harga_modal, status').eq('id', transactionId).single()
+      if (txCheck && txCheck.status !== 'gagal') {
+        await supabaseService.rpc('add_balance', { p_user_id: txCheck.user_id, p_amount: txCheck.harga_modal })
       }
       
       return c.json({ success: false, error: `Digiflazz error: ${digiflazzError?.message || 'Unknown error'}`, status: 'gagal', ref_id: refId, harga_jual: finalHargaJual })
@@ -647,10 +650,16 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
-      await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
-      await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
-      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || null, message: dfData.message || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      // Manual refund using add_balance to avoid broken refund_purchase RPC
+      const { data: trxCheck } = await supabaseService.from('transactions').select('user_id, harga_modal, status').eq('id', trx.id).single()
+      if (trxCheck && trxCheck.status !== 'gagal') {
+        await supabaseService.rpc('add_balance', { p_user_id: trxCheck.user_id, p_amount: trxCheck.harga_modal })
+      }
+      
+      // Update status without non-existent columns (message, is_refunded)
+      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })
