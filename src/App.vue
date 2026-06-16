@@ -6,8 +6,12 @@ import { App as CapacitorApp } from '@capacitor/app'
 import { Toast } from '@capacitor/toast'
 import { Capacitor } from '@capacitor/core'
 import TransactionPopup from '@/components/TransactionPopup.vue'
+import { usePrinterStore } from '@/stores/printer'
+import { useBluetooth } from '@/composables/useBluetooth'
 
 const auth = useAuthStore()
+const printer = usePrinterStore()
+const bluetooth = useBluetooth()
 const router = useRouter()
 let lastBackPress = 0
 
@@ -30,6 +34,27 @@ onMounted(() => {
         }
       } else {
         router.back()
+      }
+    })
+    
+    // Auto-reconnect printer on startup
+    const tryReconnectPrinter = async () => {
+      if (printer.connectedAddress) {
+        try {
+          const success = await bluetooth.connect(printer.connectedAddress)
+          printer.isConnected = success
+        } catch (e) {
+          printer.isConnected = false
+        }
+      }
+    }
+    
+    tryReconnectPrinter()
+
+    // Reconnect when app resumes from background
+    CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive && printer.connectedAddress && !printer.isConnected) {
+        tryReconnectPrinter()
       }
     })
   }
