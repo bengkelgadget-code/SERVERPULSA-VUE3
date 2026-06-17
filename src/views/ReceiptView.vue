@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { usePrinterStore } from '@/stores/printer'
@@ -34,17 +34,40 @@ const openEditModal = () => {
   showEditModal.value = true
 }
 
-const onHargaJualInput = (e: Event) => {
+const onHargaJualInput = async (e: Event) => {
   const target = e.target as HTMLInputElement
+  let cursor = target.selectionStart || 0
+  const originalLength = target.value.length
+  
   let val = target.value.replace(/\D/g, '')
-  if (!val) val = '0'
-  tempHargaJualDisplay.value = new Intl.NumberFormat('id-ID').format(parseInt(val, 10)).replace(/[\u00A0\u202F]/g, ' ')
+  let formatted = ''
+  
+  if (val) {
+    formatted = new Intl.NumberFormat('id-ID').format(parseInt(val, 10)).replace(/[\u00A0\u202F]/g, ' ')
+  }
+  
+  if (formatted === tempHargaJualDisplay.value) {
+    target.value = formatted
+    target.setSelectionRange(cursor, cursor)
+    return
+  }
+  
+  tempHargaJualDisplay.value = formatted
+  
+  const newLength = formatted.length
+  cursor = cursor + (newLength - originalLength)
+  if (cursor < 0) cursor = 0
+  
+  await nextTick()
+  target.setSelectionRange(cursor, cursor)
 }
 
 const saveHargaJual = () => {
   const numericVal = parseInt(tempHargaJualDisplay.value.replace(/\D/g, ''), 10)
   if (!isNaN(numericVal)) {
     customHargaJual.value = numericVal
+  } else {
+    customHargaJual.value = 0
   }
   showEditModal.value = false
 }
@@ -600,7 +623,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span class="text-gray-500 font-medium">Rp</span>
               </div>
-              <input type="text" v-model="tempHargaJualDisplay" @input="onHargaJualInput" inputmode="numeric" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-bold text-lg" />
+              <input type="text" :value="tempHargaJualDisplay" @input="onHargaJualInput" inputmode="numeric" class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-bold text-lg" />
             </div>
             <p class="text-xs text-gray-500 mt-2">Biaya admin akan otomatis disesuaikan.</p>
           </div>
