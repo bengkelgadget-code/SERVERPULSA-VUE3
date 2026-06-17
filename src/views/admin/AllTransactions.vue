@@ -137,14 +137,14 @@ const formatCurrency = (value: number) => {
     <!-- Data Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table class="w-full table-fixed divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Info</th>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User / Mitra</th>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Number</th>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price / Cost</th>
-              <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Info</th>
+              <th scope="col" class="w-[25%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User / Mitra</th>
+              <th scope="col" class="w-[30%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Number</th>
+              <th scope="col" class="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price / Cost</th>
+              <th scope="col" class="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -165,19 +165,19 @@ const formatCurrency = (value: number) => {
               </td>
             </tr>
             <tr v-for="trx in filteredTransactions" :key="trx.id" class="hover:bg-gray-50 transition-colors">
-              <td class="px-3 py-3">
-                <div class="text-sm font-medium text-gray-900">{{ trx.product_name }}</div>
+              <td class="px-3 py-3 truncate break-words">
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.product_name">{{ trx.product_name }}</div>
                 <div class="text-xs text-gray-500">{{ new Date(trx.created_at).toLocaleString('id-ID') }}</div>
-                <div class="text-xs text-gray-400 font-mono mt-0.5" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
+                <div class="text-xs text-gray-400 font-mono mt-0.5 truncate" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
               </td>
-              <td class="px-3 py-3 break-words max-w-[150px]">
-                <div class="text-sm font-medium text-gray-900">{{ trx.users?.nama_toko || 'Unknown' }}</div>
-                <div class="text-xs text-gray-500 break-all">{{ trx.users?.email || '' }}</div>
-                <div v-if="trx.staff" class="text-xs text-blue-600 mt-1">Kasir: {{ trx.staff.email }}</div>
+              <td class="px-3 py-3 break-words">
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.users?.nama_toko">{{ trx.users?.nama_toko || 'Unknown' }}</div>
+                <div class="text-xs text-gray-500 truncate" :title="trx.users?.email">{{ trx.users?.email || '' }}</div>
+                <div v-if="trx.staff" class="text-xs text-blue-600 mt-1 truncate" :title="trx.staff.email">Kasir: {{ trx.staff.email }}</div>
               </td>
-              <td class="px-3 py-3 break-all max-w-[150px]">
-                <div class="text-sm font-medium text-gray-900">{{ trx.customer_no }}</div>
-                <div v-if="trx.sn" class="text-xs text-gray-500 mt-1 line-clamp-2" :title="trx.sn">SN: {{ trx.sn }}</div>
+              <td class="px-3 py-3 break-words">
+                <div class="text-sm font-medium text-gray-900 break-all">{{ trx.customer_no }}</div>
+                <div v-if="trx.sn" class="text-xs text-gray-500 mt-1 line-clamp-3" :title="trx.sn">SN: {{ trx.sn }}</div>
               </td>
               <td class="px-3 py-3">
                 <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.price) }}</div>
