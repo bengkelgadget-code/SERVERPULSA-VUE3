@@ -92,7 +92,7 @@ const formatCurrency = (value: number) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="h-full overflow-y-auto space-y-6 pb-8 pr-2">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h2 class="text-3xl font-bold text-gray-800">Global Transactions</h2>
       
@@ -133,14 +133,14 @@ const formatCurrency = (value: number) => {
     <!-- Data Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+        <table class="w-full table-fixed divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Info</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User / Mitra</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Number</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price / Cost</th>
-              <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th scope="col" class="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transaction Info</th>
+              <th scope="col" class="w-[25%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User / Mitra</th>
+              <th scope="col" class="w-[30%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target Number</th>
+              <th scope="col" class="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price / Cost</th>
+              <th scope="col" class="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -161,44 +161,46 @@ const formatCurrency = (value: number) => {
               </td>
             </tr>
             <tr v-for="trx in filteredTransactions" :key="trx.id" class="hover:bg-gray-50 transition-colors">
-              <td class="px-6 py-4">
-                <div class="text-sm font-medium text-gray-900">{{ trx.product_name }}</div>
+              <td class="px-3 py-3 truncate break-words">
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.product_name">{{ trx.product_name }}</div>
                 <div class="text-xs text-gray-500">{{ new Date(trx.created_at).toLocaleString('id-ID') }}</div>
-                <div class="text-xs text-gray-400 font-mono mt-0.5" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
+                <div class="text-xs text-gray-400 font-mono mt-0.5 truncate" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ trx.users?.nama_toko || 'Unknown' }}</div>
-                <div class="text-sm text-gray-500">{{ trx.users?.email || '' }}</div>
-                <div v-if="trx.staff" class="text-xs text-blue-600 mt-1">Kasir: {{ trx.staff.email }}</div>
+              <td class="px-3 py-3 break-words">
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.users?.nama_toko">{{ trx.users?.nama_toko || 'Unknown' }}</div>
+                <div class="text-xs text-gray-500 truncate" :title="trx.users?.email">{{ trx.users?.email || '' }}</div>
+                <div v-if="trx.staff" class="text-xs text-blue-600 mt-1 truncate" :title="trx.staff.email">Kasir: {{ trx.staff.email }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ trx.customer_no }}</div>
-                <div v-if="trx.sn" class="text-xs text-gray-500 mt-1">SN: {{ trx.sn }}</div>
+              <td class="px-3 py-3 break-words">
+                <div class="text-sm font-medium text-gray-900 break-all">{{ trx.customer_no }}</div>
+                <div v-if="trx.sn" class="text-xs text-gray-500 mt-1 line-clamp-3" :title="trx.sn">SN: {{ trx.sn }}</div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-3 py-3">
                 <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.price) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">
                   Markup: {{ formatCurrency(trx.price - (trx.original_price || trx.price)) }}
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span v-if="trx.status === 'sukses'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <CheckCircle class="w-3.5 h-3.5" /> Sukses
-                </span>
-                <span v-else-if="trx.status === 'pending'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                  <Clock class="w-3.5 h-3.5" /> Pending
-                </span>
-                <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                  <XCircle class="w-3.5 h-3.5" /> Gagal
-                </span>
-                <button 
-                  v-if="trx.status === 'pending'" 
-                  @click="checkStatus(trx.id)"
-                  :disabled="checkingStatus[trx.id]"
-                  class="ml-2 px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors disabled:opacity-50"
-                >
-                  {{ checkingStatus[trx.id] ? 'Mengecek...' : 'Cek Status' }}
-                </button>
+              <td class="px-3 py-3">
+                <div class="flex flex-col gap-2 items-start">
+                  <span v-if="trx.status === 'sukses'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <CheckCircle class="w-3.5 h-3.5" /> Sukses
+                  </span>
+                  <span v-else-if="trx.status === 'pending'" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    <Clock class="w-3.5 h-3.5" /> Pending
+                  </span>
+                  <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <XCircle class="w-3.5 h-3.5" /> Gagal
+                  </span>
+                  <button 
+                    v-if="trx.status === 'pending'" 
+                    @click="checkStatus(trx.id)"
+                    :disabled="checkingStatus[trx.id]"
+                    class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs hover:bg-blue-100 transition-colors disabled:opacity-50"
+                  >
+                    {{ checkingStatus[trx.id] ? 'Mengecek...' : 'Cek Status' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
