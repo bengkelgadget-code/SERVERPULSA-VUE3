@@ -14,35 +14,6 @@ const stats = ref([
 ])
 
 const loading = ref(true)
-const syncing = ref(false)
-
-const syncMitraBalance = async () => {
-  if (!confirm('Apakah Anda yakin ingin menyamakan Saldo Mitra dengan Saldo Digiflazz? (Hanya berlaku untuk mitra pertama/utama)')) return
-  
-  syncing.value = true
-  try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/sync-digiflazz-balance`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`
-      }
-    })
-    const data = await res.json()
-    if (data.success) {
-      alert('Saldo Mitra berhasil disinkronkan dengan Digiflazz!')
-      fetchStats()
-    } else {
-      alert(data.error || 'Gagal menyinkronkan saldo')
-    }
-  } catch (error) {
-    console.error('Error syncing balance:', error)
-    alert('Terjadi kesalahan jaringan')
-  } finally {
-    syncing.value = false
-  }
-}
 
 let realtimeChannel: any = null
 
@@ -188,14 +159,7 @@ onUnmounted(() => {
     <div class="flex justify-between items-center mt-10 mb-6">
       <h2 class="text-2xl font-bold text-neutral-800">Overview</h2>
       <div class="flex gap-2">
-        <button 
-          @click="syncMitraBalance" 
-          :disabled="syncing"
-          class="bg-orange-100 hover:bg-orange-200 text-orange-700 disabled:opacity-50 px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 border border-orange-200"
-        >
-          <svg v-if="syncing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-          {{ syncing ? 'Menyinkronkan...' : 'Samakan Saldo Mitra' }}
-        </button>
+
         <button 
           @click="fetchStats" 
           :disabled="loading"

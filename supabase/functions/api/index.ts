@@ -319,69 +319,10 @@ app.post('/inquiry-pasca', async (c) => {
 
     return c.json({ success: false, message: 'Menunggu Server (Transaksi Pending)', rc: response.rc });
   } catch (err: any) {
-    return c.json({ success: false, message: err.message }, 500);
-  }
-})
-
 app.post('/sync-digiflazz-balance', async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization')
-    if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
-    const token = authHeader.replace('Bearer ', '').trim()
-
-    const supabase = getSupabase(c)
-    const { data: { user } } = await supabase.auth.getUser(token)
-    if (!user) return c.json({ error: 'Unauthorized' }, 401)
-
-    const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
-    if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
-      return c.json({ error: 'Forbidden' }, 403)
-    }
-
-    const digiflazzBalance = await digiflazz.getBalance()
-    
-    if (typeof digiflazzBalance === 'number') {
-      const supabaseService = getSupabaseService()
-      
-      let effectiveUserId = null;
-      if (profile.role === 'admin') {
-        effectiveUserId = user.id;
-      } else if (profile.role === 'superadmin') {
-        // Get ALL admin users to properly distribute the balance
-        const { data: allAdmins } = await supabaseService.from('users').select('id, saldo').eq('role', 'admin')
-        
-        if (!allAdmins || allAdmins.length === 0) {
-          return c.json({ error: 'Tidak ditemukan akun Mitra/Admin untuk disinkronkan' }, 400);
-        }
-        
-        if (allAdmins.length === 1) {
-          // Single admin: set their saldo to Digiflazz balance
-          effectiveUserId = allAdmins[0].id;
-        } else {
-          // Multiple admins: set the first admin's saldo to (Digiflazz - sum of other admins' saldos)
-          // This ensures Total Saldo Mitra = Digiflazz balance
-          const firstAdmin = allAdmins[0];
-          const otherAdminsTotal = allAdmins.slice(1).reduce((acc, a) => acc + (Number(a.saldo) || 0), 0);
-          const firstAdminSaldo = digiflazzBalance - otherAdminsTotal;
-          
-          await supabaseService.from('users').update({ saldo: firstAdminSaldo }).eq('id', firstAdmin.id)
-          return c.json({ success: true, new_saldo: firstAdminSaldo, total_mitra: digiflazzBalance, admin_id: firstAdmin.id })
-        }
-      } else if (profile.admin_id) {
-        effectiveUserId = profile.admin_id;
-      }
-
-      if (!effectiveUserId) {
-        return c.json({ error: 'Tidak ditemukan akun Mitra/Admin utama untuk disinkronkan' }, 400);
-      }
-      
-      await supabaseService.from('users').update({ saldo: digiflazzBalance }).eq('id', effectiveUserId)
-      return c.json({ success: true, new_saldo: digiflazzBalance })
-    }
-    return c.json({ error: 'Failed to fetch digiflazz balance' }, 500)
-  } catch (err: any) {
-    return c.json({ error: err.message }, 500)
-  }
+  // Disabled for SaaS architecture. Digiflazz balance is the total asset,
+  // while Mitra balance is a virtual liability. They must not be forcibly synced.
+  return c.json({ error: 'Fitur sinkronisasi langsung dinonaktifkan dalam mode SAAS. Top-up Anda masuk ke Uang Superadmin, dan saldo Mitra hanya bertambah melalui sistem Deposit.' }, 400);
 })
 
 app.post('/sync-digiflazz', async (c) => {
