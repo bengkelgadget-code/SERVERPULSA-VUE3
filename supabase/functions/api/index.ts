@@ -816,9 +816,9 @@ app.post('/admin-action', async (c) => {
       })
       if (err1) throw err1
       
-      // If the caller is superadmin, execute the inverse balance change on themselves!
-      // This ensures that deducting from Mitra (-300000) will ADD to Superadmin (+300000), and vice versa.
-      if (callerProfile.role === 'superadmin') {
+      // If the caller is superadmin AND they are modifying someone else's balance,
+      // execute the inverse balance change on themselves to maintain the system balance.
+      if (callerProfile.role === 'superadmin' && user_id !== user.id) {
         const { error: err2 } = await supabaseService.rpc('add_balance', {
           p_user_id: user.id,
           p_amount: -amount
