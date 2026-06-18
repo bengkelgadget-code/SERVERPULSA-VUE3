@@ -161,7 +161,7 @@ const buyProduct = async () => {
     if (!res.ok || !data.success) {
       errorMsg.value = data.error || 'Gagal melakukan transaksi'
     } else {
-      if (data.status === 'pending') {
+      if (['pending', 'proses'].includes(data.status?.toLowerCase())) {
         router.replace({ path: '/history', query: { trx: data.transactionId } })
       } else {
         router.replace(`/receipt/${data.transactionId}`)

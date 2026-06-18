@@ -10,7 +10,7 @@ const transactionInfo = ref({ title: '', message: '', status: '' })
 let timeoutId: any = null
 let realtimeChannel: any = null
 let pollingInterval: any = null
-let knownStatuses = new Map<string, string>() // transaction_id -> last known status
+let knownPendingIds = new Set<string>()
 
 onMounted(async () => {
   // Wait for auth to be ready
@@ -41,23 +41,39 @@ const setupRealtime = () => {
   realtimeChannel = supabase.channel('transaction-popup')
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'transactions' },
+      { event: '*', schema: 'public', table: 'transactions' },
       (payload: any) => {
-        const txUserId = payload.new.user_id
-        const txStaffId = payload.new.staff_id
+        const newRow = payload.new
+        if (!newRow || (!newRow.user_id && !newRow.staff_id)) return
+        
+        const txUserId = newRow.user_id
+        const txStaffId = newRow.staff_id
         
         // Only process if this update belongs to the current user (as owner or staff)
         if (txUserId !== userId && txStaffId !== userId) return
         
-        const oldStatus = payload.old.status
-        const newStatus = payload.new.status
+        const status = newRow.status?.toLowerCase()
         
-        if (oldStatus !== newStatus && oldStatus === 'pending') {
-          showPopup(
-            `Transaksi ${newStatus.toUpperCase()}`,
-            `Transaksi (${payload.new.customer_no}) telah ${newStatus}.`,
-            newStatus
-          )
+        if (payload.eventType === 'INSERT') {
+          if (['pending', 'proses'].includes(status)) {
+            knownPendingIds.add(newRow.id)
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          if (knownPendingIds.has(newRow.id)) {
+            if (!['pending', 'proses'].includes(status)) {
+              showPopup(
+                `Transaksi ${status.toUpperCase()}`,
+                `Transaksi (${newRow.customer_no}) telah ${status}.`,
+                status
+              )
+              knownPendingIds.delete(newRow.id)
+            }
+          } else {
+            // If it's an update to pending/proses, track it
+            if (['pending', 'proses'].includes(status)) {
+              knownPendingIds.add(newRow.id)
+            }
+          }
         }
       }
     )
@@ -82,18 +98,46 @@ const checkPendingTransactions = async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
-    // Check pending transactions for this user (as owner or staff) via the check-status API
-    const { data: pendingTrx } = await supabase
+    // 1. Fetch current pending from DB
+    const { data: dbPending } = await supabase
       .from('transactions')
-      .select('id, status, customer_no, ref_id, sku_code')
+      .select('id, status, customer_no')
       .or(`user_id.eq.${userId},staff_id.eq.${userId}`)
-      .eq('status', 'pending')
-      .limit(5)
+      .in('status', ['pending', 'proses'])
 
-    if (!pendingTrx || pendingTrx.length === 0) return
+    const currentPendingIds = new Set(dbPending?.map(t => t.id) || [])
 
-    // Check each pending transaction status via API
-    for (const trx of pendingTrx) {
+    // 2. Check if previously known pending IDs are NO LONGER pending in the DB
+    for (const id of knownPendingIds) {
+      if (!currentPendingIds.has(id)) {
+        // Find its new status
+        const { data: updatedTrx } = await supabase
+          .from('transactions')
+          .select('id, status, customer_no')
+          .eq('id', id)
+          .single()
+          
+        if (updatedTrx && !['pending', 'proses'].includes(updatedTrx.status?.toLowerCase())) {
+          showPopup(
+            `Transaksi ${updatedTrx.status.toUpperCase()}`,
+            `Transaksi (${updatedTrx.customer_no}) telah ${updatedTrx.status}.`,
+            updatedTrx.status
+          )
+          knownPendingIds.delete(id)
+        }
+      }
+    }
+
+    // 3. Add any newly found pending IDs to our known set
+    if (dbPending) {
+      for (const trx of dbPending) {
+        knownPendingIds.add(trx.id)
+      }
+    }
+
+    // 4. Force check API for up to 3 still-pending transactions (digiflazz callback fallback)
+    const pendingArray = Array.from(knownPendingIds).slice(0, 3)
+    for (const id of pendingArray) {
       try {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {
           method: 'POST',
@@ -101,28 +145,25 @@ const checkPendingTransactions = async () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${session.access_token}`
           },
-          body: JSON.stringify({ transaction_id: trx.id })
+          body: JSON.stringify({ transaction_id: id })
         })
 
         const result = await res.json()
-        if (!result.success) continue
-
-        const newStatus = result.status?.toLowerCase()
-        const prevStatus = knownStatuses.get(trx.id) || 'pending'
-        
-        // Update known status
-        knownStatuses.set(trx.id, newStatus)
-        
-        // Show popup only on status change from pending
-        if (prevStatus === 'pending' && newStatus !== 'pending') {
-          showPopup(
-            `Transaksi ${newStatus.toUpperCase()}`,
-            `Transaksi (${trx.customer_no}) telah ${newStatus}.`,
-            newStatus
-          )
+        if (result.success && result.status) {
+          const newStatus = result.status.toLowerCase()
+          if (!['pending', 'proses'].includes(newStatus)) {
+            const trx = dbPending?.find(t => t.id === id)
+            const custNo = trx?.customer_no || 'Tujuan'
+            
+            showPopup(
+              `Transaksi ${newStatus.toUpperCase()}`,
+              `Transaksi (${custNo}) telah ${newStatus}.`,
+              newStatus
+            )
+            knownPendingIds.delete(id)
+          }
         }
       } catch (e) {
-        // Skip this transaction on error, continue with next
         continue
       }
     }
