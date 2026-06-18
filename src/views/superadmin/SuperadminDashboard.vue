@@ -55,15 +55,8 @@ const fetchStats = async () => {
     
     totalSaldoMitra.value = usersData?.reduce((acc, user) => acc + (Number(user.saldo) || 0), 0) || 0
 
-    // Fetch Profit
-    const { data: txData } = await supabase
-      .from('transactions')
-      .select('harga_jual, harga_modal')
-      .eq('status', 'sukses')
-      
-    totalProfit.value = txData?.reduce((acc, tx) => acc + (Number(tx.harga_jual) - Number(tx.harga_modal)), 0) || 0
-    
-    // Fetch Digiflazz Balance
+    // Fetch Digiflazz Balance first
+    let currentDigiflazzBalance = 0
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin/digiflazz-balance`, {
@@ -72,8 +65,13 @@ const fetchStats = async () => {
       const data = await res.json()
       if (data.success) {
         digiflazzBalance.value = data.balance
+        currentDigiflazzBalance = data.balance
       }
     }
+
+    // Uang Superadmin = Saldo di Digiflazz - Kewajiban (Total Saldo Mitra)
+    totalProfit.value = currentDigiflazzBalance - (totalSaldoMitra.value || 0)
+
   } catch (error) {
     console.error('Error fetching stats:', error)
   } finally {

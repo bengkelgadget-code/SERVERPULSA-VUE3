@@ -319,6 +319,10 @@ app.post('/inquiry-pasca', async (c) => {
 
     return c.json({ success: false, message: 'Menunggu Server (Transaksi Pending)', rc: response.rc });
   } catch (err: any) {
+    return c.json({ success: false, message: err.message }, 500);
+  }
+})
+
 app.post('/sync-digiflazz-balance', async (c) => {
   // Disabled for SaaS architecture. Digiflazz balance is the total asset,
   // while Mitra balance is a virtual liability. They must not be forcibly synced.
@@ -783,7 +787,7 @@ app.post('/admin-action', async (c) => {
     if (action === 'add_balance') {
       const { user_id, amount } = payload
       
-      if (typeof amount !== 'number' || amount <= 0 || amount > 100000000) {
+      if (typeof amount !== 'number' || amount === 0 || amount > 100000000 || amount < -100000000) {
         return c.json({ error: 'Invalid amount' }, 400)
       }
       
@@ -805,11 +809,23 @@ app.post('/admin-action', async (c) => {
         return c.json({ success: true })
       }
       
-      const { error } = await supabaseService.rpc('add_balance', {
+      // Execute the balance change for the target user (Mitra)
+      const { error: err1 } = await supabaseService.rpc('add_balance', {
         p_user_id: user_id,
         p_amount: amount
       })
-      if (error) throw error
+      if (err1) throw err1
+      
+      // If the caller is superadmin, execute the inverse balance change on themselves!
+      // This ensures that deducting from Mitra (-300000) will ADD to Superadmin (+300000), and vice versa.
+      if (callerProfile.role === 'superadmin') {
+        const { error: err2 } = await supabaseService.rpc('add_balance', {
+          p_user_id: user.id,
+          p_amount: -amount
+        })
+        if (err2) throw err2
+      }
+      
       return c.json({ success: true })
     }
 
