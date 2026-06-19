@@ -45,20 +45,6 @@ jobs:
       - name: Sync Capacitor to Android
         run: npx cap sync android
 
-      - name: Generate Keystore if missing
-        run: |
-          if [ ! -f "android/app/release.keystore" ]; then
-            echo "Generating release.keystore..."
-            keytool -genkey -v -keystore android/app/release.keystore -alias serverpulsa -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Server Pulsa, O=Bengkel Gadget, C=ID" -storepass serverpulsa2026 -keypass serverpulsa2026
-            git config --global user.name "GitHub Actions Bot"
-            git config --global user.email "actions@github.com"
-            git add android/app/release.keystore
-            git commit -m "chore: add generated release keystore" || echo "Nothing to commit"
-            git push || echo "Failed to push keystore, continuing with build..."
-          else
-            echo "Keystore already exists"
-          fi
-
       - name: Build APK (Release)
         working-directory: ./android
         run: |
