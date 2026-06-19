@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.konter.app',
-  appName: 'Konter Pulsa',
+  appId: 'com.serverpulsa.pro',
+  appName: 'Server Pulsa Pro',
   webDir: 'dist',
   bundledWebRuntime: false,
   plugins: {
