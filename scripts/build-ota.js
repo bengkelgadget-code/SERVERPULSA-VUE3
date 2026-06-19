@@ -8,7 +8,8 @@ const __dirname = path.dirname(__filename)
 
 const versionFile = path.resolve(__dirname, '../public/version.json')
 const distDir = path.resolve(__dirname, '../dist')
-const outputZip = path.resolve(distDir, 'update.zip')
+const tempZip = path.resolve(__dirname, '../update.zip')
+const finalZip = path.resolve(distDir, 'update.zip')
 
 // Make sure dist exists
 if (!fs.existsSync(distDir)) {
@@ -17,7 +18,7 @@ if (!fs.existsSync(distDir)) {
 }
 
 // Create a file to stream archive data to
-const output = fs.createWriteStream(outputZip)
+const output = fs.createWriteStream(tempZip)
 const archive = new ZipArchive({
   zlib: { level: 9 } // Sets the compression level.
 })
@@ -25,7 +26,9 @@ const archive = new ZipArchive({
 output.on('close', () => {
   console.log(`Generated OTA zip: ${archive.pointer()} total bytes`)
   
-  // No need to move since outputZip is already in distDir
+  // Move the zip into the dist folder so Vercel serves it
+  fs.renameSync(tempZip, finalZip)
+  
   // Create version.json inside dist
   const versionInfo = {
     version: Date.now().toString(), // Use timestamp as version
