@@ -40,15 +40,7 @@ jobs:
       - name: Build Web Assets (Vite)
         run: npm run build
 
-      - name: Upload to Capgo (OTA)
-        env:
-          CAPGO_TOKEN: ${{ secrets.CAPGO_TOKEN }}
-        run: |
-          if [ -n "$CAPGO_TOKEN" ]; then
-            npx @capgo/cli@latest upload -a "$CAPGO_TOKEN"
-          else
-            echo "CAPGO_TOKEN is not set. Skipping OTA upload."
-          fi
+
 
       - name: Sync Capacitor to Android
         run: npx cap sync android

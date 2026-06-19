@@ -22,6 +22,33 @@ onMounted(() => {
   if (Capacitor.isNativePlatform()) {
     CapacitorUpdater.notifyAppReady()
     
+    // Check for self-hosted updates
+    const checkForUpdates = async () => {
+      try {
+        const response = await fetch('https://serverpulsa-vue-3.vercel.app/version.json', { cache: 'no-store' })
+        const data = await response.json()
+        
+        const currentVersion = localStorage.getItem('app_version')
+        if (data.version && data.version !== currentVersion) {
+          console.log('New update found:', data.version)
+          Toast.show({ text: 'Mengunduh pembaruan...', duration: 'short' })
+          
+          const version = await CapacitorUpdater.download({
+            url: `https://serverpulsa-vue-3.vercel.app${data.url}`,
+            version: data.version
+          })
+          
+          localStorage.setItem('app_version', data.version)
+          Toast.show({ text: 'Memuat pembaruan...', duration: 'short' })
+          await CapacitorUpdater.set(version)
+        }
+      } catch (err) {
+        console.error('Failed to check for updates', err)
+      }
+    }
+    
+    checkForUpdates()
+    
     CapacitorApp.addListener('backButton', () => {
       const currentPath = router.currentRoute.value.path
       if (currentPath === '/' || currentPath === '/login' || currentPath === '/riwayat' || currentPath === '/settings') {
