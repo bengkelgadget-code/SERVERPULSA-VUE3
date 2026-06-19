@@ -1,14 +1,14 @@
 import fs from 'fs'
-import archiver from 'archiver'
+import { ZipArchive } from 'archiver'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const distDir = path.join(__dirname, '../dist')
-const updateZipPath = path.join(__dirname, '../update.zip')
-const finalZipPath = path.join(distDir, 'update.zip')
+const versionFile = path.resolve(__dirname, '../public/version.json')
+const distDir = path.resolve(__dirname, '../dist')
+const outputZip = path.resolve(distDir, 'update.zip')
 
 // Make sure dist exists
 if (!fs.existsSync(distDir)) {
@@ -16,17 +16,16 @@ if (!fs.existsSync(distDir)) {
   process.exit(1)
 }
 
-const output = fs.createWriteStream(updateZipPath)
-const archive = archiver('zip', {
+// Create a file to stream archive data to
+const output = fs.createWriteStream(outputZip)
+const archive = new ZipArchive({
   zlib: { level: 9 } // Sets the compression level.
 })
 
 output.on('close', () => {
   console.log(`Generated OTA zip: ${archive.pointer()} total bytes`)
   
-  // Move the zip into the dist folder so Vercel serves it
-  fs.renameSync(updateZipPath, finalZipPath)
-  
+  // No need to move since outputZip is already in distDir
   // Create version.json inside dist
   const versionInfo = {
     version: Date.now().toString(), // Use timestamp as version
