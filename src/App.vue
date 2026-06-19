@@ -8,6 +8,7 @@ import { Capacitor } from '@capacitor/core'
 import TransactionPopup from '@/components/TransactionPopup.vue'
 import { usePrinterStore } from '@/stores/printer'
 import { useBluetooth } from '@/composables/useBluetooth'
+import { CapacitorUpdater } from '@capgo/capacitor-updater'
 
 const auth = useAuthStore()
 const printer = usePrinterStore()
@@ -19,6 +20,8 @@ onMounted(() => {
   auth.initialize()
   
   if (Capacitor.isNativePlatform()) {
+    CapacitorUpdater.notifyAppReady()
+    
     CapacitorApp.addListener('backButton', () => {
       const currentPath = router.currentRoute.value.path
       if (currentPath === '/' || currentPath === '/login' || currentPath === '/riwayat' || currentPath === '/settings') {

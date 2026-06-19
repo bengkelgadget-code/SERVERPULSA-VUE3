@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   bundledWebRuntime: false,
   plugins: {
+    CapacitorUpdater: {
+      autoUpdate: true
+    },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
