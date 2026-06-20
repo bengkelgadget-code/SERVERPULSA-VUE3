@@ -25,22 +25,32 @@ const fetchStats = async () => {
       .from('users')
       .select('*', { count: 'exact', head: true })
     
-    // Fetch transactions count
-    const { count: txCount } = await supabase
-      .from('transactions')
-      .select('*', { count: 'exact', head: true })
+    // Use RPC to get deposit summary
+    const { data: depositSummaryData, error: depositSummaryError } = await supabase
+      .rpc('get_deposit_summary')
       
-    // Fetch pending deposits count
-    const { count: depositsCount } = await supabase
-      .from('deposits')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending')
+    let depositsCount = 0
+    if (!depositSummaryError && depositSummaryData && depositSummaryData.length > 0) {
+      depositsCount = depositSummaryData[0].total_pending || 0
+    }
       
     // Fetch active products count
     const { count: productsCount } = await supabase
       .from('products')
       .select('*', { count: 'exact', head: true })
       .eq('is_active', true)
+      
+    // Use RPC to get total transactions and profit (all transactions)
+    const { data: staffData } = await supabase.from('users').select('id')
+    const allUserIds = staffData?.map(s => s.id) || []
+    
+    const { data: profitSummaryData } = await supabase
+      .rpc('get_profit_summary', { p_user_ids: allUserIds })
+      
+    let txCount = 0
+    if (profitSummaryData && profitSummaryData.length > 0) {
+      txCount = profitSummaryData[0].total_transactions || 0
+    }
       
     stats.value[0].value = usersCount || 0
     stats.value[1].value = txCount || 0
@@ -92,10 +102,7 @@ const setupRealtime = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
       debouncedFetchStats()
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
-      debouncedFetchStats()
-    })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: 'status=eq.pending' }, () => {
       debouncedFetchStats()
     })
     .subscribe()

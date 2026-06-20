@@ -142,9 +142,19 @@ const filteredProducts = computed(() => {
   return result
 })
 
+const validatePhone = (phone: string): string | null => {
+  phone = phone.trim().replace(/\D/g, '')
+  if (!phone) return 'Silakan isi Nomor Handphone terlebih dahulu!'
+  if (phone.startsWith('62')) phone = '0' + phone.slice(2)
+  if (phone.length < 10 || phone.length > 13) return 'Nomor HP harus 10-13 digit'
+  if (!phone.startsWith('08')) return 'Nomor HP harus diawali 08'
+  return null
+}
+
 const selectProduct = (sku: string) => {
-  if (!customerNo.value) {
-    showAlert('Silakan isi Nomor Handphone terlebih dahulu!')
+  const phoneErr = validatePhone(customerNo.value)
+  if (phoneErr) {
+    showAlert(phoneErr)
     return
   }
   let url = `/transaction/${sku}?phone=${customerNo.value}`

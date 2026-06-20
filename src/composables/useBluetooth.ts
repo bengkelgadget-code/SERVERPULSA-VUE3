@@ -9,11 +9,13 @@ export interface BluetoothDevice {
   class?: number;
 }
 
+// Shared state (singleton) — persists across all useBluetooth() callers
+const devices = ref<BluetoothDevice[]>([])
+const connectedDevice = ref<BluetoothDevice | null>(null)
+const isConnecting = ref(false)
+const isScanning = ref(false)
+
 export function useBluetooth() {
-  const devices = ref<BluetoothDevice[]>([])
-  const connectedDevice = ref<BluetoothDevice | null>(null)
-  const isConnecting = ref(false)
-  const isScanning = ref(false)
 
   async function checkPermissions(): Promise<boolean> {
     if (Capacitor.getPlatform() !== 'android') {

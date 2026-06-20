@@ -81,13 +81,13 @@ const setupRealtime = () => {
 }
 
 const startPolling = () => {
-  // Poll every 5 seconds for pending transactions
+  // Poll every 15 seconds (battery-friendly) — only does work if pending exists
   pollingInterval = setInterval(async () => {
     await checkPendingTransactions()
-  }, 5000)
+  }, 15000)
   
-  // Do an initial check after 2 seconds
-  setTimeout(checkPendingTransactions, 2000)
+  // Initial check after 3 seconds
+  setTimeout(checkPendingTransactions, 3000)
 }
 
 const checkPendingTransactions = async () => {
@@ -135,8 +135,10 @@ const checkPendingTransactions = async () => {
       }
     }
 
-    // 4. Force check API for up to 3 still-pending transactions (digiflazz callback fallback)
-    const pendingArray = Array.from(knownPendingIds).slice(0, 3)
+    // 4. Only call API if we have known pending transactions (avoid unnecessary requests)
+    if (knownPendingIds.size === 0) return
+    
+    const pendingArray = Array.from(knownPendingIds).slice(0, 1) // Check 1 at a time to reduce load
     for (const id of pendingArray) {
       try {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {

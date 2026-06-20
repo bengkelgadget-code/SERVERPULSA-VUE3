@@ -117,8 +117,8 @@ const formatCurrency = (value: number) => {
         >
           <option value="">All Statuses</option>
           <option value="pending">Pending</option>
-          <option value="Sukses">Sukses</option>
-          <option value="Gagal">Gagal</option>
+          <option value="sukses">Sukses</option>
+          <option value="gagal">Gagal</option>
         </select>
         
         <button 
@@ -176,9 +176,9 @@ const formatCurrency = (value: number) => {
                 <div v-if="trx.sn" class="text-xs text-gray-500 mt-1 line-clamp-3" :title="trx.sn">SN: {{ trx.sn }}</div>
               </td>
               <td class="px-3 py-3">
-                <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.price) }}</div>
+                <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.harga_jual) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">
-                  Markup: {{ formatCurrency(trx.price - (trx.original_price || trx.price)) }}
+                  Modal: {{ formatCurrency(trx.harga_modal) }}
                 </div>
               </td>
               <td class="px-3 py-3">

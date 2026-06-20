@@ -197,9 +197,9 @@ const printReceipt = async () => {
       return
     }
     
-    printerStore.isConnected = true
     try {
       await bluetooth.connect(printerStore.connectedAddress)
+      printerStore.isConnected = true
       
       const lines = await buildReceiptLines()
       const text = bluetooth.formatLines(lines)
@@ -305,8 +305,10 @@ const buildReceiptLines = async () => {
   
   lines.push({ text: '' })
   lines.push({ text: '--------------------------------' })
-  lines.push({ text: 'Info Hubungi Call Center 123', center: true, font: fontSmall })
-  lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: fontSmall })
+  if (isPln.value) {
+    lines.push({ text: 'Info Hubungi Call Center 123', center: true, font: fontSmall })
+    lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: fontSmall })
+  }
   lines.push({ text: '' })
   lines.push({ text: 'Terima Kasih', center: true, font: fontSmall })
 
@@ -544,8 +546,8 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
           </div>
 
           <div class="text-center mt-6 border-t border-dashed border-black pt-4 text-xs">
-            <p>Info Hubungi Call Center 123</p>
-            <p>Atau Hubungi PLN Terdekat</p>
+            <p v-if="isPln">Info Hubungi Call Center 123</p>
+            <p v-if="isPln">Atau Hubungi PLN Terdekat</p>
             <p class="mt-3">Terima Kasih</p>
           </div>
         </div>

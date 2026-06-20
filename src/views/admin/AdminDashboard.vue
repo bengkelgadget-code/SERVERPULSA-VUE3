@@ -41,19 +41,17 @@ const fetchStats = async () => {
     let txCount = 0
     let profit = 0
     if (staffIds.length > 0) {
-      const { count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        .in('user_id', staffIds)
-      txCount = count || 0
+      // Use RPC to get aggregated profit summary
+      const { data: summaryData, error: summaryError } = await supabase
+        .rpc('get_profit_summary', { p_user_ids: staffIds })
       
-      const { data: txData } = await supabase
-        .from('transactions')
-        .select('harga_jual, harga_modal')
-        .eq('status', 'sukses')
-        .in('user_id', staffIds)
-        
-      profit = txData?.reduce((acc, tx) => acc + (Number(tx.harga_jual) - Number(tx.harga_modal)), 0) || 0
+      if (summaryError) {
+        console.error('Error fetching profit summary:', summaryError)
+      } else if (summaryData && summaryData.length > 0) {
+        const summary = summaryData[0]
+        profit = summary.total_profit || 0
+        txCount = summary.total_transactions || 0
+      }
     }
     
     // Fetch my deposits count
@@ -86,10 +84,10 @@ const setupRealtime = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
       debouncedFetchStats()
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `admin_id=eq.${auth.user?.id}` }, () => {
       debouncedFetchStats()
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits' }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: `user_id=eq.${auth.user?.id}` }, () => {
       debouncedFetchStats()
     })
     .subscribe()

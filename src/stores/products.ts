@@ -22,7 +22,7 @@ export const useProductsStore = defineStore('products', () => {
       while (true) {
         const { data: prodData, error } = await supabase
           .from('products')
-          .select('*')
+          .select('id, product_name, category, brand, type, seller_name, price, buyer_sku_status, seller_product_status, unlimited_stock, stock, multi, start_cut_off, end_cut_off, desc, sku_code, harga_jual, harga_modal, is_active')
           .eq('is_active', true)
           .order('category')
           .order('harga_jual')

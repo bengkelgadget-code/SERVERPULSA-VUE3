@@ -62,7 +62,7 @@ export function useContacts() {
   }
 
   function normalizePhone(phone: string): string {
-    phone = phone.replace(/\\D/g, '') // remove all non-digits
+    phone = phone.replace(/\D/g, '') // remove all non-digits
     if (phone.startsWith('62')) {
       phone = '0' + phone.substring(2)
     } else if (phone.startsWith('+62')) {

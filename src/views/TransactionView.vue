@@ -16,6 +16,7 @@ const customerNameQuery = route.query.name as string || ''
 const loading = ref(false)
 const customerName = ref(customerNameQuery)
 const errorMsg = ref('')
+const isSubmitting = ref(false)
 
 const isPasca = computed(() => {
   return product.value?.category?.toLowerCase().includes('pasca') || false
@@ -126,10 +127,34 @@ const inquiryPasca = async () => {
   }
 }
 
+// Phone number validation
+const validatePhone = (phone: string, category: string): string | null => {
+  phone = phone.trim().replace(/\D/g, '')
+  if (!phone) return 'Nomor tujuan wajib diisi'
+  if (category === 'pulsa' || category === 'data' || category === 'telpon') {
+    if (phone.startsWith('62')) phone = '0' + phone.slice(2)
+    if (phone.length < 10 || phone.length > 13) return 'Nomor HP harus 10-13 digit'
+    if (!phone.startsWith('08')) return 'Nomor HP harus diawali 08'
+  }
+  return null
+}
+
 const buyProduct = async () => {
-  if (!customerNo.value) {
-    errorMsg.value = 'Nomor tujuan wajib diisi'
+  if (isSubmitting.value) return
+  
+  const phoneErr = validatePhone(customerNo.value, product.value?.category || '')
+  if (phoneErr) {
+    errorMsg.value = phoneErr
     return
+  }
+
+  // Check saldo before purchase (only for saldo payment)
+  if (selectedPayment.value === 'saldo') {
+    const currentSaldo = authStore.userProfile?.saldo || 0
+    if (currentSaldo < totalPrice.value) {
+      errorMsg.value = `Saldo tidak cukup. Sisa: ${formatRp(currentSaldo)}, butuh: ${formatRp(totalPrice.value)}`
+      return
+    }
   }
 
   const confirmMsg = `Konfirmasi Pembelian:\n\nProduk: ${product.value?.product_name}\nNomor: ${customerNo.value}\nHarga: ${formatRp(totalPrice.value)}\nMetode: ${selectedPayment.value === 'saldo' ? 'Saldo Aplikasi' : 'Tunai / Kasir'}\n\nLanjutkan?`
@@ -137,6 +162,7 @@ const buyProduct = async () => {
     return
   }
 
+  isSubmitting.value = true
   loading.value = true
   errorMsg.value = ''
   
@@ -171,6 +197,7 @@ const buyProduct = async () => {
     errorMsg.value = e.message || 'Terjadi kesalahan jaringan'
   } finally {
     loading.value = false
+    isSubmitting.value = false
   }
 }
 </script>
@@ -279,7 +306,7 @@ const buyProduct = async () => {
     <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-3 bg-white border-t border-neutral-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe z-20">
       <button 
         @click="buyProduct" 
-        :disabled="loading || !customerNo || (isPasca && (!isPascaInquiryDone || pascaAmount === 0))"
+        :disabled="loading || isSubmitting || !customerNo || (isPasca && (!isPascaInquiryDone || pascaAmount === 0))"
         class="w-full bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-primary-600/20 transition-all flex justify-between items-center active:scale-[0.98]">
         <div class="text-left">
           <p class="text-[10px] font-medium text-primary-100 mb-0.5">Total Bayar</p>

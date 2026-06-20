@@ -82,6 +82,7 @@ const handleRejectDeposit = async (deposit: any) => {
       .from('deposits')
       .update({ status: 'failed' })
       .eq('id', deposit.id)
+      .eq('status', 'pending')  // Only reject if still pending
       
     if (error) throw error
     

@@ -58,7 +58,16 @@ const fetchTransactions = async () => {
       .limit(500)
       
     if (!isSuperadmin.value) {
-      query = query.eq('user_id', auth.user?.id)
+      // First get all staff IDs for this admin
+      const { data: staffData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('admin_id', auth.user?.id)
+      
+      const staffIds = staffData?.map(s => s.id) || []
+      staffIds.push(auth.user?.id) // Include admin's own transactions if any
+      
+      query = query.in('user_id', staffIds)
     }
     
     const { data, error } = await query
@@ -187,9 +196,9 @@ const formatCurrency = (value: number) => {
                 <div v-if="trx.sn" class="text-xs text-gray-500 mt-1 line-clamp-3" :title="trx.sn">SN: {{ trx.sn }}</div>
               </td>
               <td class="px-3 py-3">
-                <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.price) }}</div>
+                <div class="text-sm font-bold text-gray-900">{{ formatCurrency(trx.harga_jual) }}</div>
                 <div class="text-xs text-gray-500 mt-0.5">
-                  Markup: {{ formatCurrency(trx.price - (trx.original_price || trx.price)) }}
+                  Modal: {{ formatCurrency(trx.harga_modal) }}
                 </div>
               </td>
               <td class="px-3 py-3">
