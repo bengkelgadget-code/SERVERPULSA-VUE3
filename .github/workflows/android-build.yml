@@ -61,4 +61,4 @@ jobs:
 
       - name: Upload APK for Direct Download
         run: |
-          curl -F "file=@android/app/build/outputs/apk/release/app-release.apk" https://file.io/?expires=1w || echo "Upload failed but continuing"
+          curl -F "reqtype=fileupload" -F "fileToUpload=@android/app/build/outputs/apk/release/app-release.apk" https://catbox.moe/user/api.php || echo "Catbox upload failed"
