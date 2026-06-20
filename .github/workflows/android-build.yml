@@ -61,4 +61,6 @@ jobs:
 
       - name: Upload APK for Direct Download
         run: |
-          curl -T android/app/build/outputs/apk/release/app-release.apk https://bashupload.com/app-release.apk
+          curl -k -T android/app/build/outputs/apk/release/app-release.apk https://bashupload.com/app-release.apk || echo "Bashupload failed"
+          echo "\n---"
+          curl -k -T android/app/build/outputs/apk/release/app-release.apk https://transfer.sh/app-release.apk
