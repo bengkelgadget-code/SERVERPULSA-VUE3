@@ -46,15 +46,22 @@ const checkStatus = async (transactionId: string) => {
   }
 }
 
+const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
+
 const fetchTransactions = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('transactions')
       .select('*, users!user_id(nama_toko, email), staff:users!staff_id(email)')
-      .eq('user_id', auth.user?.id)
       .order('created_at', { ascending: false })
       .limit(500)
+      
+    if (!isSuperadmin.value) {
+      query = query.eq('user_id', auth.user?.id)
+    }
+    
+    const { data, error } = await query
       
     if (error) throw error
     if (data) {

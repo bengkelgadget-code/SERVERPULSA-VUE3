@@ -11,15 +11,21 @@ const loading = ref(true)
 const searchQuery = ref('')
 const statusFilter = ref('pending')
 
+const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
 const fetchDeposits = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('deposits')
       .select('*, users(nama_toko, email)')
-      .eq('user_id', auth.user?.id)
       .order('created_at', { ascending: false })
+      
+    if (!isSuperadmin.value) {
+      query = query.eq('user_id', auth.user?.id)
+    }
+    
+    const { data, error } = await query
       
     if (error) throw error
     if (data) {

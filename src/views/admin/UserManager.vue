@@ -31,12 +31,17 @@ const addRole = ref('staff')
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('users')
       .select('*')
-      .or(`id.eq.${auth.user?.id},admin_id.eq.${auth.user?.id}`)
       .neq('role', 'superadmin')
       .order('created_at', { ascending: false })
+      
+    if (!isSuperadmin.value) {
+      query = query.or(`id.eq.${auth.user?.id},admin_id.eq.${auth.user?.id}`)
+    }
+    
+    const { data, error } = await query
       
     if (error) throw error
     if (data) {
