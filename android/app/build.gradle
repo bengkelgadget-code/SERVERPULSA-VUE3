@@ -22,6 +22,8 @@ android {
             storePassword "serverpulsa2026"
             keyAlias "serverpulsa"
             keyPassword "serverpulsa2026"
+            v1SigningEnabled true
+            v2SigningEnabled true
         }
     }
     buildTypes {
