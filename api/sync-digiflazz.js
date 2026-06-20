@@ -80,9 +80,20 @@ export default async function handler(req, res) {
         product_name: p.product_name,
         category: p.category,
         brand: p.brand,
+        type: p.type,
+        seller_name: p.seller_name,
+        desc: p.desc,
+        buyer_sku_status: p.buyer_product_status,
+        seller_product_status: p.seller_product_status,
+        unlimited_stock: p.unlimited_stock,
+        stock: p.stock,
+        multi: p.multi,
+        start_cut_off: p.start_cut_off,
+        end_cut_off: p.end_cut_off,
         harga_modal: p.price,
         harga_jual: existing && existing.harga_jual !== undefined ? existing.harga_jual : p.price,
-        is_active: p.buyer_product_status,
+        // Product is ONLY active if BOTH buyer and seller status are true
+        is_active: p.buyer_product_status && p.seller_product_status,
       };
     });
 
