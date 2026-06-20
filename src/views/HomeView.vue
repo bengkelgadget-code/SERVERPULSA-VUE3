@@ -113,9 +113,10 @@ const categories = [
       
     </div>
     
-    <BottomNav />
   </div>
   </PullToRefresh>
+  
+  <BottomNav />
 </template>
 
 <style scoped>

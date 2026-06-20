@@ -186,8 +186,6 @@ const closePopup = () => {
       </div>
     </div>
     
-    <BottomNav />
-
     <!-- Popup Modal -->
     <div v-if="selectedTrx" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="closePopup">
       <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
@@ -249,4 +247,6 @@ const closePopup = () => {
 
   </div>
   </PullToRefresh>
+  
+  <BottomNav />
 </template>
