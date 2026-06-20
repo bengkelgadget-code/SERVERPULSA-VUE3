@@ -4,7 +4,7 @@ android {
     namespace = "com.konter.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.serverpulsa.pro"
+        applicationId "com.rog.test.app99"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2

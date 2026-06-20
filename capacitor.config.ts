@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.serverpulsa.pro',
+  appId: 'com.rog.test.app99',
   appName: 'Server Pulsa Pro',
   webDir: 'dist',
   bundledWebRuntime: false,
