@@ -11,6 +11,8 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -59,6 +61,9 @@ jobs:
           name: app-release
           path: android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Upload APK for Direct Download
+      - name: Create GitHub Release with APK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -F "reqtype=fileupload" -F "fileToUpload=@android/app/build/outputs/apk/release/app-release.apk" https://catbox.moe/user/api.php || echo "Catbox upload failed"
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          gh release create "$TAG_NAME" android/app/build/outputs/apk/release/app-release.apk --title "APK Release $TAG_NAME" --notes "Direct APK download link"
