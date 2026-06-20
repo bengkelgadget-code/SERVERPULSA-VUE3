@@ -130,12 +130,24 @@ onUnmounted(() => {
 const getStatusColor = (status: string) => {
   if (status === 'sukses') return 'bg-green-100 text-green-700'
   if (status === 'gagal') return 'bg-red-100 text-red-700'
+  // using blue for 'proses' visually separates it from 'pending' (yellow)
+  if (status === 'proses') return 'bg-blue-100 text-blue-700'
   return 'bg-yellow-100 text-yellow-700'
+}
+
+const getDisplayStatus = (status: string, createdAt: string) => {
+  if (status !== 'pending') return status;
+  const diffInMinutes = (new Date().getTime() - new Date(createdAt).getTime()) / 60000;
+  if (diffInMinutes < 2) {
+    return 'proses';
+  }
+  return 'pending';
 }
 
 const getStatusIndicator = (status: string) => {
   if (status === 'sukses') return 'bg-green-500'
   if (status === 'gagal') return 'bg-red-500'
+  if (status === 'proses') return 'bg-blue-500'
   return 'bg-yellow-500'
 }
 
@@ -170,7 +182,7 @@ const closePopup = () => {
       <div v-else class="space-y-2">
         <div v-for="trx in transactions" :key="trx.id" @click="openPopup(trx)" class="bg-white rounded-xl p-3 shadow-sm border border-neutral-100 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer">
           <div class="flex items-center gap-3">
-            <div :class="['w-1.5 h-10 rounded-full', getStatusIndicator(trx.status)]"></div>
+            <div :class="['w-1.5 h-10 rounded-full', getStatusIndicator(getDisplayStatus(trx.status, trx.created_at))]"></div>
             <div>
               <h3 class="font-bold text-sm text-neutral-800 line-clamp-1">{{ trx.products?.product_name || trx.sku_code }}</h3>
               <p class="text-xs text-neutral-500 mt-0.5">{{ trx.customer_no }} &bull; {{ formatDateShort(trx.created_at) }}</p>
@@ -178,8 +190,8 @@ const closePopup = () => {
           </div>
           <div class="text-right flex flex-col items-end gap-1">
             <p class="font-bold text-sm text-primary-600">{{ formatRp(trx.harga_jual) }}</p>
-            <span :class="['px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider', getStatusColor(trx.status)]">
-              {{ trx.status }}
+            <span :class="['px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider', getStatusColor(getDisplayStatus(trx.status, trx.created_at))]">
+              {{ getDisplayStatus(trx.status, trx.created_at) }}
             </span>
           </div>
         </div>
@@ -201,8 +213,8 @@ const closePopup = () => {
           <div class="text-center mb-6">
             <p class="text-sm text-neutral-500 mb-2">Status Transaksi</p>
             <div class="inline-flex items-center gap-2">
-              <span :class="['px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider', getStatusColor(selectedTrx.status)]">
-                {{ selectedTrx.status }}
+              <span :class="['px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider', getStatusColor(getDisplayStatus(selectedTrx.status, selectedTrx.created_at))]">
+                {{ getDisplayStatus(selectedTrx.status, selectedTrx.created_at) }}
               </span>
             </div>
             <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Menunggu respons dari server...</p>
