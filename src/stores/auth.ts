@@ -97,10 +97,20 @@ export const useAuthStore = defineStore('auth', () => {
             }
           }
         }
+        const { data: userData } = await supabase.auth.getUser()
+        if (userData?.user?.user_metadata) {
+          if (userData.user.user_metadata.nama_toko) finalData.nama_toko = userData.user.user_metadata.nama_toko
+          if (userData.user.user_metadata.alamat_toko) finalData.alamat_toko = userData.user.user_metadata.alamat_toko
+        }
+
         // Overwrite nama_toko if local setting exists
         const customNamaToko = localStorage.getItem('custom_nama_toko')
         if (customNamaToko) {
           finalData.nama_toko = customNamaToko
+        }
+        const customAlamatToko = localStorage.getItem('custom_alamat_toko')
+        if (customAlamatToko) {
+          finalData.alamat_toko = customAlamatToko
         }
         
         console.log('Profile fetched successfully:', finalData.role)

@@ -3,7 +3,9 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const auth = useAuthStore()
 const isVisible = ref(false)
 const transactionInfo = ref({ title: '', message: '', status: '' })
@@ -202,6 +204,12 @@ const showPopup = async (title: string, message: string, status: string) => {
   }, 5000)
 }
 
+const closePopup = () => {
+  isVisible.value = false
+  if (timeoutId) clearTimeout(timeoutId)
+  router.push('/history')
+}
+
 onUnmounted(() => {
   if (timeoutId) clearTimeout(timeoutId)
   if (pollingInterval) clearInterval(pollingInterval)
@@ -234,6 +242,9 @@ onUnmounted(() => {
           <h4 class="font-bold text-gray-900 text-sm">{{ transactionInfo.title }}</h4>
           <p class="text-xs text-gray-500 mt-1">{{ transactionInfo.message }}</p>
         </div>
+        <button @click="closePopup" class="ml-auto p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
     </div>
   </Transition>

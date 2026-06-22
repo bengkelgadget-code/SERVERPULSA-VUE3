@@ -18,7 +18,7 @@ const showPrinterModal = ref(false)
 
 onMounted(() => {
   namaToko.value = auth.userProfile?.nama_toko || ''
-  alamat.value = 'Jl. Contoh Alamat No 123' // Placeholder, if we add address to DB later
+  alamat.value = auth.userProfile?.alamat_toko || '' 
   selectedTheme.value = localStorage.getItem('app_theme') || 'default'
 })
 
@@ -41,6 +41,13 @@ const handleSave = async () => {
   isSaving.value = true
   
   try {
+    // 1. Save to Auth Metadata (always works for own user)
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { nama_toko: namaToko.value, alamat_toko: alamat.value }
+    })
+    if (authError) console.warn('Update auth metadata failed', authError)
+
+    // 2. Try saving to public.users (might fail if RLS prevents it)
     const { error } = await supabase.from('users')
       .update({ nama_toko: namaToko.value })
       .eq('id', auth.user.id)
@@ -53,10 +60,12 @@ const handleSave = async () => {
     
     // Save locally so it always sticks on this device even if DB fails
     localStorage.setItem('custom_nama_toko', namaToko.value)
+    localStorage.setItem('custom_alamat_toko', alamat.value)
     
     // Update local store
     if (auth.userProfile) {
       auth.userProfile.nama_toko = namaToko.value
+      auth.userProfile.alamat_toko = alamat.value
     }
     
     alert('Pengaturan berhasil disimpan!')

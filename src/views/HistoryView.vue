@@ -197,68 +197,68 @@ const closePopup = () => {
         </div>
       </div>
     </div>
-    
-    <!-- Popup Modal -->
-    <div v-if="selectedTrx" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="closePopup">
-      <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
-        
-        <div class="bg-neutral-50 border-b border-neutral-100 p-4 flex justify-between items-center relative">
-          <h2 class="font-bold text-neutral-800 text-xl">Detail Transaksi</h2>
-          <button @click="closePopup" class="p-1.5 bg-neutral-200/50 hover:bg-neutral-200 rounded-full text-neutral-600 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-        </div>
-        
-        <div class="p-5 flex-1 overflow-y-auto">
-          <div class="text-center mb-6">
-            <p class="text-sm text-neutral-500 mb-2">Status Transaksi</p>
-            <div class="inline-flex items-center gap-2">
-              <span :class="['px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider', getStatusColor(getDisplayStatus(selectedTrx.status, selectedTrx.created_at))]">
-                {{ getDisplayStatus(selectedTrx.status, selectedTrx.created_at) }}
-              </span>
-            </div>
-            <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Menunggu respons dari server...</p>
-          </div>
-
-          <div class="space-y-4 text-sm">
-            <div>
-              <p class="text-neutral-500 text-xs mb-0.5">Produk</p>
-              <p class="font-bold text-neutral-800">{{ selectedTrx.products?.product_name || selectedTrx.sku_code }}</p>
-            </div>
-            <div>
-              <p class="text-neutral-500 text-xs mb-0.5">Tujuan / Nomor Pelanggan</p>
-              <p class="font-mono font-medium text-neutral-800">{{ selectedTrx.customer_no }}</p>
-            </div>
-            <div>
-              <p class="text-neutral-500 text-xs mb-0.5">SN / Ref ID</p>
-              <p class="font-mono text-xs text-neutral-600 break-all">{{ selectedTrx.sn || selectedTrx.ref_id }}</p>
-            </div>
-            <div class="flex justify-between items-center pt-2 border-t border-dashed border-neutral-200">
-              <p class="text-neutral-500">Total Harga</p>
-              <p class="font-bold text-primary-600 text-lg">{{ formatRp(selectedTrx.harga_jual) }}</p>
-            </div>
-            <div class="flex justify-between items-center">
-              <p class="text-neutral-500">Tanggal</p>
-              <p class="text-neutral-800 font-medium">{{ formatDate(selectedTrx.created_at) }}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div class="p-4 bg-neutral-50 border-t border-neutral-100 flex gap-3">
-          <button @click="router.push(`/receipt/${selectedTrx.id}`)" class="flex-1 flex justify-center items-center gap-2 text-sm font-semibold text-white bg-primary-600 px-4 py-2.5 rounded-xl hover:bg-primary-700 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Cetak
-          </button>
-          <button @click="router.push(`/receipt/${selectedTrx.id}?share=true`)" class="flex-1 flex justify-center items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 border border-primary-100 px-4 py-2.5 rounded-xl hover:bg-primary-100 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
-            Kirim
-          </button>
-        </div>
-      </div>
-    </div>
 
   </div>
   </PullToRefresh>
   
+  <!-- Popup Modal -->
+  <div v-if="selectedTrx" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="closePopup">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
+      
+      <div class="bg-neutral-50 border-b border-neutral-100 p-4 flex justify-between items-center relative">
+        <h2 class="font-bold text-neutral-800 text-xl">Detail Transaksi</h2>
+        <button @click="closePopup" class="p-1.5 bg-neutral-200/50 hover:bg-neutral-200 rounded-full text-neutral-600 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      
+      <div class="p-5 flex-1 overflow-y-auto max-h-[80vh]">
+        <div class="text-center mb-6">
+          <p class="text-sm text-neutral-500 mb-2">Status Transaksi</p>
+          <div class="inline-flex items-center gap-2">
+            <span :class="['px-3 py-1 rounded-full text-sm font-bold uppercase tracking-wider', getStatusColor(getDisplayStatus(selectedTrx.status, selectedTrx.created_at))]">
+              {{ getDisplayStatus(selectedTrx.status, selectedTrx.created_at) }}
+            </span>
+          </div>
+          <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Menunggu respons dari server...</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <p class="text-sm text-neutral-500 mb-1">Produk</p>
+            <p class="font-bold text-neutral-800">{{ selectedTrx.products?.product_name }}</p>
+          </div>
+          <div>
+            <p class="text-sm text-neutral-500 mb-1">Tujuan / Nomor Pelanggan</p>
+            <p class="font-medium text-neutral-800">{{ selectedTrx.customer_no }}</p>
+          </div>
+          <div>
+            <p class="text-sm text-neutral-500 mb-1">SN / Ref ID</p>
+            <p class="font-mono text-xs text-neutral-600 break-all bg-neutral-50 p-2 rounded border border-neutral-100">{{ selectedTrx.sn || selectedTrx.ref_id || '-' }}</p>
+          </div>
+          <div class="flex justify-between items-center pt-2 border-t border-dashed border-neutral-200">
+            <p class="text-neutral-500">Total Harga</p>
+            <p class="font-bold text-primary-600 text-lg">{{ formatRp(selectedTrx.harga_jual) }}</p>
+          </div>
+          <div class="flex justify-between items-center">
+            <p class="text-neutral-500">Tanggal</p>
+            <p class="text-neutral-800 font-medium">{{ formatDate(selectedTrx.created_at) }}</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-4 bg-neutral-50 border-t border-neutral-100 flex gap-3">
+        <button @click="router.push(`/receipt/${selectedTrx.id}`)" class="flex-1 flex justify-center items-center gap-2 text-sm font-semibold text-white bg-primary-600 px-4 py-2.5 rounded-xl hover:bg-primary-700 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Cetak
+        </button>
+        <button @click="router.push(`/receipt/${selectedTrx.id}?share=true`)" class="flex-1 flex justify-center items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 border border-primary-100 px-4 py-2.5 rounded-xl hover:bg-primary-100 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+          Kirim
+        </button>
+      </div>
+    </div>
+  </div>
+
   <BottomNav />
 </template>

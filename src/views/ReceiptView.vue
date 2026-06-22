@@ -23,6 +23,12 @@ const storeName = computed(() => {
     || 'KONTER PULSA'
 })
 
+const storeAddress = computed(() => {
+  return authStore.userProfile?.alamat_toko
+    || localStorage.getItem('custom_alamat_toko')
+    || 'Jl. Contoh Alamat No 123'
+})
+
 const loading = ref(true)
 const trx = ref<any>(null)
 const customHargaJual = ref(0)
@@ -200,6 +206,39 @@ const printReceipt = async () => {
     try {
       await bluetooth.connect(printerStore.connectedAddress)
       printerStore.isConnected = true
+      
+      // Centered text helper
+      const printCentered = async (text: string, style: 'normal' | 'bold' = 'normal') => {
+        const charsPerLine = 32
+        const lines = []
+        let currentLine = ''
+        const words = text.split(' ')
+        for (const word of words) {
+          if ((currentLine + word).length > charsPerLine) {
+            if (currentLine) lines.push(currentLine.trim())
+            currentLine = word + ' '
+          } else {
+            currentLine += word + ' '
+          }
+        }
+        if (currentLine) lines.push(currentLine.trim())
+        for (const line of lines) {
+          const padding = Math.max(0, Math.floor((charsPerLine - line.length) / 2))
+          await bluetooth.write(' '.repeat(padding) + line + '\n')
+        }
+      }
+
+      // Set font to double height/width for title
+      await bluetooth.write('\x1B\x21\x30')
+      await printCentered(storeName.value, 'bold')
+      
+      // Set back to normal
+      await bluetooth.write('\x1B\x21\x00')
+      await bluetooth.write('\n')
+      
+      // Print address
+      await printCentered(storeAddress.value)
+      await bluetooth.write('\n')
       
       const lines = await buildReceiptLines()
       const text = bluetooth.formatLines(lines)
@@ -480,8 +519,12 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
       <div v-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0 shrink-0">
         <div class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
+          <div class="mb-4">
+            <h2 class="text-xl font-bold text-center">{{ storeName }}</h2>
+            <p class="text-[11px] text-neutral-500 mt-1 text-center leading-relaxed">{{ storeAddress }}</p>
+          </div>
+
           <div class="text-center mb-4">
-            <p class="font-bold text-base">** {{ storeName.toUpperCase() }} **</p>
             <p>{{ formatDate(trx.created_at) }} (CU)</p>
           </div>
 
