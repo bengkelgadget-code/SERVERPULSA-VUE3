@@ -666,6 +666,23 @@ app.post('/admin-action', async (c) => {
         email: payload.email
       }
       
+      if (payload.password) {
+        if (payload.password.length < 8) {
+          return c.json({ error: 'Password minimal 8 karakter' }, 400)
+        }
+        const { error: pwdError } = await supabaseService.auth.admin.updateUserById(payload.id, {
+          password: payload.password,
+          email: payload.email // Also update auth email just to be safe if email is changed
+        })
+        if (pwdError) throw pwdError
+      } else {
+        // If no password provided but email is changed, try to sync email
+        const { error: emailError } = await supabaseService.auth.admin.updateUserById(payload.id, {
+          email: payload.email
+        })
+        if (emailError) console.warn('Sync email to auth failed:', emailError)
+      }
+      
       // Only superadmins can change roles
       if (payload.role && callerProfile.role === 'superadmin') {
         updateData.role = payload.role
