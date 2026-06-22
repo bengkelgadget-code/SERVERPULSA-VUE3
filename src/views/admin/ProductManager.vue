@@ -301,6 +301,7 @@ const syncDigiflazz = async () => {
         <p class="text-[13px] text-gray-500 mt-1">{{ products.length }} produk terdaftar</p>
       </div>
       <button 
+        v-if="isSuperadmin"
         @click="syncDigiflazz"
         :disabled="syncLoading"
         class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-[13px] font-bold flex items-center shadow-md shadow-blue-200/50 transition-colors disabled:opacity-50"
