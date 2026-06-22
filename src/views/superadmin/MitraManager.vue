@@ -367,10 +367,12 @@ const handleAddBalance = async () => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-semibold text-gray-900">{{ formatCurrency(user.saldo) }}</div>
+                <div v-if="user.role !== 'superadmin'" class="text-sm font-semibold text-gray-900">{{ formatCurrency(user.saldo) }}</div>
+                <div v-else class="text-sm text-gray-400 italic">Lihat Dashboard</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <button 
+                  v-if="user.role !== 'superadmin'"
                   @click="openBalanceModal(user)"
                   class="inline-flex items-center gap-1 text-green-600 hover:text-green-900 bg-green-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
