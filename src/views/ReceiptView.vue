@@ -208,7 +208,7 @@ const printReceipt = async () => {
       printerStore.isConnected = true
       
       // Centered text helper
-      const printCentered = async (text: string, style: 'normal' | 'bold' = 'normal') => {
+      const printCentered = async (text: string) => {
         const charsPerLine = 32
         const lines = []
         let currentLine = ''
@@ -224,21 +224,21 @@ const printReceipt = async () => {
         if (currentLine) lines.push(currentLine.trim())
         for (const line of lines) {
           const padding = Math.max(0, Math.floor((charsPerLine - line.length) / 2))
-          await bluetooth.write(' '.repeat(padding) + line + '\n')
+          await bluetooth.print(' '.repeat(padding) + line + '\n')
         }
       }
 
       // Set font to double height/width for title
-      await bluetooth.write('\x1B\x21\x30')
-      await printCentered(storeName.value, 'bold')
+      await bluetooth.print('\x1B\x21\x30')
+      await printCentered(storeName.value)
       
       // Set back to normal
-      await bluetooth.write('\x1B\x21\x00')
-      await bluetooth.write('\n')
+      await bluetooth.print('\x1B\x21\x00')
+      await bluetooth.print('\n')
       
       // Print address
       await printCentered(storeAddress.value)
-      await bluetooth.write('\n')
+      await bluetooth.print('\n')
       
       const lines = await buildReceiptLines()
       const text = bluetooth.formatLines(lines)
