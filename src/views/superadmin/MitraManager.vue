@@ -139,9 +139,9 @@ const handleEditUser = async () => {
       throw new Error(errorData.error || 'Failed to update user profile')
     }
 
-    alert('User updated successfully')
     showEditModal.value = false
-    fetchUsers()
+    await fetchUsers()
+    setTimeout(() => alert('User updated successfully'), 100)
   } catch (err: any) {
     console.error('Error updating user:', err)
     alert(err.message || 'Failed to update user')
@@ -185,12 +185,12 @@ const handleCreateUser = async () => {
       throw new Error(errorData.error || 'Failed to create user')
     }
 
-    alert('Berhasil membuat Mitra/User baru!')
     showAddModal.value = false
     addNamaToko.value = ''
     addEmail.value = ''
     addPassword.value = ''
-    fetchUsers()
+    await fetchUsers()
+    setTimeout(() => alert('Berhasil membuat Mitra/User baru!'), 100)
   } catch (err: any) {
     console.error('Error creating user:', err)
     alert(err.message || 'Failed to create user')
@@ -262,9 +262,9 @@ const handleAddBalance = async () => {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to add balance')
     
-    alert('Balance added successfully')
     showBalanceModal.value = false
-    fetchUsers() // Refresh
+    await fetchUsers() // Refresh
+    setTimeout(() => alert('Balance added successfully'), 100)
   } catch (err) {
     console.error('Error adding balance:', err)
     alert('Failed to add balance')
