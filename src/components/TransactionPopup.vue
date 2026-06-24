@@ -105,7 +105,7 @@ const checkPendingTransactions = async () => {
       .from('transactions')
       .select('id, status, customer_no')
       .or(`user_id.eq.${userId},staff_id.eq.${userId}`)
-      .in('status', ['pending', 'proses'])
+      .in('status', ['pending'])
 
     const currentPendingIds = new Set(dbPending?.map(t => t.id) || [])
 

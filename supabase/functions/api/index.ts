@@ -386,17 +386,15 @@ app.post('/sync-digiflazz', async (c) => {
       existingData.forEach(p => existingPrices.set(p.sku_code, p.harga_jual));
     }
 
-    const productsToUpsert = [];
+    const uniqueProductsMap = new Map();
     for (const item of products) {
-      if (item.buyer_product_status === false && item.seller_product_status === false) {
-        continue;
-      }
+      if (!item.buyer_sku_code) continue; // Skip invalid entries
       
       const isActive = item.buyer_product_status === true && item.seller_product_status === true;
       const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
       const existingJual = existingPrices.get(item.buyer_sku_code);
 
-      productsToUpsert.push({
+      uniqueProductsMap.set(item.buyer_sku_code, {
         sku_code: item.buyer_sku_code,
         product_name: item.product_name,
         category: item.category,
@@ -406,6 +404,8 @@ app.post('/sync-digiflazz', async (c) => {
         is_active: isActive
       });
     }
+
+    const productsToUpsert = Array.from(uniqueProductsMap.values());
 
     const chunkSize = 500;
     let updatedCount = 0;
@@ -419,6 +419,21 @@ app.post('/sync-digiflazz', async (c) => {
         console.error('Bulk upsert error:', error);
         lastError = error;
       }
+    }
+
+    // Deactivate products that are no longer returned by Digiflazz
+    const skusToDeactivate = [];
+    existingPrices.forEach((_, sku) => {
+      if (!uniqueProductsMap.has(sku)) {
+        skusToDeactivate.push(sku);
+      }
+    });
+
+    for (let i = 0; i < skusToDeactivate.length; i += chunkSize) {
+      const chunk = skusToDeactivate.slice(i, i + chunkSize);
+      await supabaseService.from('products')
+        .update({ is_active: false })
+        .in('sku_code', chunk);
     }
 
     if (updatedCount === 0 && lastError) {
