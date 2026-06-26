@@ -4,11 +4,11 @@ android {
     namespace = "com.konter.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.rog.test.app99"
+        applicationId "com.konter.serverpulsa"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "2.0"
+        versionCode 3
+        versionName "3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -24,6 +24,8 @@ android {
             keyPassword "serverpulsa2026"
             v1SigningEnabled true
             v2SigningEnabled true
+            v3SigningEnabled true
+            v4SigningEnabled true
         }
     }
     buildTypes {
