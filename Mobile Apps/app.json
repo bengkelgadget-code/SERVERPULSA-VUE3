@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Server Pulsa Mobile",
+    "slug": "server-pulsa-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.konter.serverpulsa2"
+    },
+    "android": {
+      "package": "com.konter.serverpulsa2",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7486b74b-d3ca-4e35-9d75-eddc98a44c47"
+      }
+    }
+  }
+}
