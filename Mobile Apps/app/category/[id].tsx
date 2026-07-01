@@ -33,7 +33,7 @@ export default function CategoryInput() {
   const getProvider = (phone: string) => {
     if (!phone || phone.length < 4) return ''
     const prefix = phone.substring(0, 4)
-    if (['0811','0812','0813','0821','0822','0852','0853','0851'].includes(prefix)) return 'Telkomsel'
+    if (['0811','0812','0813','0821','0822','0823','0852','0853','0851'].includes(prefix)) return 'Telkomsel'
     if (['0814','0815','0816','0855','0856','0857','0858'].includes(prefix)) return 'Indosat'
     if (['0817','0818','0819','0859','0877','0878'].includes(prefix)) return 'XL'
     if (['0838','0831','0832','0833'].includes(prefix)) return 'Axis'
