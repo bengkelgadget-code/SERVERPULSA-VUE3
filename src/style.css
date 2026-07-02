@@ -90,9 +90,6 @@ html, body {
   color: #FFFFFF !important;
 }
 
-.theme-neumorph .text-white:not(.bg-primary-600 *) {
-  color: var(--text-color) !important;
-}
 
 .theme-neumorph .bg-primary-600.text-white:not(.rounded-b-3xl) {
   color: #FFFFFF !important;

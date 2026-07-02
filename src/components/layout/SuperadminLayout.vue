@@ -71,11 +71,11 @@ const menuItems = [
                   :class="[
                     $route.path === item.path 
                       ? 'bg-gradient-to-r from-[#7c3aed] to-[#a855f7] text-white shadow-md shadow-purple-200/50' 
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
+                      : 'text-gray-500 hover:bg-gradient-to-r hover:from-[#7c3aed] hover:to-[#a855f7] hover:text-white hover:shadow-md hover:shadow-purple-200/50'
                   ]"
                   :title="!isSidebarOpen ? item.name : ''"
                 >
-                  <component :is="item.icon" class="w-[20px] h-[20px] flex-shrink-0" :class="$route.path === item.path ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" />
+                  <component :is="item.icon" class="w-[20px] h-[20px] flex-shrink-0" :class="$route.path === item.path ? 'text-white' : 'text-gray-400 group-hover:text-white'" />
                   <span 
                     class="ml-3 truncate transition-opacity duration-300"
                     :class="isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'"
