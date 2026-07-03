@@ -109,21 +109,14 @@ export class DigiFlazzClient {
   }
 
   async inquiryPln(customer_no: string): Promise<{ name: string; segment_power: string } | null> {
-    const hash = createHash('md5');
-    hash.update(this.username + this.apiKey + customer_no);
-    const signature = hash.toString();
-
+    const ref_id = `INQPLN-${Date.now()}`;
     try {
-      const json = await this.fetchWithProxy('/inquiry-pln', {
-        username: this.username,
-        customer_no: customer_no,
-        sign: signature,
-      });
+      const response = await this.createTransaction('pln-subscribe', customer_no, ref_id, 'pln-subscribe');
 
-      if (json && json.data && json.data.name) {
+      if (response && response.sn) {
         return {
-          name: json.data.name,
-          segment_power: json.data.segment_power || '',
+          name: response.sn,
+          segment_power: '',
         };
       }
       return null;

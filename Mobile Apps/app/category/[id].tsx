@@ -26,7 +26,9 @@ export default function CategoryInput() {
     if (categoryParam === 'data') return 'Paket Data'
     if (categoryParam === 'telpon') return 'Telpon & SMS'
     if (categoryParam === 'pln') return 'Token PLN'
+    if (categoryParam === 'pln_postpaid') return 'Tagihan Listrik'
     if (categoryParam === 'pdam') return 'Tagihan PDAM'
+    if (categoryParam === 'bpjs') return 'Tagihan BPJS'
     return 'Transaksi'
   }
 
@@ -59,6 +61,8 @@ export default function CategoryInput() {
       else if (categoryParam === 'telpon') matchesCategory = catLower.includes('telpon') || catLower.includes('sms')
       else if (categoryParam === 'pln') matchesCategory = catLower.includes('pln') && !catLower.includes('pasca')
       else if (categoryParam === 'pdam') matchesCategory = p.brand.toLowerCase().includes('pdam') || catLower.includes('pdam')
+      else if (categoryParam === 'pln_postpaid') matchesCategory = (catLower.includes('pln') && catLower.includes('pasca')) || p.brand.toLowerCase().includes('pln pasca')
+      else if (categoryParam === 'bpjs') matchesCategory = p.brand.toLowerCase().includes('bpjs') || catLower.includes('bpjs')
 
       if (!matchesCategory) return false
       if (categoryParam === 'pln' || isPpob) return true

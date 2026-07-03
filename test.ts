@@ -1,0 +1,1 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'; const sb = createClient('https://slkdoaeacjxgkviicaot.supabase.co', 'sb_publishable_Hb_fii3GCvufN1N9Wqs60g_Mkkm_U9W'); const { data, error } = await sb.from('users').select('*').limit(1); console.log(data, error);
