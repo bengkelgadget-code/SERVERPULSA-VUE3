@@ -108,14 +108,22 @@ const setupRealtime = () => {
     .subscribe()
 }
 
+let balanceInterval: any = null
+
 onMounted(() => {
   fetchStats()
   setupRealtime()
+  
+  // Polling fetchStats every 30 seconds to get the latest Digiflazz balance automatically
+  balanceInterval = setInterval(() => {
+    fetchStats()
+  }, 30000)
 })
 
 import { onUnmounted } from 'vue'
 onUnmounted(() => {
   if (fetchTimeout) clearTimeout(fetchTimeout)
+  if (balanceInterval) clearInterval(balanceInterval)
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel)
   }
