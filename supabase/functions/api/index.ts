@@ -295,6 +295,8 @@ app.post('/inquiry-pasca', async (c) => {
 
   try {
     let response = await digiflazz.inquiryPasca(sku_code, cleanCustomerNo, refId);
+    
+    // Retry loop for RC 03 (pending/processing)
     let attempt = 0;
     while (response && response.rc === '03' && attempt < 4) {
       await new Promise(r => setTimeout(r, 2500));
@@ -302,23 +304,32 @@ app.post('/inquiry-pasca', async (c) => {
       attempt++;
     }
 
-    if (response && response.rc && response.rc !== '00' && response.rc !== '03') {
-      return c.json({ success: false, message: response.message || 'Gagal mengecek tagihan', rc: response.rc }, 400);
+    console.log('Digiflazz inquiry-pasca response:', JSON.stringify(response));
+
+    if (!response) {
+      return c.json({ success: false, message: 'Tidak ada respons dari server Digiflazz' }, 500);
     }
 
-    if (response && response.rc === '00') {
+    // Check for successful inquiry
+    if (response.rc === '00' || response.status?.toLowerCase() === 'sukses') {
       return c.json({ 
         success: true, 
         name: response.customer_name, 
-        amount: response.selling_price || response.price,
-        admin: response.admin,
-        ref_id: refId, // return the refId to use for pay-pasca
+        amount: response.selling_price || response.price || 0,
+        admin: response.admin || 0,
+        ref_id: refId,
         desc: response.desc
       });
     }
 
-    return c.json({ success: false, message: 'Menunggu Server (Transaksi Pending)', rc: response.rc });
+    // Non-success RC codes
+    if (response.rc && response.rc !== '03') {
+      return c.json({ success: false, message: response.message || 'Gagal mengecek tagihan', rc: response.rc }, 400);
+    }
+
+    return c.json({ success: false, message: 'Menunggu Server (Transaksi Pending)', rc: response?.rc });
   } catch (err: any) {
+    console.error('inquiry-pasca error:', err);
     return c.json({ success: false, message: err.message }, 500);
   }
 })

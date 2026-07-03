@@ -53,15 +53,18 @@ export class DigiFlazzClient {
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`DigiFlazz Error ${response.status}: ${errorText}`);
-      }
-
+      // Always try to parse JSON body — Digiflazz returns HTTP 400 for
+      // business errors (RC codes) but still includes valid JSON data
+      // (customer name, amount, ref_id, etc). We must NOT throw on non-200
+      // status codes before parsing, or we lose that data.
       let json;
       try {
         json = await response.json();
       } catch (e) {
+        // Only if JSON parsing fails do we check the HTTP status
+        if (!response.ok) {
+          throw new Error(`DigiFlazz Error ${response.status}: Could not parse response`);
+        }
         throw new Error('Invalid JSON response from Digiflazz');
       }
       return json;
