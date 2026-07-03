@@ -206,40 +206,7 @@ const printReceipt = async () => {
     try {
       await bluetooth.connect(printerStore.connectedAddress)
       printerStore.isConnected = true
-      
-      // Centered text helper
-      const printCentered = async (text: string) => {
-        const charsPerLine = 32
-        const lines = []
-        let currentLine = ''
-        const words = text.split(' ')
-        for (const word of words) {
-          if ((currentLine + word).length > charsPerLine) {
-            if (currentLine) lines.push(currentLine.trim())
-            currentLine = word + ' '
-          } else {
-            currentLine += word + ' '
-          }
-        }
-        if (currentLine) lines.push(currentLine.trim())
-        for (const line of lines) {
-          const padding = Math.max(0, Math.floor((charsPerLine - line.length) / 2))
-          await bluetooth.print(' '.repeat(padding) + line + '\n')
-        }
-      }
 
-      // Set font to double height/width for title
-      await bluetooth.print('\x1B\x21\x30')
-      await printCentered(storeName.value)
-      
-      // Set back to normal
-      await bluetooth.print('\x1B\x21\x00')
-      await bluetooth.print('\n')
-      
-      // Print address
-      await printCentered(storeAddress.value)
-      await bluetooth.print('\n')
-      
       const lines = await buildReceiptLines()
       const text = bluetooth.formatLines(lines)
       
@@ -261,8 +228,6 @@ const showShareModal = ref(false)
 const isSharing = ref(false)
 
 const buildReceiptLines = async () => {
-  const fontTitle = 'bold 20px monospace'
-  const fontSmall = '15px monospace'
   const lines: { text: string; bold?: boolean; center?: boolean; font?: string }[] = []
   
   const authStore = (await import('@/stores/auth')).useAuthStore()
@@ -271,15 +236,13 @@ const buildReceiptLines = async () => {
     || 'KONTER PULSA'
   storeName = storeName.toUpperCase()
 
-  let finalStoreNameFont = fontTitle
-  if (storeName.length > 20) {
-    finalStoreNameFont = fontSmall
-  } else if (storeName.length > 14) {
-    finalStoreNameFont = 'bold 17px monospace'
+  let finalStoreNameFont = '18px monospace' // Default: Double height, normal width (max 32 chars)
+  if (storeName.length <= 16) {
+    finalStoreNameFont = '20px monospace' // Double width + double height
   }
 
   lines.push({ text: storeName, bold: true, center: true, font: finalStoreNameFont })
-  lines.push({ text: `${formatDate(trx.value.created_at)} (CU)`, center: true })
+  lines.push({ text: storeAddress.value, center: true })
   lines.push({ text: '' })
   
   if (isPln.value) {
@@ -289,6 +252,10 @@ const buildReceiptLines = async () => {
     lines.push({ text: 'STRUK PEMBELIAN', bold: true, center: true })
     lines.push({ text: (trx.value.products?.category || '').toUpperCase(), bold: true, center: true })
   }
+  lines.push({ text: '' })
+
+  const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
+  lines.push({ text: `TANGGAL     : ${dateStr}` })
   lines.push({ text: '' })
   
   const addRow = (label: string, value: string, bold = false) => {
@@ -345,11 +312,11 @@ const buildReceiptLines = async () => {
   lines.push({ text: '' })
   lines.push({ text: '--------------------------------' })
   if (isPln.value) {
-    lines.push({ text: 'Info Hubungi Call Center 123', center: true, font: fontSmall })
-    lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: fontSmall })
+    lines.push({ text: 'Info Hubungi Call Center 123', center: true, font: '15px monospace' })
+    lines.push({ text: 'Atau Hubungi PLN Terdekat', center: true, font: '15px monospace' })
   }
   lines.push({ text: '' })
-  lines.push({ text: 'Terima Kasih', center: true, font: fontSmall })
+  lines.push({ text: 'Terima Kasih', center: true, font: '15px monospace' })
 
   return lines
 }

@@ -131,7 +131,6 @@ export function useBluetooth() {
     const BOLD_ON = ESC + 'E' + '\x01'
     const BOLD_OFF = ESC + 'E' + '\x00'
     const SIZE_NORMAL = GS + '!' + '\x00'
-    const SIZE_LARGE = GS + '!' + '\x11'
     
     let result = INIT
     
@@ -155,9 +154,22 @@ export function useBluetooth() {
         suffix += BOLD_OFF
       }
 
-      if (line.font && (line.font.includes('20px') || line.font.includes('22px'))) {
-         prefix += SIZE_LARGE
-         suffix += SIZE_NORMAL // reset
+      if (line.font) {
+         if (line.font.includes('20px') || line.font.includes('22px')) {
+            // Double width + Double height
+            prefix += GS + '!' + '\x11'
+            suffix += SIZE_NORMAL
+         } else if (line.font.includes('18px')) {
+            // Double height only
+            prefix += GS + '!' + '\x01'
+            suffix += SIZE_NORMAL
+         } else if (line.font.includes('19px')) {
+            // Double width only
+            prefix += GS + '!' + '\x10'
+            suffix += SIZE_NORMAL
+         } else {
+            prefix += SIZE_NORMAL
+         }
       } else {
          prefix += SIZE_NORMAL
       }
