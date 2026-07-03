@@ -51,9 +51,9 @@ const totalPrice = computed(() => {
   return (product.value?.harga_jual || 0) + adminFee.value
 })
 
-onMounted(() => {
+onMounted(async () => {
   if (productsStore.products.length === 0) {
-    productsStore.fetchProducts()
+    await productsStore.fetchProducts()
   }
   
   // If PLN name wasn't passed via query, we might need to fetch it here

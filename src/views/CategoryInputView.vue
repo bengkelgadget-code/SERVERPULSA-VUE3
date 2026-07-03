@@ -99,7 +99,7 @@ const filteredProducts = computed(() => {
     else if (categoryParam === 'telpon') matchesCategory = catLower.includes('telpon') || catLower.includes('sms')
     else if (categoryParam === 'pln') matchesCategory = catLower.includes('pln') && !catLower.includes('pasca')
     else if (categoryParam === 'pdam') matchesCategory = bLower.includes('pdam') || catLower.includes('pdam')
-    else if (categoryParam === 'pln_postpaid') matchesCategory = catLower.includes('pln') && catLower.includes('pasca')
+    else if (categoryParam === 'pln_postpaid') matchesCategory = (catLower.includes('pln') && catLower.includes('pasca')) || bLower.includes('pln pasca')
     else if (categoryParam === 'bpjs') matchesCategory = catLower.includes('bpjs') || bLower.includes('bpjs')
     else if (['indihome', 'firstmedia', 'myrepublic', 'biznet', 'mncplay'].includes(categoryParam)) {
        if (catLower.includes('pasca') && (bLower.includes('internet') || bLower.includes('tv'))) {
