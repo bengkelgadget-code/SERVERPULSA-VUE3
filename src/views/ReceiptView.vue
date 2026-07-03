@@ -164,32 +164,36 @@ const snParts = computed(() => {
   const raw = trx.value?.sn || trx.value?.ref_id || ''
   const result: { label: string; value: string }[] = []
 
-  // Try to parse "A/N name | SN: sn_value" format
-  if (raw.includes('A/N ') && raw.includes(' | SN: ')) {
+  // Try to parse "A/N name | SN: sn_value" format or just "A/N name"
+  if (raw.includes('A/N ')) {
     const parts = raw.split(' | SN: ')
     const name = parts[0].replace('A/N ', '')
-    result.push({ label: 'NAMA', value: name })
-    if (parts[1]) result.push({ label: 'SN', value: parts[1] })
+    result.push({ label: 'NAMA PEMILIK', value: name })
+    if (parts.length > 1 && parts[1]) {
+      result.push({ label: 'SN / REFF', value: parts[1] })
+    } else if (trx.value?.ref_id) {
+       result.push({ label: 'SN / REFF', value: trx.value.ref_id })
+    }
   }
   // Try to parse "Nama: x, No: y, Reff: z" format
   else if (raw.includes('Nama:') && raw.includes('Reff:')) {
     const namaMatch = raw.match(/Nama:\s*([^,]+)/)
     const noMatch = raw.match(/No:\s*([^,]+)/)
     const reffMatch = raw.match(/Reff:\s*(.+)/)
-    if (namaMatch) result.push({ label: 'NAMA', value: namaMatch[1].trim() })
+    if (namaMatch) result.push({ label: 'NAMA PEMILIK', value: namaMatch[1].trim() })
     if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
-    if (reffMatch) result.push({ label: 'REFF', value: reffMatch[1].trim() })
+    if (reffMatch) result.push({ label: 'SN / REFF', value: reffMatch[1].trim() })
   }
   // Fallback: show raw as single line
   else {
-    result.push({ label: 'SN / REF', value: raw })
+    result.push({ label: 'SN / REFF', value: raw })
   }
   
   return result
 })
 
 // Truncate long values (e.g. REFF) for display
-const truncateVal = (val: string, max = 30) => {
+const truncateVal = (val: string, max = 35) => {
   if (!val) return '-'
   return val.length > max ? val.substring(0, max) + '...' : val
 }
