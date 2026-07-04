@@ -615,7 +615,12 @@ app.post('/mobile/transaction/check-status', async (c) => {
 
     // Check status in digiflazz
     const cleanCustomerNo = String(trx.customer_no).replace(/[^0-9]/g, '');
-    const dfData = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id)
+    let dfData;
+    if (trx.ref_id.startsWith('INQPASCA-')) {
+      dfData = await digiflazz.payPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
+    } else {
+      dfData = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id);
+    }
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
@@ -666,7 +671,12 @@ app.post('/admin-action', async (c) => {
       }
       
       // Call Digiflazz
-      const response = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id)
+      let response;
+      if (trx.ref_id.startsWith('INQPASCA-')) {
+        response = await digiflazz.payPasca(trx.sku_code, trx.customer_no, trx.ref_id);
+      } else {
+        response = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id);
+      }
       
       if (response.status === 'Gagal') {
         // Refund via RPC

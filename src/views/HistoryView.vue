@@ -234,7 +234,9 @@ const closePopup = () => {
           </div>
           <div>
             <p class="text-sm text-neutral-500 mb-1">SN / Ref ID</p>
-            <p class="font-mono text-xs text-neutral-600 break-all bg-neutral-50 p-2 rounded border border-neutral-100">{{ selectedTrx.sn || selectedTrx.ref_id || '-' }}</p>
+            <p class="font-mono text-xs text-neutral-600 break-all bg-neutral-50 p-2 rounded border border-neutral-100">
+              {{ selectedTrx.sn?.includes('| SN: ') ? selectedTrx.sn.split('| SN: ')[1].match(/Reff:\s*([a-zA-Z0-9\-]+)/i)?.[1]?.trim() || selectedTrx.sn.split('| SN: ')[1] : selectedTrx.sn || selectedTrx.ref_id || '-' }}
+            </p>
           </div>
           <div class="flex justify-between items-center pt-2 border-t border-dashed border-neutral-200">
             <p class="text-neutral-500">Total Harga</p>
