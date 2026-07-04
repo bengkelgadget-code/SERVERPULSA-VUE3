@@ -121,21 +121,29 @@ app.post('/webhook/digiflazz', async (c) => {
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
-      .select('status')
-      .eq('id', data.ref_id)
+      .select('id, status, sn')
+      .eq('ref_id', data.ref_id)
       .single()
 
     if (txError || !tx) return c.json({ error: 'Transaction not found' }, 404)
     if (tx.status !== 'pending') return c.json({ success: true, message: 'Already processed' })
 
+    let finalSn = tx.sn;
+    if (data.sn) {
+      if (tx.sn && tx.sn.includes('A/N ') && !tx.sn.includes('| SN:')) {
+        finalSn = `${tx.sn} | SN: ${data.sn}`;
+      } else {
+        finalSn = data.sn;
+      }
+    }
+
     const { error } = await supabase
       .from('transactions')
       .update({
         status: data.status.toLowerCase(),
-        sn: data.sn || null,
-        message: data.message || null
+        sn: finalSn
       })
-      .eq('id', data.ref_id)
+      .eq('id', tx.id)
 
     if (error) return c.json({ error: 'Database update failed' }, 500)
     
@@ -549,12 +557,13 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
       const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
 
-      await supabase.from('transactions').update({
+      const updatePayload: any = {
         status: dbStatus,
         sn: finalSn,
-        message: response.message || null,
         updated_at: new Date().toISOString(),
-      }).eq('id', transactionId)
+      };
+      
+      await supabase.from('transactions').update(updatePayload).eq('id', transactionId)
 
       if (dbStatus === 'gagal') {
         // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
@@ -564,21 +573,19 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
       return c.json({ success: true, transactionId, status: dbStatus, ref_id: refId, sn: response.sn, harga_jual: finalHargaJual })
     } catch (digiflazzError: any) {
-      // Digiflazz call threw an error — mark transaction as gagal and refund
       console.error('DigiFlazz call failed:', digiflazzError)
-      const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
       
-      // Update status to gagal so it doesn't stay pending forever
-      await supabaseService.from('transactions').update({
-        status: 'gagal',
-        message: `Digiflazz error: ${digiflazzError?.message || 'Unknown error'}`,
-        updated_at: new Date().toISOString(),
-      }).eq('id', transactionId)
-
-      // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
-      await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
-      
-      return c.json({ success: false, error: `Digiflazz error: ${digiflazzError?.message || 'Unknown error'}`, status: 'gagal', ref_id: refId, harga_jual: finalHargaJual })
+      // DO NOT fail or refund the transaction immediately!
+      // If the error was a Timeout (30s), Digiflazz might still be processing it.
+      // Leave the transaction as 'pending' in the database.
+      // The frontend will show 'Proses' and the Webhook will update it to Sukses/Gagal later.
+      return c.json({ 
+        success: true, 
+        transactionId, 
+        status: 'pending', 
+        ref_id: refId, 
+        message: 'Transaksi sedang diproses di latar belakang' 
+      })
     }
   } catch (error: any) {
     return c.json({ error: error.message }, 500)

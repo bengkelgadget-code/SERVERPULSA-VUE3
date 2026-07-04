@@ -136,8 +136,15 @@ const formatDate = (dateStr: string) => {
   return `${dd}/${mm}/${yyyy} ${hh}:${min}:${ss}`
 }
 
+const isPascaPln = computed(() => {
+  const cat = trx.value?.products?.category?.toLowerCase() || ''
+  const name = trx.value?.products?.product_name?.toLowerCase() || ''
+  const sku = trx.value?.sku_code?.toLowerCase() || ''
+  return sku === 'pln' || (cat.includes('pasca') && name.includes('pln'))
+})
+
 const isPln = computed(() => {
-  return trx.value?.products?.category?.toLowerCase().includes('pln') || false
+  return (trx.value?.products?.category?.toLowerCase().includes('pln') || false) && !isPascaPln.value
 })
 
 // Parse PLN data from Digiflazz SN format: TOKEN/NAMA/TARIF/DAYA/KWH
@@ -157,6 +164,23 @@ const plnData = computed(() => {
     daya: snParts[3] || '-',
     kwh: snParts[4] || '-',
   }
+})
+
+const pascaPlnName = computed(() => {
+  if (!isPascaPln.value || !trx.value?.sn) return '-'
+  if (trx.value.sn.includes('A/N ')) {
+    const parts = trx.value.sn.split(' | SN: ')
+    return parts[0].replace('A/N ', '').trim()
+  }
+  return '-'
+})
+
+const pascaPlnReff = computed(() => {
+  if (!isPascaPln.value) return '-'
+  if (trx.value?.sn && trx.value.sn.includes('| SN: ')) {
+    return trx.value.sn.split('| SN: ')[1].trim()
+  }
+  return trx.value?.ref_id || '-'
 })
 
 // Parse SN/REF data into structured parts for clean display
@@ -252,6 +276,9 @@ const buildReceiptLines = async () => {
   if (isPln.value) {
     lines.push({ text: 'STRUK PEMBELIAN LISTRIK', bold: true, center: true })
     lines.push({ text: 'PRABAYAR', bold: true, center: true })
+  } else if (isPascaPln.value) {
+    lines.push({ text: 'STRUK PEMBAYARAN TAGIHAN', bold: true, center: true })
+    lines.push({ text: 'LISTRIK', bold: true, center: true })
   } else {
     lines.push({ text: 'STRUK PEMBELIAN', bold: true, center: true })
     lines.push({ text: (trx.value.products?.category || '').toUpperCase(), bold: true, center: true })
@@ -259,8 +286,10 @@ const buildReceiptLines = async () => {
   lines.push({ text: '' })
 
   const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
-  lines.push({ text: `TANGGAL     : ${dateStr}` })
-  lines.push({ text: '' })
+  if (!isPascaPln.value) {
+    lines.push({ text: `TANGGAL     : ${dateStr}` })
+    lines.push({ text: '' })
+  }
   
   const addRow = (label: string, value: string, bold = false) => {
     const maxValLen = 18
@@ -286,6 +315,17 @@ const buildReceiptLines = async () => {
     addRow('RP TOKEN', formatRp(trx.value.products?.harga_modal || 0))
     addRow('JML KWH', plnData.value?.kwh || '-')
     addRow('BIAYA ADM', formatRp(customHargaJual.value - (trx.value.products?.harga_modal || 0)))
+    addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
+  } else if (isPascaPln.value) {
+    const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
+    addRow('TANGGAL', dateStr)
+    addRow('IDPEL', trx.value.customer_no)
+    addRow('NAMA', pascaPlnName.value)
+    addRow('TRF/DAYA', '-') // Since we don't store it in db right now
+    addRow('TAGIHAN', formatRp(trx.value.harga_modal))
+    addRow('PLN REFF', pascaPlnReff.value)
+    addRow('BL/TH', '-')
+    addRow('STD MTR', '-')
     addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else {
     addRow('PRODUK', trx.value.products?.product_name || '')
@@ -495,19 +535,18 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <p class="text-[11px] text-neutral-500 mt-1 text-center leading-relaxed">{{ storeAddress }}</p>
           </div>
 
-          <div class="text-center mb-4">
-            <p>{{ formatDate(trx.created_at) }} (CU)</p>
-          </div>
-
           <div class="text-center mb-4 font-bold">
             <p v-if="isPln">STRUK PEMBELIAN LISTRIK</p>
             <p v-if="isPln">PRABAYAR</p>
-            <p v-else>STRUK PEMBELIAN</p>
-            <p v-if="!isPln" class="uppercase">{{ trx.products?.category }}</p>
+            <p v-else-if="isPascaPln">STRUK PEMBAYARAN TAGIHAN</p>
+            <p v-if="isPascaPln">LISTRIK</p>
+            <p v-if="!isPln && !isPascaPln">STRUK PEMBELIAN</p>
+            <p v-if="!isPln && !isPascaPln" class="uppercase">{{ trx.products?.category }}</p>
           </div>
 
-          <!-- PLN FORMAT -->
+          <!-- PLN PRABAYAR FORMAT -->
           <div v-if="isPln" class="space-y-1 mb-4">
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
@@ -526,8 +565,28 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             </div>
           </div>
 
+          <!-- PLN PASCABAYAR FORMAT -->
+          <div v-else-if="isPascaPln" class="space-y-1 mb-4">
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPlnName }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PLN REFF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPlnReff }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
+              <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
+              <span class="flex-1 break-words flex items-center gap-1 mt-1">
+                {{ formatRp(customHargaJual) }}
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400 print:hidden"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              </span>
+            </div>
+          </div>
+
           <!-- NON-PLN FORMAT -->
           <div v-else class="space-y-1 mb-4">
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
             <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
