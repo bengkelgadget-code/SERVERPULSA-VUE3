@@ -6,6 +6,9 @@ import { Users, ArrowLeftRight, CreditCard, Package } from 'lucide-vue-next'
 const digiflazzBalance = ref<number | null>(null)
 const totalSaldoMitra = ref<number | null>(null)
 const totalProfit = ref<number | null>(null)
+const proxyStatus = ref<'loading' | 'healthy' | 'down'>('loading')
+const proxyMessage = ref('')
+
 const stats = ref([
   { name: 'Total Users', value: 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
   { name: 'Total Transactions', value: 0, icon: ArrowLeftRight, color: 'text-green-600', bg: 'bg-green-100' },
@@ -13,12 +16,36 @@ const stats = ref([
   { name: 'Active Products', value: 0, icon: Package, color: 'text-purple-600', bg: 'bg-purple-100' }
 ])
 
+const checkProxyHealth = async () => {
+  proxyStatus.value = 'loading'
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/proxy-health`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    })
+    const data = await res.json()
+    if (res.ok && data.status === 'healthy') {
+      proxyStatus.value = 'healthy'
+      proxyMessage.value = 'Online'
+    } else {
+      proxyStatus.value = 'down'
+      proxyMessage.value = data.message || 'Offline / Error'
+    }
+  } catch (err: any) {
+    proxyStatus.value = 'down'
+    proxyMessage.value = err.message || 'Network Error'
+  }
+}
+
 const loading = ref(true)
 
 let realtimeChannel: any = null
 
 const fetchStats = async () => {
-  loading.value = true
+  if (digiflazzBalance.value === null) loading.value = true
   try {
     // Fetch users count
     const { count: usersCount } = await supabase
@@ -105,6 +132,13 @@ const setupRealtime = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: 'status=eq.pending' }, () => {
       debouncedFetchStats()
     })
+    .on('broadcast', { event: 'digiflazz_update' }, (payload) => {
+      if (payload.payload && payload.payload.balance !== undefined) {
+        digiflazzBalance.value = payload.payload.balance
+        totalProfit.value = payload.payload.balance - (totalSaldoMitra.value || 0)
+      }
+      debouncedFetchStats()
+    })
     .subscribe()
 }
 
@@ -112,11 +146,13 @@ let balanceInterval: any = null
 
 onMounted(() => {
   fetchStats()
+  checkProxyHealth()
   setupRealtime()
   
   // Polling fetchStats every 30 seconds to get the latest Digiflazz balance automatically
   balanceInterval = setInterval(() => {
     fetchStats()
+    checkProxyHealth()
   }, 30000)
 })
 
@@ -133,11 +169,36 @@ onUnmounted(() => {
 <template>
   <div class="h-full overflow-y-auto space-y-6 pb-8 pr-2">
     <!-- Saldo Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Status Proxy IP -->
+      <div :class="[
+        'rounded-2xl p-6 text-white shadow-md transition-colors',
+        proxyStatus === 'loading' ? 'bg-gradient-to-r from-gray-400 to-gray-500 shadow-gray-200' :
+        proxyStatus === 'healthy' ? 'bg-gradient-to-r from-teal-500 to-emerald-500 shadow-emerald-200' :
+        'bg-gradient-to-r from-red-500 to-rose-600 shadow-red-200'
+      ]">
+        <div class="text-sm font-bold opacity-90 mb-1 tracking-wide flex justify-between items-center">
+          STATUS PROXY IP
+          <button @click="checkProxyHealth" class="text-[10px] bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md transition-colors" title="Cek Ulang">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block mr-1"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg>
+            Cek
+          </button>
+        </div>
+        <div class="text-3xl font-extrabold tracking-tight mt-1 mb-2">
+          <span v-if="proxyStatus === 'loading'" class="animate-pulse">Checking...</span>
+          <span v-else-if="proxyStatus === 'healthy'">Online</span>
+          <span v-else>Offline</span>
+        </div>
+        <div class="text-xs font-medium bg-black/10 inline-block px-2 py-1 rounded">
+          {{ proxyStatus === 'loading' ? 'Menghubungi server...' : proxyMessage }}
+        </div>
+      </div>
+
       <!-- Saldo Digiflazz -->
       <div class="bg-gradient-to-r from-[#7c3aed] to-[#a855f7] rounded-2xl p-6 text-white shadow-md shadow-purple-200">
         <div class="text-sm font-bold opacity-90 mb-1 tracking-wide">SALDO DIGIFLAZZ</div>
-        <div class="text-3xl font-extrabold tracking-tight">
+        <div class="text-3xl font-extrabold tracking-tight mt-1">
           <span v-if="digiflazzBalance !== null">{{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(digiflazzBalance) }}</span>
           <span v-else class="animate-pulse">Loading...</span>
         </div>
