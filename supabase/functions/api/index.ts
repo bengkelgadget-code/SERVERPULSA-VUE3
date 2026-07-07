@@ -111,12 +111,29 @@ app.post('/webhook/digiflazz', async (c) => {
 
     const body = JSON.parse(rawBody);
     const { data } = body
-    if (!data || !data.ref_id) return c.json({ error: 'Invalid payload' }, 400)
+    if (!data) return c.json({ error: 'Invalid payload' }, 400)
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     )
+
+    // Handle Deposit Webhook or Broadcast any balance update
+    if (data.balance !== undefined) {
+      const channel = supabase.channel('superadmin-dashboard-changes')
+      await channel.send({
+        type: 'broadcast',
+        event: 'digiflazz_update',
+        payload: { balance: data.balance }
+      })
+      
+      // If it's pure deposit webhook with no ref_id, return success
+      if (!data.ref_id) {
+        return c.json({ success: true, message: 'Deposit recorded' })
+      }
+    }
+
+    if (!data.ref_id) return c.json({ error: 'Missing ref_id' }, 400)
 
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
@@ -126,7 +143,8 @@ app.post('/webhook/digiflazz', async (c) => {
       .single()
 
     if (txError || !tx) return c.json({ error: 'Transaction not found' }, 404)
-    if (tx.status !== 'pending') return c.json({ success: true, message: 'Already processed' })
+    // Removed the check that ignores non-pending transactions. 
+    // We want to process updates if Digiflazz changes status (e.g. Sukses -> Gagal).
 
     let finalSn = tx.sn;
     if (data.sn) {
@@ -149,7 +167,8 @@ app.post('/webhook/digiflazz', async (c) => {
     
     if (data.status.toLowerCase() === 'gagal' && tx.status !== 'gagal') {
        // Use idempotent refund_purchase RPC (checks is_refunded + FOR UPDATE lock)
-       await supabase.rpc('refund_purchase', { p_transaction_id: data.ref_id })
+       // Fixed: Passing tx.id instead of data.ref_id
+       await supabase.rpc('refund_purchase', { p_transaction_id: tx.id })
     }
     
     return c.json({ success: true })
