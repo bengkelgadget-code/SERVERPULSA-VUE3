@@ -140,8 +140,9 @@ const isPascaPln = computed(() => {
   if (trx.value?.products) {
     const category = trx.value?.products?.category?.toLowerCase() || ''
     const brand = trx.value?.products?.brand?.toLowerCase() || ''
-    return category.includes('pln') || brand.includes('pln')
+    return (category.includes('pln') || brand.includes('pln')) && (category.includes('pasca') || brand.includes('pasca'))
   }
+  return false
 })
 
 const isPascaNonPln = computed(() => {
@@ -151,14 +152,24 @@ const isPascaNonPln = computed(() => {
 })
 
 const isPln = computed(() => {
-  return (trx.value?.products?.category?.toLowerCase().includes('pln') || false) && !isPascaPln.value
+  if (trx.value?.products) {
+    const category = trx.value?.products?.category?.toLowerCase() || ''
+    const brand = trx.value?.products?.brand?.toLowerCase() || ''
+    return (category.includes('pln') || brand.includes('pln')) && !isPascaPln.value
+  }
+  return false
 })
 
 // Parse PLN data from Digiflazz SN format: TOKEN/NAMA/TARIF/DAYA/KWH
 const plnData = computed(() => {
   if (!isPln.value || !trx.value?.sn) return null
   
-  const snParts = trx.value.sn.split('/')
+  let rawSn = trx.value.sn
+  if (rawSn.includes('| SN:')) {
+    rawSn = rawSn.split('| SN:')[1].trim()
+  }
+
+  const snParts = rawSn.split('/')
   let token = snParts[0] || '-'
   if (token.length >= 16 && !token.includes('-')) {
     token = token.match(/.{1,4}/g)?.join('-') || token
