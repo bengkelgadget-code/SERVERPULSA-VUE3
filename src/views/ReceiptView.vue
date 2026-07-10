@@ -193,21 +193,40 @@ const pascaName = computed(() => {
   return '-'
 })
 
+const cleanReff = (reff: string) => {
+   return reff.replace(/^[A-Za-z]+-/, '')
+}
+
 const pascaReff = computed(() => {
   if (trx.value?.sn && trx.value.sn.includes('| SN: ')) {
     const digiSn = trx.value.sn.split('| SN: ')[1]
     const reffMatch = digiSn.match(/Reff:\s*([a-zA-Z0-9\-]+)/i)
-    if (reffMatch) return reffMatch[1].trim()
-    return digiSn.trim()
+    if (reffMatch) return cleanReff(reffMatch[1].trim())
+    return cleanReff(digiSn.trim())
   }
-  return trx.value?.ref_id || '-'
+  return cleanReff(trx.value?.ref_id || '-')
 })
 
 const pascaPeriode = computed(() => {
   if (trx.value?.sn && trx.value.sn.includes('| SN: ')) {
     const digiSn = trx.value.sn.split('| SN: ')[1]
     const perMatch = digiSn.match(/Periode:\s*([a-zA-Z0-9\-,]+)/i) || digiSn.match(/Bln:\s*([a-zA-Z0-9\-,]+)/i)
-    if (perMatch) return perMatch[1].trim()
+    if (perMatch) {
+       const val = perMatch[1].trim()
+       if (/^\d{6}$/.test(val)) {
+         const year = parseInt(val.substring(0, 4))
+         const month = parseInt(val.substring(4, 6))
+         let prevMonth = month - 1
+         let prevYear = year
+         if (prevMonth === 0) {
+            prevMonth = 12
+            prevYear = year - 1
+         }
+         const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+         return `${monthNames[prevMonth - 1]} ${prevYear}`
+       }
+       return val
+    }
   }
   return '-'
 })
@@ -223,9 +242,11 @@ const snParts = computed(() => {
     const name = parts[0].replace('A/N ', '')
     result.push({ label: 'NAMA PEMILIK', value: name })
     if (parts.length > 1 && parts[1]) {
-      result.push({ label: 'SN / REFF', value: parts[1] })
+      const snValue = parts[1]
+      const reffMatch = snValue.match(/Reff:\s*([a-zA-Z0-9\-]+)/i)
+      result.push({ label: 'SN / REFF', value: reffMatch ? cleanReff(reffMatch[1].trim()) : cleanReff(snValue) })
     } else if (trx.value?.ref_id) {
-       result.push({ label: 'SN / REFF', value: trx.value.ref_id })
+       result.push({ label: 'SN / REFF', value: cleanReff(trx.value.ref_id) })
     }
   }
   // Try to parse "Nama: x, No: y, Reff: z" format
@@ -235,11 +256,11 @@ const snParts = computed(() => {
     const reffMatch = raw.match(/Reff:\s*(.+)/)
     if (namaMatch) result.push({ label: 'NAMA PEMILIK', value: namaMatch[1].trim() })
     if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
-    if (reffMatch) result.push({ label: 'SN / REFF', value: reffMatch[1].trim() })
+    if (reffMatch) result.push({ label: 'SN / REFF', value: cleanReff(reffMatch[1].trim()) })
   }
   // Fallback: show raw as single line
   else {
-    result.push({ label: 'SN / REFF', value: raw })
+    result.push({ label: 'SN / REFF', value: cleanReff(raw) })
   }
   
   return result
@@ -338,12 +359,12 @@ const buildReceiptLines = async () => {
     addRow('IDPEL', trx.value.customer_no)
     addRow('NAMA', plnData.value?.nama || '-')
     addRow('TRF/DAYA', `${plnData.value?.tarif || '-'}/${plnData.value?.daya || '-'}`)
-    addRow('NOMINAL', formatRp(trx.value.products?.harga_modal || 0))
+    addRow('NOMINAL', formatRp(trx.value.harga_modal || 0))
     addRow('PPN', 'RP. 0,00')
     addRow('ANGS/MAT', 'RP. 0,00/0,00')
-    addRow('RP TOKEN', formatRp(trx.value.products?.harga_modal || 0))
+    addRow('RP TOKEN', formatRp(trx.value.harga_modal || 0))
     addRow('JML KWH', plnData.value?.kwh || '-')
-    addRow('BIAYA ADM', formatRp(customHargaJual.value - (trx.value.products?.harga_modal || 0)))
+    addRow('BIAYA ADM', formatRp(customHargaJual.value - (trx.value.harga_modal || 0)))
     addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else if (isPascaPln.value) {
     const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
@@ -353,7 +374,7 @@ const buildReceiptLines = async () => {
     addRow('TRF/DAYA', '-') // Since we don't store it in db right now
     addRow('TAGIHAN', formatRp(trx.value.harga_modal))
     addRow('PLN REFF', pascaReff.value)
-    addRow('BL/TH', '-')
+    addRow('BL/TH', pascaPeriode.value)
     addRow('STD MTR', '-')
     addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else {
@@ -394,6 +415,14 @@ const buildReceiptLines = async () => {
   return lines
 }
 
+const storeNameFontSize = computed(() => {
+  const len = storeName.value.length || 1;
+  // Calculate max font size assuming a monospace font (char width ≈ 0.6 * fontSize)
+  // Container inner width is around 270px (320 - padding). 270 / (len * 0.6)
+  const calculated = Math.floor(270 / (len * 0.6));
+  return Math.min(32, Math.max(12, calculated)) + 'px';
+})
+
 // Build receipt as plain canvas to avoid html2canvas CSS color issues
 const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   const canvas = document.createElement('canvas')
@@ -401,9 +430,9 @@ const drawReceiptToCanvas = async (): Promise<HTMLCanvasElement> => {
   
   const w = 384 // Standard 58mm printer width (8 dots/mm * 48mm)
   const pad = 24
-  const lineH = 26
-  const font = '17px monospace'
-  const fontBold = 'bold 17px monospace'
+  const lineH = 28 // Increased line height
+  const font = '19px monospace' // Increased font by 2px
+  const fontBold = 'bold 19px monospace'
   
   const lines = await buildReceiptLines()
   
@@ -557,11 +586,11 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
       <!-- THERMAL RECEIPT CONTAINER -->
       <div v-if="trx" class="w-full max-w-[320px] mx-auto print:pb-0 shrink-0">
-        <div class="receipt-container bg-white p-6 shadow-lg font-mono text-sm leading-tight border border-neutral-200" style="color: #000; background: #fff;">
+        <div class="receipt-container bg-white p-6 shadow-lg font-mono text-[16px] leading-tight border border-neutral-200" style="color: #000; background: #fff;">
           
-          <div class="mb-4">
-            <h2 class="text-xl font-bold text-center">{{ storeName }}</h2>
-            <p class="text-[11px] text-neutral-500 mt-1 text-center leading-relaxed">{{ storeAddress }}</p>
+          <div class="mb-4 flex flex-col items-center">
+            <h2 class="font-bold whitespace-nowrap overflow-hidden text-center" :style="{ fontSize: storeNameFontSize }">{{ storeName }}</h2>
+            <p class="text-[13px] text-neutral-500 mt-1 text-center leading-relaxed">{{ storeAddress }}</p>
           </div>
 
           <div class="text-center mb-4 font-bold">
@@ -580,12 +609,12 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal || 0) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00</span></div>
             <div class="flex"><span class="w-24 shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
-            <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.products?.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal || 0) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual - (trx.products?.harga_modal || 0)) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual - (trx.harga_modal || 0)) }}</span></div>
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
@@ -603,7 +632,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
             <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">PLN REFF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaReff }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPeriode }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
@@ -669,9 +698,6 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <template v-if="isPln || isPascaPln">
               <p>Info Hubungi Call Center 123</p>
               <p>Atau Hubungi PLN Terdekat</p>
-            </template>
-            <template v-else-if="isPascaNonPln">
-              <p>Info Hubungi Call Center 123</p>
             </template>
             <p class="mt-3">Terima Kasih</p>
           </div>

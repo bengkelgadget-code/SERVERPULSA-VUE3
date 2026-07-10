@@ -30,7 +30,6 @@ const pascaDesc = ref<any>(null)
 
 const paymentMethods = [
   { id: 'saldo', name: 'Saldo Aplikasi', icon: 'M3 6h18v12H3z', description: 'Potong dari saldo deposit' },
-  { id: 'qris', name: 'QRIS', icon: 'M3 3h8v8H3z M13 3h8v8h-8z M3 13h8v8H3z', description: 'Bayar pakai E-Wallet/M-Banking' },
 ]
 
 const selectedPayment = ref('saldo')

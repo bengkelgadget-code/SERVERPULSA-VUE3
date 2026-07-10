@@ -41,6 +41,20 @@ const getSupabaseService = () => {
   )
 }
 
+app.get('/proxy-health', async (c) => {
+  try {
+    // A simple health check to Digiflazz using proxy
+    // If it succeeds, the proxy and Digiflazz API are reachable.
+    await digiflazz.getBalance();
+    return c.json({ status: 'healthy', message: 'Proxy is working correctly' });
+  } catch (error: any) {
+    return c.json({ 
+      status: 'down', 
+      message: error.message || 'Proxy is down or unreachable' 
+    }, 500);
+  }
+})
+
 app.get('/admin/digiflazz-balance', async (c) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
@@ -148,8 +162,9 @@ app.post('/webhook/digiflazz', async (c) => {
 
     let finalSn = tx.sn;
     if (data.sn) {
-      if (tx.sn && tx.sn.includes('A/N ') && !tx.sn.includes('| SN:')) {
-        finalSn = `${tx.sn} | SN: ${data.sn}`;
+      if (tx.sn && tx.sn.includes('A/N ')) {
+        const namePart = tx.sn.split(' | SN: ')[0];
+        finalSn = `${namePart} | SN: ${data.sn}`;
       } else {
         finalSn = data.sn;
       }
@@ -372,13 +387,18 @@ app.post('/sync-digiflazz', async (c) => {
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
   const token = authHeader.replace('Bearer ', '').trim()
 
-  const supabase = getSupabase(c)
-  const { data: { user } } = await supabase.auth.getUser(token)
-  if (!user) return c.json({ error: 'Unauthorized' }, 401)
-  
-  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
-    return c.json({ error: 'Forbidden' }, 403)
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const isCron = token === serviceKey || token === Deno.env.get('CRON_SECRET')
+
+  if (!isCron) {
+    const supabase = getSupabase(c)
+    const { data: { user } } = await supabase.auth.getUser(token)
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
   }
 
   try {
@@ -582,7 +602,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
         updated_at: new Date().toISOString(),
       };
       
-      await supabase.from('transactions').update(updatePayload).eq('id', transactionId)
+      await supabaseService.from('transactions').update(updatePayload).eq('id', transactionId)
 
       if (dbStatus === 'gagal') {
         // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
@@ -594,6 +614,24 @@ app.post('/mobile/transaction/purchase', async (c) => {
     } catch (digiflazzError: any) {
       console.error('DigiFlazz call failed:', digiflazzError)
       
+      const errMsg = digiflazzError.message || '';
+      const isTimeout = errMsg.includes('timeout after 30s');
+      
+      if (!isTimeout) {
+        // Jika error bukan karena timeout, kemungkinan besar masalah Proxy / Jaringan.
+        // Transaksi tidak pernah sampai ke Digiflazz. Batalkan dan refund otomatis!
+        const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+        await supabaseService.from('transactions').update({ status: 'gagal' }).eq('id', transactionId);
+        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId });
+        
+        return c.json({ 
+          success: false, 
+          error: `Gagal diproses: IP Proxy sedang bermasalah / offline. Saldo tidak dipotong. (${errMsg})`, 
+          status: 'gagal', 
+          ref_id: refId 
+        }, 503)
+      }
+
       // DO NOT fail or refund the transaction immediately!
       // If the error was a Timeout (30s), Digiflazz might still be processing it.
       // Leave the transaction as 'pending' in the database.
@@ -643,11 +681,20 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
-      await supabaseService.from('transactions').update({ status: 'sukses', sn: dfData.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      let finalSn = trx.sn;
+      if (dfData.sn) {
+        if (trx.sn && trx.sn.includes('A/N ')) {
+          const namePart = trx.sn.split(' | SN: ')[0];
+          finalSn = `${namePart} | SN: ${dfData.sn}`;
+        } else {
+          finalSn = dfData.sn;
+        }
+      }
+      await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
       // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
       await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
-      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || trx.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })
@@ -698,10 +745,14 @@ app.post('/admin-action', async (c) => {
       }
       
       if (response.status === 'Gagal') {
-        // Refund via RPC
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: transaction_id })
-        return c.json({ success: true, status: 'gagal', message: response.message })
-      } else if (response.status === 'Sukses') {
+      await supabaseService.rpc('refund_purchase', { p_transaction_id: transaction_id })
+      await supabaseService.from('transactions').update({ 
+        sn: response.sn || trx.sn || null, 
+        note: response.message || null,
+        updated_at: new Date().toISOString()
+      }).eq('id', transaction_id)
+      return c.json({ success: true, status: 'gagal', message: response.message })
+    } else if (response.status === 'Sukses') {
         await supabaseService.from('transactions')
           .update({ status: 'sukses', sn: response.sn, note: response.message })
           .eq('id', transaction_id)
