@@ -236,4 +236,11 @@ router.afterEach((to) => {
   }
 })
 
+// Handle chunk load errors when Vercel deploys a new version
+router.onError((error, to) => {
+  if (error.message.includes('Failed to fetch dynamically imported module') || error.name === 'ChunkLoadError') {
+    window.location.href = to.fullPath
+  }
+})
+
 export default router
