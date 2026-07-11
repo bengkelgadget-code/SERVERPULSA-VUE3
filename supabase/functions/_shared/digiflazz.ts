@@ -112,22 +112,18 @@ export class DigiFlazzClient {
   }
 
   async inquiryPln(customer_no: string): Promise<{ name: string; segment_power: string } | null> {
-    const ref_id = `INQPLN-${Date.now()}`;
+    const signature = this.generateSignature(customer_no);
     try {
-      const response = await this.createTransaction('PLN', customer_no, ref_id, 'pln-subscribe');
+      const json = await this.fetchWithProxy('/inquiry-pln', {
+        username: this.username,
+        customer_no: customer_no,
+        sign: signature
+      });
 
-      if (response && (response.desc || response.sn)) {
-        let name = response.desc || response.sn;
-        // Sometimes desc contains "NAME / SEGMENT / POWER"
-        let segment_power = '';
-        if (name.includes('/')) {
-           const parts = name.split('/');
-           name = parts[0].trim();
-           segment_power = parts.slice(1).join('/').trim();
-        }
+      if (json && json.data && json.data.name) {
         return {
-          name,
-          segment_power,
+          name: json.data.name,
+          segment_power: json.data.segment_power || '',
         };
       }
       return null;

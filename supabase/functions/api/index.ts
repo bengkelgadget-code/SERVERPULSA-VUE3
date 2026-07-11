@@ -199,6 +199,15 @@ function generateRefId() {
   return `MOB-${Date.now()}-${hex}`;
 }
 
+app.post('/debug-pln', async (c) => {
+  const body = await c.req.json()
+  const { customer_no } = body
+  const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
+  const ref_id = `INQPLN-${Date.now()}`;
+  const result = await digiflazz.createTransaction('pln-subscribe', cleanCustomerNo, ref_id)
+  return c.json({ result })
+})
+
 app.post('/inquiry-pln', async (c) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
