@@ -114,12 +114,20 @@ export class DigiFlazzClient {
   async inquiryPln(customer_no: string): Promise<{ name: string; segment_power: string } | null> {
     const ref_id = `INQPLN-${Date.now()}`;
     try {
-      const response = await this.createTransaction('pln-subscribe', customer_no, ref_id, 'pln-subscribe');
+      const response = await this.createTransaction('PLN', customer_no, ref_id, 'pln-subscribe');
 
-      if (response && response.sn) {
+      if (response && (response.desc || response.sn)) {
+        let name = response.desc || response.sn;
+        // Sometimes desc contains "NAME / SEGMENT / POWER"
+        let segment_power = '';
+        if (name.includes('/')) {
+           const parts = name.split('/');
+           name = parts[0].trim();
+           segment_power = parts.slice(1).join('/').trim();
+        }
         return {
-          name: response.sn,
-          segment_power: '',
+          name,
+          segment_power,
         };
       }
       return null;
