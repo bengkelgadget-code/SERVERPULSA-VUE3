@@ -123,12 +123,15 @@ const filteredProducts = computed(() => {
   return result
 })
 
+let currentCheckId = 0
 const checkPLN = async (no: string) => {
   if (categoryParam !== 'pln' || no.length < 11) {
     plnName.value = ''
+    plnLoading.value = false
     return
   }
   
+  const checkId = ++currentCheckId
   plnLoading.value = true
   plnName.value = ''
   
@@ -143,10 +146,11 @@ const checkPLN = async (no: string) => {
       body: JSON.stringify({ customer_no: no })
     })
     
+    if (checkId !== currentCheckId) return;
+    
     const data = await res.json()
     
     if (data.success && data.name) {
-      // Format the display name along with segment/power if available
       let displayName = data.name
       if (data.segment_power) displayName += ` / ${data.segment_power}`
       plnName.value = displayName
@@ -155,9 +159,12 @@ const checkPLN = async (no: string) => {
     }
   } catch (err) {
     console.error('Error checking PLN:', err)
+    if (checkId !== currentCheckId) return;
     plnName.value = 'Gagal mengecek nomor'
   } finally {
-    plnLoading.value = false
+    if (checkId === currentCheckId) {
+      plnLoading.value = false
+    }
   }
 }
 
