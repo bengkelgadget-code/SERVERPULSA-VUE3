@@ -503,6 +503,17 @@ app.post('/sync-digiflazz', async (c) => {
         .in('sku_code', chunk);
     }
 
+    // Log the sync time
+    await supabaseService.from('products').upsert({
+      sku_code: 'SYSTEM_LAST_SYNC',
+      product_name: new Date().toISOString(),
+      category: 'System',
+      brand: 'System',
+      harga_modal: 0,
+      harga_jual: 0,
+      is_active: false
+    }, { onConflict: 'sku_code' })
+
     if (updatedCount === 0 && lastError) {
        return c.json({ success: false, message: 'Upsert failed: ' + lastError.message, error: lastError }, 500)
     }

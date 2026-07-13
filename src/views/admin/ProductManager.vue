@@ -12,6 +12,7 @@ const brandFilter = ref('')
 const categories = ref<string[]>([])
 const saveLoading = ref<Record<string, boolean>>({})
 const syncLoading = ref(false)
+const lastSyncTime = ref('')
 const mitraPricing = ref<Record<string, number>>({})
 
 const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
@@ -43,10 +44,19 @@ const fetchProducts = async () => {
     }
     
     if (allProdData.length > 0) {
-      products.value = allProdData
+      const syncRecord = allProdData.find(p => p.sku_code === 'SYSTEM_LAST_SYNC')
+      if (syncRecord) {
+        try {
+          lastSyncTime.value = new Date(syncRecord.product_name).toLocaleString('id-ID', {
+            dateStyle: 'medium', timeStyle: 'short'
+          })
+        } catch(e) {}
+      }
+      
+      products.value = allProdData.filter(p => p.sku_code !== 'SYSTEM_LAST_SYNC')
       
       const uniqueCats = new Set<string>()
-      allProdData.forEach(p => {
+      products.value.forEach(p => {
         if (p.category) uniqueCats.add(p.category)
       })
       categories.value = Array.from(uniqueCats).sort()
@@ -300,16 +310,22 @@ const syncDigiflazz = async () => {
         <h1 class="text-3xl font-extrabold text-gray-800">Product Catalog</h1>
         <p class="text-[13px] text-gray-500 mt-1">{{ products.length }} produk terdaftar</p>
       </div>
-      <button 
-        v-if="isSuperadmin"
-        @click="syncDigiflazz"
-        :disabled="syncLoading"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-[13px] font-bold flex items-center shadow-md shadow-blue-200/50 transition-colors disabled:opacity-50"
-      >
-        <svg v-if="syncLoading" class="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-        {{ syncLoading ? 'Menyinkronkan...' : 'Sync DigiFlazz' }}
-      </button>
+      <div class="flex flex-col items-end">
+        <button 
+          v-if="isSuperadmin"
+          @click="syncDigiflazz"
+          :disabled="syncLoading"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full text-[13px] font-bold flex items-center shadow-md shadow-blue-200/50 transition-colors disabled:opacity-50"
+        >
+          <svg v-if="syncLoading" class="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          {{ syncLoading ? 'Menyinkronkan...' : 'Sync DigiFlazz' }}
+        </button>
+        <p v-if="isSuperadmin" class="text-[11px] text-gray-500 mt-2 font-medium">
+          <span v-if="lastSyncTime">Last Sync: {{ lastSyncTime }}</span>
+          <span v-else>Belum ada data sync</span>
+        </p>
+      </div>
     </div>
 
     <!-- Top Filters -->
