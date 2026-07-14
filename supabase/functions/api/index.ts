@@ -391,6 +391,20 @@ app.post('/sync-digiflazz-balance', async (c) => {
   return c.json({ error: 'Fitur sinkronisasi langsung dinonaktifkan dalam mode SAAS. Top-up Anda masuk ke Uang Superadmin, dan saldo Mitra hanya bertambah melalui sistem Deposit.' }, 400);
 })
 
+app.get('/debug-upsert', async (c) => {
+  const supabaseService = getSupabaseService()
+  const { data, error } = await supabaseService.from('products').upsert({
+    sku_code: 'SYSTEM_LAST_SYNC',
+    product_name: new Date().toISOString(),
+    category: 'System',
+    brand: 'System',
+    harga_modal: 0,
+    harga_jual: 0,
+    is_active: false
+  }, { onConflict: 'sku_code' }).select()
+  return c.json({ data, error })
+})
+
 app.post('/sync-digiflazz', async (c) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
@@ -509,9 +523,6 @@ app.post('/sync-digiflazz', async (c) => {
       product_name: new Date().toISOString(),
       category: 'System',
       brand: 'System',
-      type: 'System',
-      seller_name: 'System',
-      desc: 'System',
       harga_modal: 0,
       harga_jual: 0,
       is_active: false
