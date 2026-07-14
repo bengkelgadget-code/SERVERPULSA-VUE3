@@ -471,6 +471,9 @@ app.post('/sync-digiflazz', async (c) => {
     for (const item of products) {
       if (!item.buyer_sku_code) continue; // Skip invalid entries
       
+      // ONLY update products that already exist in the user's database!
+      if (!existingPrices.has(item.buyer_sku_code)) continue;
+
       const isActive = item.buyer_product_status === true && item.seller_product_status === true;
       const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
       const existingJual = existingPrices.get(item.buyer_sku_code);
