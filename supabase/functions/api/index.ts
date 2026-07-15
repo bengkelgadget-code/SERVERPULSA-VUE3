@@ -660,7 +660,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
     }
 
     const { data: product, error: productError } = await supabase
-      .from('products').select('harga_modal, harga_jual, is_active').eq('sku_code', sku_code).single()
+      .from('products').select('harga_modal, harga_jual, is_active, product_name').eq('sku_code', sku_code).single()
 
     if (productError || !product) return c.json({ error: 'Product not found' }, 404)
     if (!product.is_active) return c.json({ error: 'Product is currently inactive' }, 400)
