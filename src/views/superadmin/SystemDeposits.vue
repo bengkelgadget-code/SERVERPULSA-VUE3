@@ -58,7 +58,7 @@ const handleApproveDeposit = async (deposit: any) => {
   actionLoading.value[deposit.id] = true
   try {
     const { error } = await supabase.rpc('approve_deposit', {
-      deposit_id: deposit.id
+      p_deposit_id: deposit.id
     })
     
     if (error) throw error

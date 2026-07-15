@@ -132,6 +132,14 @@ app.post('/webhook/digiflazz', async (c) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     )
 
+    // Log webhook payload immediately
+    await supabase.from('webhook_logs').insert({
+      ref_id: data.ref_id || null,
+      event_type: data.ref_id ? 'transaction' : (data.balance !== undefined ? 'deposit' : 'unknown'),
+      payload: body,
+      signature: signature
+    });
+
     // Handle Deposit Webhook or Broadcast any balance update
     if (data.balance !== undefined) {
       const channel = supabase.channel('superadmin-dashboard-changes')
@@ -170,20 +178,22 @@ app.post('/webhook/digiflazz', async (c) => {
       }
     }
 
-    const { error } = await supabase
-      .from('transactions')
-      .update({
-        status: data.status.toLowerCase(),
-        sn: finalSn
+    if (data.status.toLowerCase() === 'gagal') {
+      const { error } = await supabase.rpc('fail_and_refund', { 
+        p_transaction_id: tx.id,
+        p_sn: finalSn,
+        p_note: data.message || 'Webhook failed'
       })
-      .eq('id', tx.id)
-
-    if (error) return c.json({ error: 'Database update failed' }, 500)
-    
-    if (data.status.toLowerCase() === 'gagal' && tx.status !== 'gagal') {
-       // Use idempotent refund_purchase RPC (checks is_refunded + FOR UPDATE lock)
-       // Fixed: Passing tx.id instead of data.ref_id
-       await supabase.rpc('refund_purchase', { p_transaction_id: tx.id })
+      if (error) return c.json({ error: 'Database update failed' }, 500)
+    } else {
+      const { error } = await supabase
+        .from('transactions')
+        .update({
+          status: data.status.toLowerCase(),
+          sn: finalSn
+        })
+        .eq('id', tx.id)
+      if (error) return c.json({ error: 'Database update failed' }, 500)
     }
     
     return c.json({ success: true })
@@ -277,16 +287,29 @@ app.post('/inquiry-ewallet', async (c) => {
       return c.json({ success: false, message: response.message || 'Gagal mengecek nama e-wallet', rc: response.rc }, 400);
     }
 
-    // Deduct inquiry fee if there is a price
+    // Deduct inquiry fee and create transaction record if there is a price
     if (response && response.price > 0) {
-      const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
-      const effectiveUserId = profile?.role === 'staff' ? profile.admin_id : user.id
-      
       const supabaseService = getSupabaseService()
-      await supabaseService.rpc('add_balance', {
-        p_user_id: effectiveUserId,
-        p_amount: -response.price
+      
+      const { data: transactionId, error: rpcError } = await supabaseService.rpc('process_purchase', {
+        p_user_id: user.id,
+        p_sku_code: buyerSkuCode,
+        p_customer_no: cleanCustomerNo,
+        p_ref_id: refId,
+        p_harga_modal: response.price,
+        p_harga_jual: response.price,
+        p_product_name: `Cek Nama ${provider.toUpperCase()}`
       })
+
+      if (rpcError) {
+        return c.json({ success: false, message: 'Saldo tidak cukup untuk pengecekan' }, 400);
+      }
+
+      await supabaseService.from('transactions').update({
+        status: 'sukses',
+        sn: response.sn || response.message || null,
+        updated_at: new Date().toISOString()
+      }).eq('id', transactionId);
     }
 
     let rawName = response.sn || response.message || '';
@@ -391,18 +414,78 @@ app.post('/sync-digiflazz-balance', async (c) => {
   return c.json({ error: 'Fitur sinkronisasi langsung dinonaktifkan dalam mode SAAS. Top-up Anda masuk ke Uang Superadmin, dan saldo Mitra hanya bertambah melalui sistem Deposit.' }, 400);
 })
 
-app.get('/debug-upsert', async (c) => {
-  const supabaseService = getSupabaseService()
-  const { data, error } = await supabaseService.from('products').upsert({
-    sku_code: 'SYSTEM_LAST_SYNC',
-    product_name: new Date().toISOString(),
-    category: 'System',
-    brand: 'System',
-    harga_modal: 0,
-    harga_jual: 0,
-    is_active: false
-  }, { onConflict: 'sku_code' }).select()
-  return c.json({ data, error })
+app.post('/check-stale-pending', async (c) => {
+  const authHeader = c.req.header('Authorization')
+  const token = authHeader?.replace('Bearer ', '').trim()
+  const CRON_SECRET = Deno.env.get('CRON_SECRET')
+  
+  let isCron = false;
+  if (token && CRON_SECRET && token === CRON_SECRET) {
+    isCron = true;
+  }
+  
+  if (!isCron) {
+    const supabaseService = getSupabaseService()
+    const { data: { user } } = await supabaseService.auth.getUser(token || '')
+    if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    const { data: profile } = await supabaseService.from('users').select('role').eq('id', user.id).single()
+    if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+      return c.json({ error: 'Forbidden' }, 403)
+    }
+  }
+
+  try {
+    const supabaseService = getSupabaseService()
+    
+    // Fetch pending transactions older than 15 minutes
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString()
+    const { data: pendingTrx, error: fetchErr } = await supabaseService
+      .from('transactions')
+      .select('id, ref_id, sku_code, customer_no, status, sn')
+      .eq('status', 'pending')
+      .lt('created_at', fifteenMinsAgo)
+      
+    if (fetchErr || !pendingTrx) return c.json({ error: 'Fetch failed' }, 500)
+    
+    let checkedCount = 0;
+    for (const trx of pendingTrx) {
+      // Avoid hammering Digiflazz API
+      await new Promise(r => setTimeout(r, 500));
+      
+      const cleanCustomerNo = String(trx.customer_no).replace(/[^0-9]/g, '');
+      let response;
+      try {
+        if (trx.ref_id.startsWith('INQPASCA-')) {
+          response = await digiflazz.payPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
+        } else {
+          response = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id);
+        }
+      } catch (err) {
+        continue;
+      }
+      
+      const dfStatus = response.status?.toLowerCase() || 'pending';
+      if (dfStatus === 'sukses') {
+        await supabaseService.from('transactions').update({ 
+          status: 'sukses', 
+          sn: response.sn || trx.sn || null, 
+          updated_at: new Date().toISOString() 
+        }).eq('id', trx.id)
+      } else if (dfStatus === 'gagal') {
+        await supabaseService.rpc('fail_and_refund', { 
+          p_transaction_id: trx.id,
+          p_sn: response.sn || trx.sn || null,
+          p_note: response.message || 'Auto-check failed'
+        })
+      }
+      checkedCount++;
+    }
+    
+    return c.json({ success: true, message: `Checked ${checkedCount} stale transactions` })
+  } catch (err: any) {
+    console.error('Check stale error:', err)
+    return c.json({ error: 'Internal error' }, 500)
+  }
 })
 
 app.post('/sync-digiflazz', async (c) => {
@@ -460,23 +543,30 @@ app.post('/sync-digiflazz', async (c) => {
 
     const supabaseService = getSupabaseService();
     
-    // Fetch existing products to preserve harga_jual
-    const { data: existingData } = await supabaseService.from('products').select('sku_code, harga_jual');
-    const existingPrices = new Map();
+    // Fetch existing products to preserve harga_jual and manual_override
+    const { data: existingData } = await supabaseService.from('products').select('sku_code, harga_jual, is_active, manual_override');
+    const existingProducts = new Map();
     if (existingData) {
-      existingData.forEach(p => existingPrices.set(p.sku_code, p.harga_jual));
+      existingData.forEach(p => existingProducts.set(p.sku_code, p));
     }
 
     const uniqueProductsMap = new Map();
     for (const item of products) {
       if (!item.buyer_sku_code) continue; // Skip invalid entries
-      
-      // ONLY update products that already exist in the user's database!
-      if (!existingPrices.has(item.buyer_sku_code)) continue;
 
-      const isActive = item.buyer_product_status === true && item.seller_product_status === true;
+      const existing = existingProducts.get(item.buyer_sku_code);
+      const isDigiflazzActive = item.buyer_product_status === true && item.seller_product_status === true;
       const hargaModal = item.price !== undefined ? item.price : (item.admin || 0);
-      const existingJual = existingPrices.get(item.buyer_sku_code);
+      
+      let finalActiveStatus = isDigiflazzActive;
+      if (existing) {
+        if (existing.manual_override) {
+          finalActiveStatus = existing.is_active;
+        }
+      } else {
+        // New item from Digiflazz
+        finalActiveStatus = true; // User requested new items to be active
+      }
 
       uniqueProductsMap.set(item.buyer_sku_code, {
         sku_code: item.buyer_sku_code,
@@ -484,8 +574,8 @@ app.post('/sync-digiflazz', async (c) => {
         category: item.category,
         brand: item.brand,
         harga_modal: hargaModal,
-        harga_jual: existingJual !== undefined ? existingJual : hargaModal,
-        is_active: isActive
+        harga_jual: existing ? existing.harga_jual : hargaModal,
+        is_active: finalActiveStatus
       });
     }
 
@@ -507,8 +597,8 @@ app.post('/sync-digiflazz', async (c) => {
 
     // Deactivate products that are no longer returned by Digiflazz
     const skusToDeactivate = [];
-    existingPrices.forEach((_, sku) => {
-      if (!uniqueProductsMap.has(sku)) {
+    existingProducts.forEach((_, sku) => {
+      if (sku !== 'SYSTEM_LAST_SYNC' && !uniqueProductsMap.has(sku)) {
         skusToDeactivate.push(sku);
       }
     });
@@ -538,6 +628,7 @@ app.post('/sync-digiflazz', async (c) => {
 
     return c.json({ success: true, message: `Synced ${updatedCount} products from Digiflazz` })
   } catch(e) {
+    console.error('Sync error:', e)
     return c.json({ error: 'Internal error' }, 500)
   }
 })
@@ -603,13 +694,14 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
     const refId = pasca_ref_id || generateRefId()
 
-    const { data: transactionId, error: rpcError } = await supabase.rpc('process_purchase', {
+    const { data: transactionId, error: rpcError } = await supabaseService.rpc('process_purchase', {
       p_user_id: user.id,
       p_sku_code: sku_code,
-      p_customer_no: customer_no,
+      p_customer_no: cleanCustomerNo,
       p_ref_id: refId,
       p_harga_modal: finalHargaModal,
       p_harga_jual: finalHargaJual,
+      p_product_name: product.product_name
     })
 
     if (rpcError) return c.json({ success: false, error: rpcError.message || 'Error' }, 400)
@@ -640,12 +732,16 @@ app.post('/mobile/transaction/purchase', async (c) => {
         updated_at: new Date().toISOString(),
       };
       
-      await supabaseService.from('transactions').update(updatePayload).eq('id', transactionId)
-
       if (dbStatus === 'gagal') {
-        // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId })
+        // Idempotent refund via atomic fail_and_refund RPC
+        await supabaseService.rpc('fail_and_refund', { 
+          p_transaction_id: transactionId,
+          p_sn: finalSn,
+          p_note: response.message || 'Digiflazz call failed'
+        })
         return c.json({ success: false, error: `Transaction failed: ${response.message}`, status: dbStatus, ref_id: refId })
+      } else {
+        await supabaseService.from('transactions').update(updatePayload).eq('id', transactionId)
       }
 
       return c.json({ success: true, transactionId, status: dbStatus, ref_id: refId, sn: response.sn, harga_jual: finalHargaJual })
@@ -659,8 +755,10 @@ app.post('/mobile/transaction/purchase', async (c) => {
         // Jika error bukan karena timeout, kemungkinan besar masalah Proxy / Jaringan.
         // Transaksi tidak pernah sampai ke Digiflazz. Batalkan dan refund otomatis!
         const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
-        await supabaseService.from('transactions').update({ status: 'gagal' }).eq('id', transactionId);
-        await supabaseService.rpc('refund_purchase', { p_transaction_id: transactionId });
+        await supabaseService.rpc('fail_and_refund', { 
+          p_transaction_id: transactionId,
+          p_note: 'DigiFlazz Network/Proxy Error'
+        })
         
         return c.json({ 
           success: false, 
@@ -730,9 +828,12 @@ app.post('/mobile/transaction/check-status', async (c) => {
       }
       await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
-      // Idempotent refund via refund_purchase RPC (FOR UPDATE lock + is_refunded guard)
-      await supabaseService.rpc('refund_purchase', { p_transaction_id: trx.id })
-      await supabaseService.from('transactions').update({ status: 'gagal', sn: dfData.sn || trx.sn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      // Atomic refund via fail_and_refund RPC
+      await supabaseService.rpc('fail_and_refund', { 
+        p_transaction_id: trx.id,
+        p_sn: dfData.sn || trx.sn || null,
+        p_note: dfData.message || 'Manual check status failed'
+      })
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })
@@ -781,16 +882,14 @@ app.post('/admin-action', async (c) => {
       } else {
         response = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id);
       }
-      
       if (response.status === 'Gagal') {
-      await supabaseService.rpc('refund_purchase', { p_transaction_id: transaction_id })
-      await supabaseService.from('transactions').update({ 
-        sn: response.sn || trx.sn || null, 
-        note: response.message || null,
-        updated_at: new Date().toISOString()
-      }).eq('id', transaction_id)
-      return c.json({ success: true, status: 'gagal', message: response.message })
-    } else if (response.status === 'Sukses') {
+        await supabaseService.rpc('fail_and_refund', { 
+          p_transaction_id: transaction_id,
+          p_sn: response.sn || trx.sn || null,
+          p_note: response.message || 'Admin manual check status failed'
+        })
+        return c.json({ success: true, status: 'gagal', message: response.message })
+      } else if (response.status === 'Sukses') {
         await supabaseService.from('transactions')
           .update({ status: 'sukses', sn: response.sn, note: response.message })
           .eq('id', transaction_id)

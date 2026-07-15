@@ -48,7 +48,7 @@ const fetchTransactions = async () => {
   try {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, users!user_id(nama_toko, email), staff:users!staff_id(email)')
+      .select('*, products(product_name), users!user_id(nama_toko, email), staff:users!staff_id(email)')
       .order('created_at', { ascending: false })
       .limit(500) // Limit to last 500 for performance
       
@@ -162,7 +162,7 @@ const formatCurrency = (value: number) => {
             </tr>
             <tr v-for="trx in filteredTransactions" :key="trx.id" class="hover:bg-gray-50 transition-colors">
               <td class="px-3 py-3 truncate break-words">
-                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.product_name">{{ trx.product_name }}</div>
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.product_name || trx.products?.product_name">{{ trx.product_name || trx.products?.product_name || 'Unknown Product' }}</div>
                 <div class="text-xs text-gray-500">{{ new Date(trx.created_at).toLocaleString('id-ID') }}</div>
                 <div class="text-xs text-gray-400 font-mono mt-0.5 truncate" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
               </td>

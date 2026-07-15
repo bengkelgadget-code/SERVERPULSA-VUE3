@@ -160,11 +160,12 @@ const toggleActive = async (product: any) => {
   try {
     const { error } = await supabase
       .from('products')
-      .update({ is_active: newStatus })
+      .update({ is_active: newStatus, manual_override: true })
       .eq('sku_code', product.sku_code)
       
     if (error) throw error
     product.is_active = newStatus
+    product.manual_override = true
   } catch (err) {
     console.error('Error toggling status:', err)
     alert('Failed to update product status')
