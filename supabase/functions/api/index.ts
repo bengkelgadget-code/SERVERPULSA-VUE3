@@ -418,9 +418,10 @@ app.post('/check-stale-pending', async (c) => {
   const authHeader = c.req.header('Authorization')
   const token = authHeader?.replace('Bearer ', '').trim()
   const CRON_SECRET = Deno.env.get('CRON_SECRET')
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   
   let isCron = false;
-  if (token && CRON_SECRET && token === CRON_SECRET) {
+  if (token && (token === CRON_SECRET || token === serviceKey)) {
     isCron = true;
   }
   
