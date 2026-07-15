@@ -695,6 +695,8 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
     const refId = pasca_ref_id || generateRefId()
 
+    const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
+
     const { data: transactionId, error: rpcError } = await supabaseService.rpc('process_purchase', {
       p_user_id: user.id,
       p_sku_code: sku_code,
@@ -724,8 +726,6 @@ app.post('/mobile/transaction/purchase', async (c) => {
       if (customer_name) {
         finalSn = finalSn ? `A/N ${customer_name} | SN: ${finalSn}` : `A/N ${customer_name}`;
       }
-
-      const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
 
       const updatePayload: any = {
         status: dbStatus,
