@@ -126,6 +126,23 @@ export default async function handler(req, res) {
       }
     }
 
+    // Log the sync time via RPC to avoid constraint errors
+    const { error: syncLogError } = await supabase.rpc('set_last_sync_time', { p_time: new Date().toISOString() })
+    if (syncLogError) console.error('SYSTEM_LAST_SYNC Error (RPC):', syncLogError);
+
+    // Backward compatibility: also upsert to products table for older frontends
+    await supabase.from('products').upsert({
+      sku_code: 'SYSTEM_LAST_SYNC',
+      product_name: new Date().toISOString(),
+      category: 'System',
+      brand: 'System',
+      provider: 'System',
+      type: 'System',
+      harga_modal: 0,
+      harga_jual: 0,
+      is_active: false
+    }, { onConflict: 'sku_code' })
+
     return res.status(200).json({ success: true, message: `Berhasil sinkronisasi ${upsertData.length} produk!` });
   } catch (error) {
     console.error('Error syncing with DigiFlazz:', error.message);
