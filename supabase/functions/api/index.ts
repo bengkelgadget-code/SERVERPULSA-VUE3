@@ -611,8 +611,12 @@ app.post('/sync-digiflazz', async (c) => {
         .in('sku_code', chunk);
     }
 
-    // Log the sync time
-    const { error: syncLogError } = await supabaseService.from('products').upsert({
+    // Log the sync time via RPC to avoid constraint errors
+    const { error: syncLogError } = await supabaseService.rpc('set_last_sync_time', { p_time: new Date().toISOString() })
+    if (syncLogError) console.error('SYSTEM_LAST_SYNC Error (RPC):', syncLogError);
+
+    // Backward compatibility: also upsert to products table for older frontends that haven't received OTA update
+    await supabaseService.from('products').upsert({
       sku_code: 'SYSTEM_LAST_SYNC',
       product_name: new Date().toISOString(),
       category: 'System',
@@ -623,7 +627,6 @@ app.post('/sync-digiflazz', async (c) => {
       harga_jual: 0,
       is_active: false
     }, { onConflict: 'sku_code' })
-    if (syncLogError) console.error('SYSTEM_LAST_SYNC Error:', syncLogError);
 
     if (updatedCount === 0 && lastError) {
        return c.json({ success: false, message: 'Upsert failed: ' + lastError.message, error: lastError }, 500)

@@ -21,14 +21,10 @@ let typingTimers: Record<string, any> = {}
 
 const fetchLastSyncTime = async () => {
   try {
-    const { data } = await supabase
-      .from('products')
-      .select('product_name')
-      .eq('sku_code', 'SYSTEM_LAST_SYNC')
-      .single()
+    const { data } = await supabase.rpc('get_last_sync_time')
       
-    if (data && data.product_name) {
-      lastSyncTime.value = new Date(data.product_name).toLocaleString('id-ID', {
+    if (data) {
+      lastSyncTime.value = new Date(data).toLocaleString('id-ID', {
         dateStyle: 'medium', timeStyle: 'short'
       })
     }
