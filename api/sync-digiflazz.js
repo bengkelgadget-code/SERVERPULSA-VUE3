@@ -97,14 +97,17 @@ export default async function handler(req, res) {
       };
     });
 
-    const chunkSize = 500;
+    const chunkSize = 1000;
+    const upsertPromises = [];
     for (let i = 0; i < upsertData.length; i += chunkSize) {
       const chunk = upsertData.slice(i, i + chunkSize);
-      const { error: upsertError } = await supabase
-        .from('products')
-        .upsert(chunk, { onConflict: 'sku_code' });
-      
-      if (upsertError) throw upsertError;
+      upsertPromises.push(
+        supabase.from('products').upsert(chunk, { onConflict: 'sku_code' })
+      );
+    }
+    const upsertResults = await Promise.all(upsertPromises);
+    for (const res of upsertResults) {
+      if (res.error) throw res.error;
     }
 
     // Handle stale products (products that are in our DB but no longer exist in Digiflazz)
@@ -115,14 +118,16 @@ export default async function handler(req, res) {
 
     if (staleProductSkus.length > 0) {
       console.log(`Deactivating ${staleProductSkus.length} stale products...`);
+      const deactivatePromises = [];
       for (let i = 0; i < staleProductSkus.length; i += chunkSize) {
         const chunk = staleProductSkus.slice(i, i + chunkSize);
-        const { error: updateError } = await supabase
-          .from('products')
-          .update({ is_active: false })
-          .in('sku_code', chunk);
-        
-        if (updateError) console.error('Error deactivating stale products:', updateError);
+        deactivatePromises.push(
+          supabase.from('products').update({ is_active: false }).in('sku_code', chunk)
+        );
+      }
+      const deactivateResults = await Promise.all(deactivatePromises);
+      for (const res of deactivateResults) {
+        if (res.error) console.error('Error deactivating stale products:', res.error);
       }
     }
 
