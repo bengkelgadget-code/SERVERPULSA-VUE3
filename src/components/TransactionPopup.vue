@@ -11,6 +11,7 @@ const isVisible = ref(false)
 const transactionInfo = ref({ title: '', message: '', status: '' })
 let timeoutId: any = null
 let realtimeChannel: any = null
+let staffChannel: any = null
 let pollingInterval: any = null
 let knownPendingIds = new Set<string>()
 
@@ -39,45 +40,54 @@ const setupRealtime = () => {
   const userId = auth.user?.id
   if (!userId) return
 
-  // Listen for transactions where this user is the owner OR the staff who made it
-  realtimeChannel = supabase.channel('transaction-popup')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'transactions' },
-      (payload: any) => {
-        const newRow = payload.new
-        if (!newRow || (!newRow.user_id && !newRow.staff_id)) return
-        
-        const txUserId = newRow.user_id
-        const txStaffId = newRow.staff_id
-        
-        // Only process if this update belongs to the current user (as owner or staff)
-        if (txUserId !== userId && txStaffId !== userId) return
-        
-        const status = newRow.status?.toLowerCase()
-        
-        if (payload.eventType === 'INSERT') {
-          if (['pending', 'proses'].includes(status)) {
-            knownPendingIds.add(newRow.id)
-          }
-        } else if (payload.eventType === 'UPDATE') {
-          if (knownPendingIds.has(newRow.id)) {
-            if (!['pending', 'proses'].includes(status)) {
-              showPopup(
-                `Transaksi ${status.toUpperCase()}`,
-                `Transaksi (${newRow.customer_no}) telah ${status}.`,
-                status
-              )
-              knownPendingIds.delete(newRow.id)
-            }
-          } else {
-            // If it's an update to pending/proses, track it
-            if (['pending', 'proses'].includes(status)) {
-              knownPendingIds.add(newRow.id)
-            }
-          }
+  // We need two channels for OR logic (owner or staff)
+  const handlePayload = async (payload: any) => {
+    const newRow = payload.new
+    if (!newRow) return
+    
+    const status = newRow.status?.toLowerCase()
+    
+    // Refresh balance if status changed to gagal or sukses
+    if (status === 'gagal' || status === 'sukses') {
+      const { data: sessionData } = await supabase.auth.getSession()
+      await auth.fetchProfile(userId, sessionData.session?.access_token)
+    }
+    
+    if (payload.eventType === 'INSERT') {
+      if (['pending', 'proses'].includes(status)) {
+        knownPendingIds.add(newRow.id)
+      }
+    } else if (payload.eventType === 'UPDATE') {
+      if (knownPendingIds.has(newRow.id)) {
+        if (!['pending', 'proses'].includes(status)) {
+          showPopup(
+            `Transaksi ${status.toUpperCase()}`,
+            `Transaksi (${newRow.customer_no}) telah ${status}.`,
+            status
+          )
+          knownPendingIds.delete(newRow.id)
+        }
+      } else {
+        if (['pending', 'proses'].includes(status)) {
+          knownPendingIds.add(newRow.id)
         }
       }
+    }
+  }
+
+  realtimeChannel = supabase.channel('transaction-popup-user')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'transactions', filter: `user_id=eq.${userId}` },
+      handlePayload
+    )
+    .subscribe()
+    
+  staffChannel = supabase.channel('transaction-popup-staff')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'transactions', filter: `staff_id=eq.${userId}` },
+      handlePayload
     )
     .subscribe()
 }
@@ -214,6 +224,7 @@ onUnmounted(() => {
   if (timeoutId) clearTimeout(timeoutId)
   if (pollingInterval) clearInterval(pollingInterval)
   if (realtimeChannel) supabase.removeChannel(realtimeChannel)
+  if (staffChannel) supabase.removeChannel(staffChannel)
 })
 </script>
 

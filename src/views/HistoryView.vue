@@ -26,6 +26,7 @@ const formatDateShort = (dateStr: string) => {
 }
 
 let realtimeChannel: any
+let staffChannel: any
 
 const fetchHistory = async () => {
   loading.value = true
@@ -98,25 +99,50 @@ onMounted(async () => {
 
   // Subscribe to realtime updates for this user's transactions (as owner or staff)
   const userId = auth.user.id
-  realtimeChannel = supabase.channel('transaction-updates')
+  
+  // Realtime subscription handler
+  const handleRealtimeUpdate = async (payload: any) => {
+    const idx = transactions.value.findIndex(t => t.id === payload.new.id)
+    if (idx !== -1) {
+      payload.new.products = transactions.value[idx].products
+      transactions.value[idx] = payload.new
+      transactions.value = [...transactions.value]
+      
+      // Refresh balance if status changed to gagal or sukses
+      const status = payload.new.status?.toLowerCase()
+      if (status === 'gagal' || status === 'sukses') {
+        const { data: sessionData } = await supabase.auth.getSession()
+        await auth.fetchProfile(userId, sessionData.session?.access_token)
+      }
+    }
+  }
+
+  // We need two channels because we can't do OR filters in realtime subscriptions easily
+  // Channel 1: Where the user is the owner
+  realtimeChannel = supabase.channel('transaction-updates-user')
     .on(
       'postgres_changes',
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'transactions'
+        table: 'transactions',
+        filter: `user_id=eq.${userId}`
       },
-      (payload) => {
-        // Only process if this transaction belongs to the current user
-        if (payload.new.user_id !== userId && payload.new.staff_id !== userId) return
-        
-        const idx = transactions.value.findIndex(t => t.id === payload.new.id)
-        if (idx !== -1) {
-          payload.new.products = transactions.value[idx].products
-          transactions.value[idx] = payload.new
-          transactions.value = [...transactions.value]
-        }
-      }
+      handleRealtimeUpdate
+    )
+    .subscribe()
+    
+  // Channel 2: Where the user is the staff who made it
+  staffChannel = supabase.channel('transaction-updates-staff')
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'transactions',
+        filter: `staff_id=eq.${userId}`
+      },
+      handleRealtimeUpdate
     )
     .subscribe()
 })
@@ -124,6 +150,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (realtimeChannel) {
     supabase.removeChannel(realtimeChannel)
+  }
+  if (staffChannel) {
+    supabase.removeChannel(staffChannel)
   }
 })
 
