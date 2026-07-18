@@ -489,6 +489,22 @@ app.post('/check-stale-pending', async (c) => {
   }
 })
 
+app.get('/sync-digiflazz', async (c) => {
+  try {
+    const supabaseService = getSupabaseService();
+    const { data, error } = await supabaseService.rpc('get_last_sync_time');
+    if (error) throw error;
+    
+    return c.json({
+      status: 'ok',
+      last_sync: data || 'Belum ada data sync',
+      message: 'Digiflazz sync cron endpoint is active.'
+    });
+  } catch (err: any) {
+    return c.json({ status: 'error', message: err.message }, 500);
+  }
+})
+
 app.post('/sync-digiflazz', async (c) => {
   const authHeader = c.req.header('Authorization')
   if (!authHeader) return c.json({ error: 'Missing Authorization header' }, 401)
