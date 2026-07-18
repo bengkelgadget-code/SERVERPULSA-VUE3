@@ -18,11 +18,11 @@ const fetchDeposits = async () => {
   try {
     let query = supabase
       .from('deposits')
-      .select('*, users(nama_toko, email)')
+      .select('*, users!user_id(email), mitras(nama_mitra)')
       .order('created_at', { ascending: false })
       
     if (!isSuperadmin.value) {
-      query = query.eq('user_id', auth.user?.id)
+      query = query.eq('mitra_id', auth.userProfile?.mitra_id)
     }
     
     const { data, error } = await query
@@ -47,7 +47,7 @@ const filteredDeposits = computed(() => {
     const searchLower = searchQuery.value.toLowerCase()
     const matchesSearch = 
       d.id?.toLowerCase().includes(searchLower) || 
-      d.users?.nama_toko?.toLowerCase().includes(searchLower) ||
+      d.mitras?.nama_mitra?.toLowerCase().includes(searchLower) ||
       d.users?.email?.toLowerCase().includes(searchLower)
     const matchesStatus = statusFilter.value ? d.status === statusFilter.value : true
     return matchesSearch && matchesStatus
@@ -140,7 +140,7 @@ const formatCurrency = (value: number) => {
                 <div class="text-xs text-gray-400 font-mono mt-0.5">{{ deposit.id }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ deposit.users?.nama_toko || 'Unknown User' }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ deposit.mitras?.nama_mitra || 'Unknown Mitra' }}</div>
                 <div class="text-sm text-gray-500">{{ deposit.users?.email || '' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">

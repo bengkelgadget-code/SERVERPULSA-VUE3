@@ -53,21 +53,12 @@ const fetchTransactions = async () => {
   try {
     let query = supabase
       .from('transactions')
-      .select('*, products(product_name), users!user_id(nama_toko, email), staff:users!staff_id(email)')
+      .select('*, products(product_name), users!user_id(email), staff:users!staff_id(email), mitras(nama_mitra)')
       .order('created_at', { ascending: false })
       .limit(500)
       
     if (!isSuperadmin.value) {
-      // First get all staff IDs for this admin
-      const { data: staffData } = await supabase
-        .from('users')
-        .select('id')
-        .eq('admin_id', auth.user?.id)
-      
-      const staffIds = staffData?.map(s => s.id) || []
-      staffIds.push(auth.user?.id) // Include admin's own transactions if any
-      
-      query = query.in('user_id', staffIds)
+      query = query.eq('mitra_id', auth.userProfile?.mitra_id)
     }
     
     const { data, error } = await query
@@ -94,7 +85,7 @@ const filteredTransactions = computed(() => {
       t.id?.toLowerCase().includes(searchLower) || 
       t.product_name?.toLowerCase().includes(searchLower) ||
       t.customer_no?.toLowerCase().includes(searchLower) ||
-      t.users?.nama_toko?.toLowerCase().includes(searchLower) ||
+      t.mitras?.nama_mitra?.toLowerCase().includes(searchLower) ||
       t.users?.email?.toLowerCase().includes(searchLower) ||
       t.staff?.email?.toLowerCase().includes(searchLower)
     const matchesStatus = statusFilter.value ? t.status === statusFilter.value : true
@@ -187,7 +178,7 @@ const formatCurrency = (value: number) => {
                 <div class="text-xs text-gray-400 font-mono mt-0.5 truncate" :title="trx.id">Ref: {{ trx.id.substring(0, 8) }}...</div>
               </td>
               <td class="px-3 py-3 break-words">
-                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.users?.nama_toko">{{ trx.users?.nama_toko || 'Unknown' }}</div>
+                <div class="text-sm font-medium text-gray-900 truncate" :title="trx.mitras?.nama_mitra">{{ trx.mitras?.nama_mitra || 'Unknown Mitra' }}</div>
                 <div class="text-xs text-gray-500 truncate" :title="trx.users?.email">{{ trx.users?.email || '' }}</div>
                 <div v-if="trx.staff" class="text-xs text-blue-600 mt-1 truncate" :title="trx.staff.email">Kasir: {{ trx.staff.email }}</div>
               </td>

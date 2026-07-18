@@ -40,11 +40,12 @@ export const useProductsStore = defineStore('products', () => {
       
       const prodData = allProdData
       const { data: { user } } = await supabase.auth.getUser()
-      if (user && prodData) {
-        const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+      if (user) {
+        // Fetch user profile to know role and mitra_id
+        const { data: profile } = await supabase.from('users').select('role, mitra_id').eq('id', user.id).single()
         
         if (profile && (profile.role === 'admin' || profile.role === 'staff')) {
-          const mitraId = profile.role === 'admin' ? user.id : profile.admin_id
+          const mitraId = profile.mitra_id
           
           if (mitraId) {
             const { data: pricingData } = await supabase

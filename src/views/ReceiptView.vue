@@ -94,10 +94,10 @@ const fetchTransaction = async () => {
 
     const isOwner = data.user_id === user?.id
     const isStaffWhoMadeIt = data.staff_id === user?.id
-    const isAdmin = profile?.role === 'superadmin' || profile?.role === 'admin'
-    const isStaffUnderAdmin = profile?.role === 'staff' && profile?.admin_id === data.user_id
+    const isSuperadmin = profile?.role === 'superadmin'
+    const isSameMitra = profile?.mitra_id && data.mitra_id === profile.mitra_id
 
-    if (!isOwner && !isStaffWhoMadeIt && !isAdmin && !isStaffUnderAdmin) {
+    if (!isOwner && !isStaffWhoMadeIt && !isSuperadmin && !isSameMitra) {
       alert('Unauthorized access to receipt')
       router.push('/')
       return

@@ -114,10 +114,29 @@ async function handleDigiflazzWebhook(c: any) {
   try {
     const rawBody = await c.req.text();
     const signature = c.req.header('x-hub-signature') || c.req.header('x-digiflazz-signature');
+    
+    // Log immediately before any checks so we don't lose the payload
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') || '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+    )
+    
+    let body = {};
+    try {
+      body = JSON.parse(rawBody);
+    } catch(e) {}
+    
+    await supabase.from('webhook_logs').insert({
+      ref_id: body.data?.ref_id || null,
+      event_type: body.data?.ref_id ? 'transaction' : (body.data?.balance !== undefined ? 'deposit' : 'unknown'),
+      payload: body,
+      signature: signature
+    });
+
     const secret = Deno.env.get('DIGIFLAZZ_WEBHOOK_SECRET');
 
     if (!secret) {
-      return c.json({ error: 'Webhook not configured' }, 500);
+      return c.json({ error: 'Webhook not configured (missing secret)' }, 500);
     }
     if (!signature) {
       return c.json({ error: 'Missing signature header' }, 401);
@@ -126,22 +145,8 @@ async function handleDigiflazzWebhook(c: any) {
     const isValid = await verifyDigiflazzSignature(rawBody, signature, secret);
     if (!isValid) return c.json({ error: 'Invalid signature' }, 401);
 
-    const body = JSON.parse(rawBody);
     const { data } = body
     if (!data) return c.json({ error: 'Invalid payload' }, 400)
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') || '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-    )
-
-    // Log webhook payload immediately
-    await supabase.from('webhook_logs').insert({
-      ref_id: data.ref_id || null,
-      event_type: data.ref_id ? 'transaction' : (data.balance !== undefined ? 'deposit' : 'unknown'),
-      payload: body,
-      signature: signature
-    });
 
     // Handle Deposit Webhook or Broadcast any balance update
     if (data.balance !== undefined) {
@@ -875,7 +880,7 @@ app.post('/admin-action', async (c) => {
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
   // Verify if caller is superadmin or admin
-  const { data: callerProfile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const { data: callerProfile } = await supabase.from('users').select('role, mitra_id').eq('id', user.id).single()
   if (callerProfile?.role !== 'superadmin' && callerProfile?.role !== 'admin') {
     return c.json({ error: 'Forbidden' }, 403)
   }
@@ -925,11 +930,11 @@ app.post('/admin-action', async (c) => {
     if (action === 'update_user') {
       // Prevent admin from updating superadmin
       if (callerProfile.role === 'admin') {
-        const { data: targetProfile } = await supabaseService.from('users').select('role, admin_id').eq('id', payload.id).single()
+        const { data: targetProfile } = await supabaseService.from('users').select('role, mitra_id').eq('id', payload.id).single()
         if (targetProfile?.role === 'superadmin' || targetProfile?.role === 'admin') {
           return c.json({ error: 'Forbidden' }, 403)
         }
-        if (targetProfile?.admin_id !== user.id) {
+        if (targetProfile?.mitra_id !== callerProfile.mitra_id) {
           return c.json({ error: 'Forbidden' }, 403)
         }
       }
@@ -969,11 +974,11 @@ app.post('/admin-action', async (c) => {
     
     if (action === 'delete_user') {
       if (callerProfile.role === 'admin') {
-        const { data: targetProfile } = await supabaseService.from('users').select('role, admin_id').eq('id', payload.id).single()
+        const { data: targetProfile } = await supabaseService.from('users').select('role, mitra_id').eq('id', payload.id).single()
         if (targetProfile?.role === 'superadmin' || targetProfile?.role === 'admin') {
           return c.json({ error: 'Forbidden' }, 403)
         }
-        if (targetProfile?.admin_id !== user.id) {
+        if (targetProfile?.mitra_id !== callerProfile.mitra_id) {
           return c.json({ error: 'Forbidden' }, 403)
         }
       }
@@ -1008,12 +1013,15 @@ app.post('/admin-action', async (c) => {
       if (authError) throw authError
       
       // Update the automatically created profile
-      const adminId = callerProfile.role === 'admin' ? user.id : null;
+      let mitraId = payload.mitra_id;
+      if (callerProfile.role === 'admin') {
+        // Admins can only create staff for their own mitra
+        mitraId = callerProfile.mitra_id;
+      }
       
       await supabaseService.from('users').update({
-        nama_toko: payload.nama_toko,
         role: newRole,
-        admin_id: adminId
+        mitra_id: mitraId
       }).eq('id', authData.user.id)
       
       return c.json({ success: true, user: authData.user })
@@ -1075,34 +1083,38 @@ app.post('/admin-action', async (c) => {
     }
 
     if (action === 'add_balance') {
-      const { user_id, amount } = payload
+      const { mitra_id, amount, notes } = payload
       
       if (typeof amount !== 'number' || amount === 0 || amount > 100000000 || amount < -100000000) {
         return c.json({ error: 'Invalid amount' }, 400)
       }
       
-      // Ensure only superadmin or admin can add balance
-      // Superadmin can add balance to anyone. Admin can add balance to their staff.
-      if (callerProfile.role === 'admin') {
-        const { data: targetProfile } = await supabaseService.from('users').select('admin_id').eq('id', user_id).single()
-        if (targetProfile?.admin_id !== user.id) {
-          return c.json({ error: 'Forbidden. You can only add balance to your own staff.' }, 403)
-        }
-        
-        // Transfer using RPC to ensure atomicity
-        const { error } = await supabaseService.rpc('transfer_balance', {
-          p_from_user_id: user.id,
-          p_to_user_id: user_id,
-          p_amount: amount
-        })
-        if (error) throw error
-        return c.json({ success: true })
+      // Ensure only superadmin can add balance directly
+      if (callerProfile.role !== 'superadmin') {
+        return c.json({ error: 'Forbidden. Only superadmin can add balance directly.' }, 403)
       }
       
-      // Execute the balance change for the target user (Mitra)
-      const { error: err1 } = await supabaseService.rpc('add_balance', {
-        p_user_id: user_id,
-        p_amount: amount
+      if (!mitra_id) {
+        return c.json({ error: 'mitra_id is required' }, 400)
+      }
+
+      // Instead of an add_balance RPC, we can just update the mitras table directly using service role!
+      // But we should also log it in deposits table. Let's just do it directly here.
+      
+      // Lock and update balance is hard in REST, but we can call a simple update.
+      // Wait, let's just use service role to update mitras saldo.
+      // Or call a new RPC. But since we have full admin access, we can fetch, then update, or just use RPC if it exists.
+      // Actually, since process_deposit expects a user_id, we can find the admin user of this mitra and call process_deposit.
+      const { data: adminUser } = await supabaseService.from('users').select('id').eq('mitra_id', mitra_id).eq('role', 'admin').single()
+      
+      if (!adminUser) {
+        return c.json({ error: 'No admin found for this mitra' }, 404)
+      }
+      
+      const { error: err1 } = await supabaseService.rpc('process_deposit', {
+        p_user_id: adminUser.id,
+        p_amount: amount,
+        p_notes: notes || 'Manual balance adjustment by Superadmin'
       })
       if (err1) throw err1
       
@@ -1126,17 +1138,21 @@ app.get('/get-admin-balance', async (c) => {
     const { data: { user } } = await supabase.auth.getUser(token)
     if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
-    const { data: profile } = await supabase.from('users').select('role, admin_id').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('role, mitra_id').eq('id', user.id).single()
     
-    if (profile?.role !== 'staff' || !profile?.admin_id) {
+    if (profile) {
+      // For staff, get their mitra_id
+      const mitraId = profile.mitra_id
+      if (!mitraId) return c.json({ error: 'Forbidden' }, 403)
+    } else {
       return c.json({ error: 'Forbidden' }, 403)
     }
 
-    // Use service role to bypass RLS and get admin's balance
+    // Use service role to bypass RLS and get mitra's balance
     const supabaseService = getSupabaseService()
-    const { data: adminData } = await supabaseService.from('users').select('saldo').eq('id', profile.admin_id).single()
+    const { data: mitraData } = await supabaseService.from('mitras').select('saldo').eq('id', profile.mitra_id).single()
     
-    return c.json({ success: true, saldo: adminData?.saldo || 0 })
+    return c.json({ success: true, saldo: mitraData?.saldo || 0 })
   } catch (err: any) {
     return c.json({ error: err.message }, 500)
   }

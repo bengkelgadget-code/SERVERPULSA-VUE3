@@ -47,15 +47,15 @@ const handleSave = async () => {
     })
     if (authError) console.warn('Update auth metadata failed', authError)
 
-    // 2. Try saving to public.users (might fail if RLS prevents it)
-    const { error } = await supabase.from('users')
-      .update({ nama_toko: namaToko.value })
-      .eq('id', auth.user.id)
-      .select('id')
-      .single()
-      
-    if (error) {
-      console.warn('Update to DB failed (RLS issue?), falling back to local storage', error)
+    // 2. Try saving to public.mitras if admin
+    if (auth.userProfile?.role === 'admin' && auth.userProfile?.mitra_id) {
+      const { error } = await supabase.from('mitras')
+        .update({ nama_mitra: namaToko.value })
+        .eq('id', auth.userProfile.mitra_id)
+        
+      if (error) {
+        console.warn('Update to mitras failed (RLS issue?), falling back to local storage', error)
+      }
     }
     
     // Save locally so it always sticks on this device even if DB fails

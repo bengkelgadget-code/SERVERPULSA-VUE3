@@ -39,9 +39,9 @@ const fetchHistory = async () => {
 
   // If not superadmin, restrict to their own/mitra's transactions
   if (auth.userProfile?.role !== 'superadmin') {
-    const targetUserId = auth.userProfile?.role === 'staff' ? auth.userProfile?.admin_id : auth.user?.id
-    if (targetUserId) {
-      query = query.eq('user_id', targetUserId)
+    const mitraId = auth.userProfile?.mitra_id
+    if (mitraId) {
+      query = query.eq('mitra_id', mitraId)
     }
   }
 

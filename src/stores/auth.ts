@@ -45,7 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  async function fetchProfile(userId: string, providedToken?: string) {
+  async function fetchProfile(userId: string, _providedToken?: string) {
     console.log('Fetching profile for:', userId)
     try {
       const { data, error } = await supabase
@@ -60,49 +60,26 @@ export const useAuthStore = defineStore('auth', () => {
       
       if (data) {
         let finalData = { ...data }
-        if (data.role === 'staff' && data.admin_id) {
+        
+        // Fetch Mitra data for both admin and staff
+        if (data.mitra_id) {
           try {
-            // Use provided token first, fallback to getSession()
-            let token = providedToken
-            if (!token) {
-              const { data: sessionData } = await supabase.auth.getSession()
-              token = sessionData.session?.access_token
-            }
-            if (!token) {
-              throw new Error('No auth token available — cannot fetch admin balance')
-            }
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            })
-            if (!res.ok) {
-              throw new Error(`API returned HTTP ${res.status}`)
-            }
-            const resData = await res.json()
-            if (resData.success) {
-              finalData.saldo = resData.saldo
-            } else {
-              throw new Error(`API returned success=false: ${resData.error || 'unknown'}`)
-            }
-          } catch (e) {
-            console.error('Error fetching admin balance via API, using fallback:', e)
-            // Fallback: Try to query directly if RLS allows or we just get what we can
-            const { data: adminData } = await supabase
-              .from('users')
-              .select('saldo')
-              .eq('id', data.admin_id)
+            const { data: mitraData, error: mitraError } = await supabase
+              .from('mitras')
+              .select('*')
+              .eq('id', data.mitra_id)
               .single()
               
-            if (adminData && adminData.saldo !== undefined) {
-              finalData.saldo = adminData.saldo
+            if (mitraData && !mitraError) {
+              finalData.saldo = mitraData.saldo
+              finalData.nama_toko = mitraData.nama_mitra
+              finalData.alamat_toko = mitraData.alamat
             }
+          } catch (e) {
+            console.error('Error fetching mitra data:', e)
           }
         }
-        const { data: userData } = await supabase.auth.getUser()
-        if (userData?.user?.user_metadata) {
-          if (userData.user.user_metadata.nama_toko) finalData.nama_toko = userData.user.user_metadata.nama_toko
-          if (userData.user.user_metadata.alamat_toko) finalData.alamat_toko = userData.user.user_metadata.alamat_toko
-        }
-
+        
         // Overwrite nama_toko if local setting exists
         const customNamaToko = localStorage.getItem('custom_nama_toko')
         if (customNamaToko) {
@@ -115,7 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
         
         console.log('Profile fetched successfully:', finalData.role)
         userProfile.value = finalData
-        setupRealtime(userId, data.admin_id)
+        setupRealtime(userId, data.mitra_id)
       } else {
         console.log('No profile data returned.')
       }
@@ -124,7 +101,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function setupRealtime(userId: string, adminId?: string) {
+  function setupRealtime(userId: string, mitraId?: string) {
     if (userSubscription) {
       supabase.removeChannel(userSubscription)
     }
@@ -135,24 +112,25 @@ export const useAuthStore = defineStore('auth', () => {
         { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userId}` },
         (payload) => {
           console.log('User profile updated via realtime:', payload.new)
-          if (userProfile.value?.role === 'staff') {
-            const { saldo, ...rest } = payload.new as any
-            userProfile.value = { ...userProfile.value, ...rest }
-          } else {
-            userProfile.value = { ...userProfile.value, ...payload.new }
-          }
+          // Saldo is now in mitras table, so we don't expect it here
+          userProfile.value = { ...userProfile.value, ...payload.new }
         }
       )
       
-    // Jika staff, dengarkan juga perubahan tabel admin untuk update saldo
-    if (adminId) {
+    // Dengarkan perubahan tabel mitras untuk update saldo dan nama_toko
+    if (mitraId) {
       channel = channel.on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${adminId}` },
+        { event: 'UPDATE', schema: 'public', table: 'mitras', filter: `id=eq.${mitraId}` },
         (payload) => {
-          console.log('Admin profile updated via realtime (syncing balance):', payload.new)
-          if (userProfile.value && payload.new.saldo !== undefined) {
-            userProfile.value = { ...userProfile.value, saldo: payload.new.saldo }
+          console.log('Mitra profile updated via realtime (syncing balance):', payload.new)
+          if (userProfile.value) {
+            userProfile.value = { 
+              ...userProfile.value, 
+              saldo: payload.new.saldo !== undefined ? payload.new.saldo : userProfile.value.saldo,
+              nama_toko: payload.new.nama_mitra !== undefined ? payload.new.nama_mitra : userProfile.value.nama_toko,
+              alamat_toko: payload.new.alamat !== undefined ? payload.new.alamat : userProfile.value.alamat_toko
+            }
           }
         }
       )

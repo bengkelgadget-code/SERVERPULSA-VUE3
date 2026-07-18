@@ -20,22 +20,18 @@ let realtimeChannel: any = null
 const fetchStats = async () => {
   loading.value = true
   try {
-    // Fetch my balance
-    const { data: myUser } = await supabase
-      .from('users')
-      .select('saldo')
-      .eq('id', auth.user?.id)
-      .single()
-    myBalance.value = myUser?.saldo || 0
+    // Fetch my balance from auth store
+    myBalance.value = auth.userProfile?.saldo || 0
 
     // Fetch staff count
     const { count: usersCount } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true })
-      .eq('admin_id', auth.user?.id)
+      .eq('mitra_id', auth.userProfile?.mitra_id)
+      .eq('role', 'staff')
     
     // Fetch transactions count for my staff
-    const { data: staffData } = await supabase.from('users').select('id').eq('admin_id', auth.user?.id)
+    const { data: staffData } = await supabase.from('users').select('id').eq('mitra_id', auth.userProfile?.mitra_id)
     const staffIds = staffData?.map(u => u.id) || []
     
     let txCount = 0
@@ -84,10 +80,10 @@ const setupRealtime = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
       debouncedFetchStats()
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `admin_id=eq.${auth.user?.id}` }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `mitra_id=eq.${auth.userProfile?.mitra_id}` }, () => {
       debouncedFetchStats()
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: `user_id=eq.${auth.user?.id}` }, () => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: `mitra_id=eq.${auth.userProfile?.mitra_id}` }, () => {
       debouncedFetchStats()
     })
     .subscribe()

@@ -85,12 +85,11 @@ const fetchStats = async () => {
     stats.value[3].value = productsCount || 0
     
     // Fetch Total Saldo Mitra
-    const { data: usersData } = await supabase
-      .from('users')
+    const { data: mitrasData } = await supabase
+      .from('mitras')
       .select('saldo')
-      .eq('role', 'admin')
     
-    totalSaldoMitra.value = usersData?.reduce((acc, user) => acc + (Number(user.saldo) || 0), 0) || 0
+    totalSaldoMitra.value = mitrasData?.reduce((acc, mitra) => acc + (Number(mitra.saldo) || 0), 0) || 0
 
     // Fetch Digiflazz Balance first
     let currentDigiflazzBalance = 0
