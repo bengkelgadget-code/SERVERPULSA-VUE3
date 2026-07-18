@@ -1098,25 +1098,39 @@ app.post('/admin-action', async (c) => {
         return c.json({ error: 'mitra_id is required' }, 400)
       }
 
-      // Instead of an add_balance RPC, we can just update the mitras table directly using service role!
-      // But we should also log it in deposits table. Let's just do it directly here.
-      
-      // Lock and update balance is hard in REST, but we can call a simple update.
-      // Wait, let's just use service role to update mitras saldo.
-      // Or call a new RPC. But since we have full admin access, we can fetch, then update, or just use RPC if it exists.
-      // Actually, since process_deposit expects a user_id, we can find the admin user of this mitra and call process_deposit.
-      const { data: adminUser } = await supabaseService.from('users').select('id').eq('mitra_id', mitra_id).eq('role', 'admin').single()
-      
-      if (!adminUser) {
-        return c.json({ error: 'No admin found for this mitra' }, 404)
+      // Direct balance update using Service Role to avoid needing an admin user
+      const { data: mitraData, error: fetchErr } = await supabaseService
+        .from('mitras')
+        .select('saldo')
+        .eq('id', mitra_id)
+        .single()
+        
+      if (fetchErr) throw fetchErr
+
+      const newSaldo = Number(mitraData.saldo || 0) + amount
+
+      const { error: updateErr } = await supabaseService
+        .from('mitras')
+        .update({ saldo: newSaldo })
+        .eq('id', mitra_id)
+
+      if (updateErr) throw updateErr
+
+      // Log the deposit transfer (user_id = superadmin, mitra_id = target)
+      const { error: logErr } = await supabaseService
+        .from('deposits')
+        .insert({
+          user_id: user.id, // the superadmin's id
+          mitra_id: mitra_id,
+          amount: amount,
+          status: 'success',
+          notes: notes || 'Manual balance adjustment by Superadmin',
+          payment_method: 'Superadmin Transfer'
+        })
+        
+      if (logErr) {
+        console.error('Failed to log deposit:', logErr)
       }
-      
-      const { error: err1 } = await supabaseService.rpc('process_deposit', {
-        p_user_id: adminUser.id,
-        p_amount: amount,
-        p_notes: notes || 'Manual balance adjustment by Superadmin'
-      })
-      if (err1) throw err1
       
       return c.json({ success: true })
     }
