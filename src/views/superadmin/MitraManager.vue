@@ -13,6 +13,7 @@ const activeTab = ref<'mitra'|'user'>('mitra')
 // Filters
 const searchQuery = ref('')
 const roleFilter = ref('')
+const superadminBalance = ref<number>(0)
 
 // Modals state for Mitra
 const showMitraModal = ref(false)
@@ -35,13 +36,24 @@ const actionLoading = ref(false)
 const fetchData = async () => {
   loading.value = true
   try {
-    const [mitrasRes, usersRes] = await Promise.all([
+    const [mitrasRes, usersRes, sessionRes] = await Promise.all([
       supabase.from('mitras').select('*').order('created_at', { ascending: false }),
-      supabase.from('users').select('*, mitras(nama_mitra)').order('created_at', { ascending: false })
+      supabase.from('users').select('*, mitras(nama_mitra)').order('created_at', { ascending: false }),
+      supabase.auth.getSession()
     ])
     
     if (mitrasRes.data) mitras.value = mitrasRes.data
     if (usersRes.data) users.value = usersRes.data
+
+    if (sessionRes.data?.session?.access_token) {
+      const balanceRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
+        headers: { 'Authorization': `Bearer ${sessionRes.data.session.access_token}` }
+      })
+      if (balanceRes.ok) {
+        const balData = await balanceRes.json()
+        superadminBalance.value = balData.balance || 0
+      }
+    }
   } catch (err) {
     console.error('Error fetching data:', err)
   } finally {
@@ -250,7 +262,13 @@ const handleDeleteUser = async (user: any) => {
 <template>
   <div class="space-y-6">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <h2 class="text-3xl font-bold text-gray-800">Manajemen SAAS</h2>
+      <div>
+        <h2 class="text-3xl font-bold text-gray-800">Manajemen SAAS</h2>
+        <div class="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-semibold border border-blue-100">
+          <span>Saldo Superadmin:</span>
+          <span class="font-bold font-mono">{{ formatCurrency(superadminBalance) }}</span>
+        </div>
+      </div>
       
       <div class="flex bg-gray-100 p-1 rounded-lg">
         <button 
