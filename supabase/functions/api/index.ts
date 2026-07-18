@@ -940,8 +940,10 @@ app.post('/admin-action', async (c) => {
       }
 
       const updateData: any = {
-        nama_toko: payload.nama_toko,
         email: payload.email
+      }
+      if (payload.mitra_id !== undefined) {
+        updateData.mitra_id = payload.mitra_id
       }
       
       if (payload.password) {

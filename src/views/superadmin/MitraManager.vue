@@ -205,7 +205,7 @@ const handleSaveUser = async () => {
     const payload: any = {
       email: userForm.value.email,
       role: userForm.value.role,
-      mitra_id: userForm.value.role === 'superadmin' ? null : userForm.value.mitra_id
+      mitra_id: (userForm.value.role === 'superadmin' || !userForm.value.mitra_id) ? null : userForm.value.mitra_id
     }
     if (userForm.value.password) payload.password = userForm.value.password
     if (isEditUser.value) payload.id = selectedUser.value.id
