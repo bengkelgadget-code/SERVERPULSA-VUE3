@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { Search, Plus, Pencil, Trash } from 'lucide-vue-next'
 // Data states
@@ -49,8 +49,23 @@ const fetchData = async () => {
   }
 }
 
+let realtimeChannel: any = null
+
 onMounted(() => {
   fetchData()
+  
+  realtimeChannel = supabase.channel('mitra-manager-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mitras' }, () => {
+      fetchData()
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+      fetchData()
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (realtimeChannel) supabase.removeChannel(realtimeChannel)
 })
 
 const filteredMitras = computed(() => {

@@ -131,6 +131,9 @@ const setupRealtime = () => {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'deposits', filter: 'status=eq.pending' }, () => {
       debouncedFetchStats()
     })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'mitras' }, () => {
+      debouncedFetchStats()
+    })
     .on('broadcast', { event: 'digiflazz_update' }, (payload) => {
       if (payload.payload && payload.payload.balance !== undefined) {
         digiflazzBalance.value = payload.payload.balance
