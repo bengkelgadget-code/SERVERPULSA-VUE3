@@ -141,8 +141,6 @@ export default async function handler(req, res) {
       product_name: new Date().toISOString(),
       category: 'System',
       brand: 'System',
-      provider: 'System',
-      type: 'System',
       harga_modal: 0,
       harga_jual: 0,
       is_active: false

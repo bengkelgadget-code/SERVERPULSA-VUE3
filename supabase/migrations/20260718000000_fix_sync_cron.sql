@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- Hapus cron job sebelumnya jika ada untuk menghindari duplikat dan kegagalan auth
 SELECT cron.unschedule('sync-digiflazz-daily');
 
--- Tambahkan cron job baru dengan Service Role Key statis dan timeout 60 detik
+-- Tambahkan cron job baru dengan Service Role Key statis dan timeout 120 detik
 -- Berjalan setiap 6 jam (jam 00:00, 06:00, 12:00, 18:00 UTC)
 SELECT cron.schedule(
   'sync-digiflazz-daily',
