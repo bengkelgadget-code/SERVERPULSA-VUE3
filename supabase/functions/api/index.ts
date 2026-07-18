@@ -107,7 +107,10 @@ async function verifyDigiflazzSignature(payload: string, signatureHeader: string
   return signatureHex === signatureHeader.replace('sha1=', '');
 }
 
-app.post('/webhook/digiflazz', async (c) => {
+app.post('/webhook/digiflazz', handleDigiflazzWebhook)
+app.post('/digiflazz-webhook', handleDigiflazzWebhook)
+
+async function handleDigiflazzWebhook(c: any) {
   try {
     const rawBody = await c.req.text();
     const signature = c.req.header('x-hub-signature') || c.req.header('x-digiflazz-signature');
@@ -200,7 +203,7 @@ app.post('/webhook/digiflazz', async (c) => {
   } catch (err: any) {
     return c.json({ error: 'Internal Server Error' }, 500)
   }
-})
+}
 
 function generateRefId() {
   const arr = new Uint8Array(4);
