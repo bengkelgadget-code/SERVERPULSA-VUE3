@@ -140,6 +140,20 @@ const handleSaveMitra = async () => {
   }
 }
 
+const handleDeleteMitra = async (mitra: any) => {
+  if (!confirm(`Are you sure you want to delete Mitra "${mitra.nama_mitra}"? All related transactions will be deleted!`)) return
+  actionLoading.value = true
+  try {
+    const { error } = await supabase.from('mitras').delete().eq('id', mitra.id)
+    if (error) throw error
+    fetchData()
+  } catch (err: any) {
+    alert('Error deleting mitra: ' + err.message)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 const openBalanceModal = (mitra: any) => {
   selectedMitra.value = mitra
   balanceAmount.value = 0
@@ -348,7 +362,10 @@ const handleDeleteUser = async (user: any) => {
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ new Date(mitra.created_at).toLocaleDateString('id-ID') }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button @click="openEditMitra(mitra)" class="inline-flex items-center text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg"><Pencil class="w-4 h-4" /></button>
+                <div class="flex items-center justify-end gap-2">
+                  <button @click="openEditMitra(mitra)" class="inline-flex items-center text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100" title="Edit Mitra"><Pencil class="w-4 h-4" /></button>
+                  <button @click="handleDeleteMitra(mitra)" class="inline-flex items-center text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100" title="Delete Mitra"><Trash class="w-4 h-4" /></button>
+                </div>
               </td>
             </tr>
           </tbody>
