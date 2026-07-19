@@ -1109,31 +1109,6 @@ app.post('/admin-action', async (c) => {
         
       if (fetchErr) throw fetchErr
 
-      // Fetch Superadmin's current balance
-      const { data: saData, error: saErr } = await supabaseService
-        .from('users')
-        .select('saldo')
-        .eq('id', user.id)
-        .single()
-        
-      if (saErr) throw saErr
-
-      const newSaSaldo = Number(saData.saldo || 0) - amount
-      
-      // We can allow negative SA balance if they are just adjusting things, 
-      // but let's prevent it if they don't have enough to transfer.
-      if (newSaSaldo < 0 && amount > 0) {
-        return c.json({ error: 'Saldo Superadmin tidak mencukupi untuk transfer' }, 400)
-      }
-
-      // Update superadmin saldo
-      const { error: saUpdateErr } = await supabaseService
-        .from('users')
-        .update({ saldo: newSaSaldo })
-        .eq('id', user.id)
-
-      if (saUpdateErr) throw saUpdateErr
-
       const newSaldo = Number(mitraData.saldo || 0) + amount
 
       const { error: updateErr } = await supabaseService

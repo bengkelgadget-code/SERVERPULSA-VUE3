@@ -46,12 +46,14 @@ const fetchData = async () => {
     if (usersRes.data) users.value = usersRes.data
 
     if (sessionRes.data?.session?.access_token) {
-      const balanceRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/get-admin-balance`, {
+      const balanceRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin/digiflazz-balance`, {
         headers: { 'Authorization': `Bearer ${sessionRes.data.session.access_token}` }
       })
       if (balanceRes.ok) {
         const balData = await balanceRes.json()
-        superadminBalance.value = balData.balance || 0
+        const digiflazzBalance = balData.balance || 0
+        const totalMitraSaldo = (mitras.value || []).reduce((sum, m) => sum + Number(m.saldo || 0), 0)
+        superadminBalance.value = digiflazzBalance - totalMitraSaldo
       }
     }
   } catch (err) {
