@@ -1179,13 +1179,13 @@ app.get('/get-admin-balance', async (c) => {
     const { data: { user } } = await supabase.auth.getUser(token)
     if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
-    const { data: profile } = await supabase.from('users').select('role, mitra_id').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('users').select('role, mitra_id, saldo').eq('id', user.id).single()
     
-    if (profile) {
-      // For staff, get their mitra_id
-      const mitraId = profile.mitra_id
-      if (!mitraId) return c.json({ error: 'Forbidden' }, 403)
-    } else {
+    if (profile?.role === 'superadmin') {
+      return c.json({ success: true, balance: profile.saldo || 0, saldo: profile.saldo || 0 })
+    }
+
+    if (!profile?.mitra_id) {
       return c.json({ error: 'Forbidden' }, 403)
     }
 
@@ -1193,7 +1193,7 @@ app.get('/get-admin-balance', async (c) => {
     const supabaseService = getSupabaseService()
     const { data: mitraData } = await supabaseService.from('mitras').select('saldo').eq('id', profile.mitra_id).single()
     
-    return c.json({ success: true, saldo: mitraData?.saldo || 0 })
+    return c.json({ success: true, balance: mitraData?.saldo || 0, saldo: mitraData?.saldo || 0 })
   } catch (err: any) {
     return c.json({ error: err.message }, 500)
   }
