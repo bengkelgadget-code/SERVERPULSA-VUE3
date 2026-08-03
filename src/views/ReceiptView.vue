@@ -184,18 +184,45 @@ const plnData = computed(() => {
   }
 })
 
+const selectUncensoredName = (candidates: (string | undefined | null)[]): string => {
+  const valid = candidates
+    .filter((n): n is string => typeof n === 'string' && n.trim() !== '' && n.trim() !== '-')
+    .map(n => n.trim())
+
+  if (valid.length === 0) return '-'
+
+  const uncensored = valid.find(n => !n.includes('*'))
+  if (uncensored) return uncensored
+
+  return valid.reduce((best, curr) => {
+    const bestAsterisks = (best.match(/\*/g) || []).length
+    const currAsterisks = (curr.match(/\*/g) || []).length
+    if (currAsterisks < bestAsterisks) return curr
+    if (currAsterisks === bestAsterisks && curr.length > best.length) return curr
+    return best
+  }, valid[0])
+}
+
 const pascaName = computed(() => {
-  if (trx.value?.customer_name && trx.value.customer_name !== '-' && trx.value.customer_name.trim() !== '') {
-    return trx.value.customer_name
+  if (!trx.value) return '-'
+  const candidates: (string | undefined | null)[] = []
+
+  if (trx.value.sn) {
+    const sn = trx.value.sn
+    const nameMatch = sn.match(/(?:NAMA\s*PELANGGAN|NAMA\s*PEMILIK|NAMA|PELANGGAN|PEMILIK)\s*[:=]\s*([^/,|\\]+)/i)
+    if (nameMatch && nameMatch[1]) candidates.push(nameMatch[1].trim())
+
+    if (sn.includes('A/N ')) {
+      const parts = sn.split(' | SN: ')
+      candidates.push(parts[0].replace('A/N ', '').trim())
+    }
   }
-  if (!trx.value?.sn) return '-'
-  if (trx.value.sn.includes('A/N ')) {
-    const parts = trx.value.sn.split(' | SN: ')
-    return parts[0].replace('A/N ', '').trim()
+
+  if (trx.value.customer_name) {
+    candidates.push(trx.value.customer_name)
   }
-  const nameMatch = trx.value.sn.match(/(?:Nama|NAMA)\s*[:=]\s*([^/,|]+)/i)
-  if (nameMatch && nameMatch[1]) return nameMatch[1].trim()
-  return '-'
+
+  return selectUncensoredName(candidates)
 })
 
 const cleanReff = (reff: string) => {

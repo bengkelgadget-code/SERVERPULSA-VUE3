@@ -107,16 +107,65 @@ async function verifyDigiflazzSignature(payload: string, signatureHeader: string
   return signatureHex === signatureHeader.replace('sha1=', '');
 }
 
+function selectBestName(candidates: (string | null | undefined)[]): string | null {
+  const valid = candidates
+    .filter((n): n is string => typeof n === 'string' && n.trim() !== '' && n.trim() !== '-')
+    .map(n => n.trim());
+
+  if (valid.length === 0) return null;
+
+  // First, prefer any candidate that doesn't contain an asterisk '*'
+  const uncensored = valid.find(n => !n.includes('*'));
+  if (uncensored) return uncensored;
+
+  // If all candidates contain asterisks, pick the one with the fewest asterisks or longest length
+  return valid.reduce((best, curr) => {
+    const bestAsterisks = (best.match(/\*/g) || []).length;
+    const currAsterisks = (curr.match(/\*/g) || []).length;
+    if (currAsterisks < bestAsterisks) return curr;
+    if (currAsterisks === bestAsterisks && curr.length > best.length) return curr;
+    return best;
+  }, valid[0]);
+}
+
+function extractNameFromDigiflazz(data: any, customName?: string | null): string | null {
+  if (!data) return selectBestName([customName]);
+  
+  const desc = data.desc && typeof data.desc === 'object' ? data.desc : {};
+  const detail = Array.isArray(desc.detail) && desc.detail.length > 0 ? desc.detail[0] : (desc.detail || {});
+  
+  let snName: string | null = null;
+  if (typeof data.sn === 'string') {
+    const snMatch = data.sn.match(/(?:NAMA\s*PELANGGAN|NAMA\s*PEMILIK|NAMA|PELANGGAN|PEMILIK)\s*[:=]\s*([^/,|\\]+)/i);
+    if (snMatch && snMatch[1]) snName = snMatch[1].trim();
+  }
+
+  return selectBestName([
+    desc.nama,
+    desc.name,
+    desc.customer_name,
+    desc.pelanggan,
+    detail.nama,
+    detail.name,
+    detail.customer_name,
+    detail.pelanggan,
+    snName,
+    data.customer_name,
+    customName
+  ]);
+}
+
 function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?: string): string | null {
   let sn = newData.sn || existingSn || null;
   if (!sn) return null;
 
-  let namePart = customName ? `A/N ${customName}` : null;
-  if (!namePart && existingSn && existingSn.includes('A/N ')) {
-    namePart = existingSn.split(' | SN: ')[0];
-  } else if (!namePart && newData.customer_name) {
-    namePart = `A/N ${newData.customer_name}`;
+  let existingAn: string | null = null;
+  if (existingSn && existingSn.includes('A/N ')) {
+    existingAn = existingSn.split(' | SN: ')[0].replace('A/N ', '').trim();
   }
+
+  const bestName = extractNameFromDigiflazz(newData, customName || existingAn);
+  const namePart = bestName ? `A/N ${bestName}` : null;
 
   let baseSn = sn;
   if (baseSn && baseSn.includes(' | SN: ')) {
@@ -239,7 +288,7 @@ async function handleDigiflazzWebhook(c: any) {
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
-      .select('id, status, sn')
+      .select('id, status, sn, customer_name')
       .eq('ref_id', data.ref_id)
       .single()
 
@@ -248,7 +297,8 @@ async function handleDigiflazzWebhook(c: any) {
       return c.json({ error: 'Transaction not found' }, 404);
     }
 
-    const finalSn = enhanceDigiflazzSn(tx.sn, data);
+    const finalSn = enhanceDigiflazzSn(tx.sn, data, tx.customer_name);
+    const bestName = extractNameFromDigiflazz(data, tx.customer_name);
 
     if (data.status.toLowerCase() === 'gagal') {
       const { error } = await supabase.rpc('fail_and_refund', { 
@@ -261,12 +311,16 @@ async function handleDigiflazzWebhook(c: any) {
         return c.json({ error: 'Database update failed' }, 500);
       }
     } else {
+      const updatePayload: any = {
+        status: data.status.toLowerCase(),
+        sn: finalSn
+      };
+      if (bestName && !bestName.includes('*')) {
+        updatePayload.customer_name = bestName;
+      }
       const { error } = await supabase
         .from('transactions')
-        .update({
-          status: data.status.toLowerCase(),
-          sn: finalSn
-        })
+        .update(updatePayload)
         .eq('id', tx.id)
       if (error) {
         await updateLog(false, 'Database update failed (transactions update)');
@@ -465,9 +519,10 @@ app.post('/inquiry-pasca', async (c) => {
 
     // Check for successful inquiry
     if (response.rc === '00' || response.status?.toLowerCase() === 'sukses') {
+      const bestName = extractNameFromDigiflazz(response);
       return c.json({ 
         success: true, 
-        name: response.customer_name, 
+        name: bestName || response.customer_name || '-', 
         amount: response.selling_price || response.price || 0,
         admin: response.admin || 0,
         ref_id: refId,
@@ -821,12 +876,16 @@ app.post('/mobile/transaction/purchase', async (c) => {
       if (dfStatusRaw === 'gagal' || dfStatusRaw.includes('gagal')) dbStatus = 'gagal'
 
       const finalSn = enhanceDigiflazzSn(null, response, customer_name);
+      const bestName = extractNameFromDigiflazz(response, customer_name);
 
       const updatePayload: any = {
         status: dbStatus,
         sn: finalSn,
         updated_at: new Date().toISOString(),
       };
+      if (bestName && !bestName.includes('*')) {
+        updatePayload.customer_name = bestName;
+      }
       
       if (dbStatus === 'gagal') {
         // Idempotent refund via atomic fail_and_refund RPC
@@ -913,8 +972,13 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
-      const finalSn = enhanceDigiflazzSn(trx.sn, dfData);
-      const { error: updErr } = await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      const finalSn = enhanceDigiflazzSn(trx.sn, dfData, trx.customer_name);
+      const bestName = extractNameFromDigiflazz(dfData, trx.customer_name);
+      const updateData: any = { status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() };
+      if (bestName && !bestName.includes('*')) {
+        updateData.customer_name = bestName;
+      }
+      const { error: updErr } = await supabaseService.from('transactions').update(updateData).eq('id', trx.id)
       if (updErr) throw new Error(`DB update failed: ${updErr.message}`)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
       // Atomic refund via fail_and_refund RPC
