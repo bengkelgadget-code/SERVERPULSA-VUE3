@@ -128,31 +128,53 @@ function selectBestName(candidates: (string | null | undefined)[]): string | nul
   }, valid[0]);
 }
 
+function findAllNameCandidates(obj: any, candidates: string[] = [], depth = 0): string[] {
+  if (!obj || typeof obj !== 'object' || depth > 5) return candidates;
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      const k = key.toLowerCase();
+      if (
+        k.includes('nama') || 
+        k.includes('name') || 
+        k.includes('pemilik') || 
+        k.includes('pelanggan') || 
+        k.includes('buyer') || 
+        k.includes('customer') || 
+        k.includes('account') || 
+        k.includes('client') ||
+        k === 'namapel' ||
+        k === 'owner'
+      ) {
+        if (value.trim() !== '' && value.trim() !== '-' && !candidates.includes(value.trim())) {
+          candidates.push(value.trim());
+        }
+      }
+    } else if (typeof value === 'object' && value !== null) {
+      findAllNameCandidates(value, candidates, depth + 1);
+    }
+  }
+  return candidates;
+}
+
 function extractNameFromDigiflazz(data: any, customName?: string | null): string | null {
-  if (!data) return selectBestName([customName]);
+  const candidates: string[] = [];
+  if (customName) candidates.push(customName);
+  if (!data) return selectBestName(candidates);
   
-  const desc = data.desc && typeof data.desc === 'object' ? data.desc : {};
-  const detail = Array.isArray(desc.detail) && desc.detail.length > 0 ? desc.detail[0] : (desc.detail || {});
-  
+  findAllNameCandidates(data, candidates);
+
   let snName: string | null = null;
   if (typeof data.sn === 'string') {
-    const snMatch = data.sn.match(/(?:NAMA\s*PELANGGAN|NAMA\s*PEMILIK|NAMA|PELANGGAN|PEMILIK)\s*[:=]\s*([^/,|\\]+)/i);
+    const snMatch = data.sn.match(/(?:NAMA\s*PELANGGAN|NAMA\s*PEMILIK|NAMA\s*AKUN|NAMA|PELANGGAN|PEMILIK)\s*[:=]\s*([^/,|\\]+)/i);
     if (snMatch && snMatch[1]) snName = snMatch[1].trim();
+    if (data.sn.includes('A/N ')) {
+      const anName = data.sn.split(' | SN: ')[0].replace('A/N ', '').trim();
+      if (!anName.includes('*')) snName = anName;
+    }
   }
+  if (snName) candidates.push(snName);
 
-  return selectBestName([
-    desc.nama,
-    desc.name,
-    desc.customer_name,
-    desc.pelanggan,
-    detail.nama,
-    detail.name,
-    detail.customer_name,
-    detail.pelanggan,
-    snName,
-    data.customer_name,
-    customName
-  ]);
+  return selectBestName(candidates);
 }
 
 function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?: string): string | null {
@@ -519,10 +541,24 @@ app.post('/inquiry-pasca', async (c) => {
 
     // Check for successful inquiry
     if (response.rc === '00' || response.status?.toLowerCase() === 'sukses') {
-      const bestName = extractNameFromDigiflazz(response);
+      let bestName = extractNameFromDigiflazz(response) || response.customer_name || '-';
+      
+      // Jika nama tersensor (bintang *) dan tagihannya berjenis PLN / listrik, panggil API inquiry-pln untuk mengambil nama asli tanpa sensor
+      const isPln = String(sku_code).toLowerCase().includes('pln') || response.desc?.tarif || response.desc?.daya || response.desc?.segment_power;
+      if (bestName && bestName.includes('*') && isPln) {
+        try {
+          const plnInfo = await digiflazz.inquiryPln(cleanCustomerNo);
+          if (plnInfo && plnInfo.name && !plnInfo.name.includes('*')) {
+            bestName = plnInfo.name.trim();
+          }
+        } catch (e) {
+          console.error('Fallback inquiryPln failed:', e);
+        }
+      }
+
       return c.json({ 
         success: true, 
-        name: bestName || response.customer_name || '-', 
+        name: bestName, 
         amount: response.selling_price || response.price || 0,
         admin: response.admin || 0,
         ref_id: refId,
