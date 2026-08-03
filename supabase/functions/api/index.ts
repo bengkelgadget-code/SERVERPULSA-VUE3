@@ -854,14 +854,16 @@ app.post('/mobile/transaction/check-status', async (c) => {
           finalSn = dfData.sn;
         }
       }
-      await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      const { error: updErr } = await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
+      if (updErr) throw new Error(`DB update failed: ${updErr.message}`)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {
       // Atomic refund via fail_and_refund RPC
-      await supabaseService.rpc('fail_and_refund', { 
+      const { error: rpcErr } = await supabaseService.rpc('fail_and_refund', { 
         p_transaction_id: trx.id,
         p_sn: dfData.sn || trx.sn || null,
         p_note: dfData.message || 'Manual check status failed'
       })
+      if (rpcErr) throw new Error(`Refund rpc failed: ${rpcErr.message}`)
     }
 
     return c.json({ success: true, status: dfStatus, sn: dfData.sn })

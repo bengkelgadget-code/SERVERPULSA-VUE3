@@ -33,8 +33,26 @@ onMounted(async () => {
     } catch (e) {
       console.warn('Local notifications not available')
     }
+    try {
+      const { App: CapacitorApp } = await import('@capacitor/app')
+      CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          checkPendingTransactions()
+        }
+      })
+    } catch (e) {
+      console.warn('Capacitor App module not available')
+    }
   }
+
+  window.addEventListener('visibilitychange', handleVisibilityChange)
 })
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    checkPendingTransactions()
+  }
+}
 
 const setupRealtime = () => {
   const userId = auth.user?.id
@@ -63,7 +81,8 @@ const setupRealtime = () => {
           showPopup(
             `Transaksi ${status.toUpperCase()}`,
             `Transaksi (${newRow.customer_no}) telah ${status}.`,
-            status
+            status,
+            newRow.id
           )
           knownPendingIds.delete(newRow.id)
         }
@@ -93,13 +112,13 @@ const setupRealtime = () => {
 }
 
 const startPolling = () => {
-  // Poll every 15 seconds (battery-friendly) — only does work if pending exists
+  // Poll every 8 seconds (responsive yet lightweight)
   pollingInterval = setInterval(async () => {
     await checkPendingTransactions()
-  }, 15000)
+  }, 8000)
   
-  // Initial check after 3 seconds
-  setTimeout(checkPendingTransactions, 3000)
+  // Initial check after 2 seconds
+  setTimeout(checkPendingTransactions, 2000)
 }
 
 const checkPendingTransactions = async () => {
@@ -115,7 +134,7 @@ const checkPendingTransactions = async () => {
       .from('transactions')
       .select('id, status, customer_no')
       .or(`user_id.eq.${userId},staff_id.eq.${userId}`)
-      .in('status', ['pending'])
+      .in('status', ['pending', 'proses'])
 
     const currentPendingIds = new Set(dbPending?.map(t => t.id) || [])
 
@@ -133,7 +152,8 @@ const checkPendingTransactions = async () => {
           showPopup(
             `Transaksi ${updatedTrx.status.toUpperCase()}`,
             `Transaksi (${updatedTrx.customer_no}) telah ${updatedTrx.status}.`,
-            updatedTrx.status
+            updatedTrx.status,
+            id
           )
           knownPendingIds.delete(id)
         }
@@ -150,7 +170,7 @@ const checkPendingTransactions = async () => {
     // 4. Only call API if we have known pending transactions (avoid unnecessary requests)
     if (knownPendingIds.size === 0) return
     
-    const pendingArray = Array.from(knownPendingIds).slice(0, 1) // Check 1 at a time to reduce load
+    const pendingArray = Array.from(knownPendingIds).slice(0, 5) // Check up to 5 at a time
     for (const id of pendingArray) {
       try {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {
@@ -172,7 +192,8 @@ const checkPendingTransactions = async () => {
             showPopup(
               `Transaksi ${newStatus.toUpperCase()}`,
               `Transaksi (${custNo}) telah ${newStatus}.`,
-              newStatus
+              newStatus,
+              id
             )
             knownPendingIds.delete(id)
           }
@@ -186,7 +207,15 @@ const checkPendingTransactions = async () => {
   }
 }
 
-const showPopup = async (title: string, message: string, status: string) => {
+const showPopup = async (title: string, message: string, status: string, trxId?: string) => {
+  if (trxId) {
+    const notifyKey = `notified_${trxId}_${status}`
+    if (localStorage.getItem(notifyKey)) {
+      return // Prevent duplicate notifications for the exact same transaction and status
+    }
+    localStorage.setItem(notifyKey, 'true')
+  }
+
   transactionInfo.value = { title, message, status }
   isVisible.value = true
   
@@ -198,7 +227,7 @@ const showPopup = async (title: string, message: string, status: string) => {
           {
             title,
             body: message,
-            id: Date.now(),
+            id: Math.floor(Math.random() * 100000),
             schedule: { at: new Date(Date.now() + 50) },
           }
         ]
@@ -221,6 +250,7 @@ const closePopup = () => {
 }
 
 onUnmounted(() => {
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
   if (timeoutId) clearTimeout(timeoutId)
   if (pollingInterval) clearInterval(pollingInterval)
   if (realtimeChannel) supabase.removeChannel(realtimeChannel)
