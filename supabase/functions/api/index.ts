@@ -107,6 +107,46 @@ async function verifyDigiflazzSignature(payload: string, signatureHeader: string
   return signatureHex === signatureHeader.replace('sha1=', '');
 }
 
+function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?: string): string | null {
+  let sn = newData.sn || existingSn || null;
+  if (!sn) return null;
+
+  let namePart = customName ? `A/N ${customName}` : null;
+  if (!namePart && existingSn && existingSn.includes('A/N ')) {
+    namePart = existingSn.split(' | SN: ')[0];
+  } else if (!namePart && newData.customer_name) {
+    namePart = `A/N ${newData.customer_name}`;
+  }
+
+  let baseSn = sn;
+  if (baseSn && baseSn.includes(' | SN: ')) {
+    baseSn = baseSn.split(' | SN: ')[1];
+  }
+
+  // Append billing details from desc if present and not already in SN
+  if (newData.desc && typeof newData.desc === 'object') {
+    const desc = newData.desc;
+    const detail = Array.isArray(desc.detail) && desc.detail.length > 0 ? desc.detail[0] : (desc.detail || {});
+    
+    const trf = desc.tarif || detail.tarif || '';
+    const daya = desc.daya || detail.daya || '';
+    const trfDaya = trf + (daya ? (trf ? `/${daya}` : `${daya}`) : '');
+    const periode = desc.periode || detail.periode || detail.period || detail.bln_thn || '';
+    const stdMtr = desc.meter_reading || detail.meter_reading || detail.stand_meter || detail.std_mtr || '';
+
+    const extras: string[] = [];
+    if (trfDaya && !baseSn.includes('TRF/DAYA:')) extras.push(`TRF/DAYA: ${trfDaya}`);
+    if (periode && !baseSn.includes('BL/TH:')) extras.push(`BL/TH: ${periode}`);
+    if (stdMtr && !baseSn.includes('STD MTR:')) extras.push(`STD MTR: ${stdMtr}`);
+
+    if (extras.length > 0) {
+      baseSn = `${baseSn} / ${extras.join(' / ')}`;
+    }
+  }
+
+  return namePart ? `${namePart} | SN: ${baseSn}` : baseSn;
+}
+
 app.post('/webhook/digiflazz', handleDigiflazzWebhook)
 app.post('/digiflazz-webhook', handleDigiflazzWebhook)
 
@@ -121,32 +161,51 @@ async function handleDigiflazzWebhook(c: any) {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
     )
     
-    let body = {};
+    let body: any = {};
     try {
       body = JSON.parse(rawBody);
     } catch(e) {}
     
-    await supabase.from('webhook_logs').insert({
+    const { data: logRecord } = await supabase.from('webhook_logs').insert({
       ref_id: body.data?.ref_id || null,
       event_type: body.data?.ref_id ? 'transaction' : (body.data?.balance !== undefined ? 'deposit' : 'unknown'),
       payload: body,
-      signature: signature
-    });
+      signature: signature,
+      processed: false
+    }).select('id').maybeSingle();
+    const logId = logRecord?.id;
+
+    const updateLog = async (processed: boolean, errorMessage?: string) => {
+      if (logId) {
+        await supabase.from('webhook_logs').update({
+          processed,
+          error_message: errorMessage || null
+        }).eq('id', logId);
+      }
+    };
 
     const secret = Deno.env.get('DIGIFLAZZ_WEBHOOK_SECRET');
 
     if (!secret) {
+      await updateLog(false, 'Webhook not configured (missing secret)');
       return c.json({ error: 'Webhook not configured (missing secret)' }, 500);
     }
     if (!signature) {
+      await updateLog(false, 'Missing signature header');
       return c.json({ error: 'Missing signature header' }, 401);
     }
     
     const isValid = await verifyDigiflazzSignature(rawBody, signature, secret);
-    if (!isValid) return c.json({ error: 'Invalid signature' }, 401);
+    if (!isValid) {
+      await updateLog(false, 'Invalid signature');
+      return c.json({ error: 'Invalid signature' }, 401);
+    }
 
     const { data } = body
-    if (!data) return c.json({ error: 'Invalid payload' }, 400)
+    if (!data) {
+      await updateLog(false, 'Invalid payload');
+      return c.json({ error: 'Invalid payload' }, 400);
+    }
 
     // Handle Deposit Webhook or Broadcast any balance update
     if (data.balance !== undefined) {
@@ -159,11 +218,15 @@ async function handleDigiflazzWebhook(c: any) {
       
       // If it's pure deposit webhook with no ref_id, return success
       if (!data.ref_id) {
+        await updateLog(true);
         return c.json({ success: true, message: 'Deposit recorded' })
       }
     }
 
-    if (!data.ref_id) return c.json({ error: 'Missing ref_id' }, 400)
+    if (!data.ref_id) {
+      await updateLog(false, 'Missing ref_id');
+      return c.json({ error: 'Missing ref_id' }, 400);
+    }
 
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
@@ -172,19 +235,12 @@ async function handleDigiflazzWebhook(c: any) {
       .eq('ref_id', data.ref_id)
       .single()
 
-    if (txError || !tx) return c.json({ error: 'Transaction not found' }, 404)
-    // Removed the check that ignores non-pending transactions. 
-    // We want to process updates if Digiflazz changes status (e.g. Sukses -> Gagal).
-
-    let finalSn = tx.sn;
-    if (data.sn) {
-      if (tx.sn && tx.sn.includes('A/N ')) {
-        const namePart = tx.sn.split(' | SN: ')[0];
-        finalSn = `${namePart} | SN: ${data.sn}`;
-      } else {
-        finalSn = data.sn;
-      }
+    if (txError || !tx) {
+      await updateLog(false, 'Transaction not found in DB');
+      return c.json({ error: 'Transaction not found' }, 404);
     }
+
+    const finalSn = enhanceDigiflazzSn(tx.sn, data);
 
     if (data.status.toLowerCase() === 'gagal') {
       const { error } = await supabase.rpc('fail_and_refund', { 
@@ -192,7 +248,10 @@ async function handleDigiflazzWebhook(c: any) {
         p_sn: finalSn,
         p_note: data.message || 'Webhook failed'
       })
-      if (error) return c.json({ error: 'Database update failed' }, 500)
+      if (error) {
+        await updateLog(false, 'Database update failed (fail_and_refund)');
+        return c.json({ error: 'Database update failed' }, 500);
+      }
     } else {
       const { error } = await supabase
         .from('transactions')
@@ -201,9 +260,13 @@ async function handleDigiflazzWebhook(c: any) {
           sn: finalSn
         })
         .eq('id', tx.id)
-      if (error) return c.json({ error: 'Database update failed' }, 500)
+      if (error) {
+        await updateLog(false, 'Database update failed (transactions update)');
+        return c.json({ error: 'Database update failed' }, 500);
+      }
     }
     
+    await updateLog(true);
     return c.json({ success: true })
   } catch (err: any) {
     return c.json({ error: 'Internal Server Error' }, 500)
@@ -749,10 +812,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
       if (dfStatusRaw === 'sukses' || dfStatusRaw.includes('sukses')) dbStatus = 'sukses'
       if (dfStatusRaw === 'gagal' || dfStatusRaw.includes('gagal')) dbStatus = 'gagal'
 
-      let finalSn = response.sn || null;
-      if (customer_name) {
-        finalSn = finalSn ? `A/N ${customer_name} | SN: ${finalSn}` : `A/N ${customer_name}`;
-      }
+      const finalSn = enhanceDigiflazzSn(null, response, customer_name);
 
       const updatePayload: any = {
         status: dbStatus,
@@ -845,15 +905,7 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
-      let finalSn = trx.sn;
-      if (dfData.sn) {
-        if (trx.sn && trx.sn.includes('A/N ')) {
-          const namePart = trx.sn.split(' | SN: ')[0];
-          finalSn = `${namePart} | SN: ${dfData.sn}`;
-        } else {
-          finalSn = dfData.sn;
-        }
-      }
+      const finalSn = enhanceDigiflazzSn(trx.sn, dfData);
       const { error: updErr } = await supabaseService.from('transactions').update({ status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() }).eq('id', trx.id)
       if (updErr) throw new Error(`DB update failed: ${updErr.message}`)
     } else if (dfStatus === 'gagal' && trx.status !== 'gagal') {

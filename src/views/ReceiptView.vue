@@ -185,11 +185,16 @@ const plnData = computed(() => {
 })
 
 const pascaName = computed(() => {
+  if (trx.value?.customer_name && trx.value.customer_name !== '-' && trx.value.customer_name.trim() !== '') {
+    return trx.value.customer_name
+  }
   if (!trx.value?.sn) return '-'
   if (trx.value.sn.includes('A/N ')) {
     const parts = trx.value.sn.split(' | SN: ')
     return parts[0].replace('A/N ', '').trim()
   }
+  const nameMatch = trx.value.sn.match(/(?:Nama|NAMA)\s*[:=]\s*([^/,|]+)/i)
+  if (nameMatch && nameMatch[1]) return nameMatch[1].trim()
   return '-'
 })
 
@@ -198,35 +203,60 @@ const cleanReff = (reff: string) => {
 }
 
 const pascaReff = computed(() => {
-  if (trx.value?.sn && trx.value.sn.includes('| SN: ')) {
-    const digiSn = trx.value.sn.split('| SN: ')[1]
-    const reffMatch = digiSn.match(/Reff:\s*([a-zA-Z0-9\-]+)/i)
-    if (reffMatch) return cleanReff(reffMatch[1].trim())
-    return cleanReff(digiSn.trim())
+  if (trx.value?.sn) {
+    let digiSn = trx.value.sn
+    if (digiSn.includes('| SN: ')) {
+      digiSn = digiSn.split('| SN: ')[1]
+    }
+    const reffMatch = digiSn.match(/(?:Reff|Ref)\s*[:=]\s*([a-zA-Z0-9\-]+)/i)
+    if (reffMatch && reffMatch[1]) return cleanReff(reffMatch[1].trim())
+    const firstPart = digiSn.split(' / ')[0].trim()
+    if (firstPart && !firstPart.includes(':')) return cleanReff(firstPart)
   }
   return cleanReff(trx.value?.ref_id || '-')
 })
 
+const pascaTarifDaya = computed(() => {
+  const sn = trx.value?.sn || ''
+  const trfMatch = sn.match(/(?:TRF\/DAYA|TRF|TARIF|DAYA|SEGMENT_POWER)\s*[:=]\s*([a-zA-Z0-9\/\-\s]+?)(?:(?:\/|\s*,\s*|\s*\|\s*)(?:BL|BLN|PERIODE|STD|REFF|MTR|$))/i)
+  if (trfMatch && trfMatch[1]) return trfMatch[1].trim()
+  const codeMatch = sn.match(/([A-Z0-9]{1,4}\s*\/\s*\d{3,6}\s*(?:VA)?)/i)
+  if (codeMatch && codeMatch[1]) return codeMatch[1].trim()
+  return '-'
+})
+
 const pascaPeriode = computed(() => {
-  if (trx.value?.sn && trx.value.sn.includes('| SN: ')) {
-    const digiSn = trx.value.sn.split('| SN: ')[1]
-    const perMatch = digiSn.match(/Periode:\s*([a-zA-Z0-9\-,]+)/i) || digiSn.match(/Bln:\s*([a-zA-Z0-9\-,]+)/i)
-    if (perMatch) {
-       const val = perMatch[1].trim()
-       if (/^\d{6}$/.test(val)) {
-         const year = parseInt(val.substring(0, 4))
-         const month = parseInt(val.substring(4, 6))
-         let prevMonth = month - 1
-         let prevYear = year
-         if (prevMonth === 0) {
-            prevMonth = 12
-            prevYear = year - 1
-         }
-         const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-         return `${monthNames[prevMonth - 1]} ${prevYear}`
-       }
-       return val
+  const sn = trx.value?.sn || ''
+  let digiSn = sn
+  if (sn.includes('| SN: ')) {
+    digiSn = sn.split('| SN: ')[1]
+  }
+  const perMatch = digiSn.match(/(?:Periode|Bln|BL\/TH|BLN|BL)\s*[:=]\s*([a-zA-Z0-9\-,/]+)/i)
+  if (perMatch) {
+    const val = perMatch[1].trim()
+    if (/^\d{6}$/.test(val)) {
+      const year = parseInt(val.substring(0, 4))
+      const month = parseInt(val.substring(4, 6))
+      let prevMonth = month - 1
+      let prevYear = year
+      if (prevMonth === 0) {
+        prevMonth = 12
+        prevYear = year - 1
+      }
+      const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+      return `${monthNames[prevMonth - 1]} ${prevYear}`
     }
+    return val
+  }
+  return '-'
+})
+
+const pascaStdMtr = computed(() => {
+  const sn = trx.value?.sn || ''
+  const stdMatch = sn.match(/(?:STD\s*MTR|STD|STAND|METER|MTR)\s*[:=]\s*([0-9\-\s\.]+)/i)
+  if (stdMatch && stdMatch[1]) {
+    const val = stdMatch[1].trim().replace(/\.$/, '')
+    return val || '-'
   }
   return '-'
 })
@@ -629,11 +659,11 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaName }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaTarifDaya }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">PLN REFF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaReff }}</span></div>
             <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPeriode }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 break-words">-</span></div>
+            <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaStdMtr }}</span></div>
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
