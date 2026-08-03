@@ -132,7 +132,15 @@ function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?
     const daya = desc.daya || detail.daya || '';
     const trfDaya = trf + (daya ? (trf ? `/${daya}` : `${daya}`) : '');
     const periode = desc.periode || detail.periode || detail.period || detail.bln_thn || '';
-    const stdMtr = desc.meter_reading || detail.meter_reading || detail.stand_meter || detail.std_mtr || '';
+    
+    let stdMtr = desc.meter_reading || detail.meter_reading || detail.stand_meter || detail.std_mtr || '';
+    if (!stdMtr) {
+      const awal = desc.stand_meter_awal || detail.stand_meter_awal || desc.meter_awal || detail.meter_awal || '';
+      const akhir = desc.stand_meter_akhir || detail.stand_meter_akhir || desc.meter_akhir || detail.meter_akhir || '';
+      if (awal || akhir) {
+        stdMtr = `${awal}-${akhir}`.replace(/^-|-$/g, '');
+      }
+    }
 
     const extras: string[] = [];
     if (trfDaya && !baseSn.includes('TRF/DAYA:')) extras.push(`TRF/DAYA: ${trfDaya}`);

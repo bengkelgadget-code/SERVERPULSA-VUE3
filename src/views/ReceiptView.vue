@@ -218,6 +218,11 @@ const pascaReff = computed(() => {
 
 const pascaTarifDaya = computed(() => {
   const sn = trx.value?.sn || ''
+  const trfSeparate = sn.match(/(?:TARIF|TRF)\s*[:=]\s*([a-zA-Z0-9]+)/i)
+  const dayaSeparate = sn.match(/(?:DAYA|POWER)\s*[:=]\s*([0-9]+(?:\s*VA)?)/i)
+  if (trfSeparate && dayaSeparate) {
+    return `${trfSeparate[1].trim()}/${dayaSeparate[1].trim()}`
+  }
   const trfMatch = sn.match(/(?:TRF\/DAYA|TRF|TARIF|DAYA|SEGMENT_POWER)\s*[:=]\s*([a-zA-Z0-9\/\-\s]+?)(?:(?:\/|\s*,\s*|\s*\|\s*)(?:BL|BLN|PERIODE|STD|REFF|MTR|$))/i)
   if (trfMatch && trfMatch[1]) return trfMatch[1].trim()
   const codeMatch = sn.match(/([A-Z0-9]{1,4}\s*\/\s*\d{3,6}\s*(?:VA)?)/i)
@@ -253,6 +258,13 @@ const pascaPeriode = computed(() => {
 
 const pascaStdMtr = computed(() => {
   const sn = trx.value?.sn || ''
+  const awalMatch = sn.match(/(?:STAND\s*METER\s*AWAL|METER\s*AWAL|STD\s*AWAL)\s*[:=]\s*([0-9]+)/i)
+  const akhirMatch = sn.match(/(?:STAND\s*METER\s*AKHIR|METER\s*AKHIR|STD\s*AKHIR)\s*[:=]\s*([0-9]+)/i)
+  if (awalMatch || akhirMatch) {
+    const awal = awalMatch ? awalMatch[1].trim() : ''
+    const akhir = akhirMatch ? akhirMatch[1].trim() : ''
+    return `${awal}-${akhir}`.replace(/^-|-$/g, '') || '-'
+  }
   const stdMatch = sn.match(/(?:STD\s*MTR|STD|STAND|METER|MTR)\s*[:=]\s*([0-9\-\s\.]+)/i)
   if (stdMatch && stdMatch[1]) {
     const val = stdMatch[1].trim().replace(/\.$/, '')
