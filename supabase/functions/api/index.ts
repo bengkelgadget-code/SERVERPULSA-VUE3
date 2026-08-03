@@ -107,10 +107,21 @@ async function verifyDigiflazzSignature(payload: string, signatureHeader: string
   return signatureHex === signatureHeader.replace('sha1=', '');
 }
 
+function isValidCustomerName(n: any): boolean {
+  if (typeof n !== 'string') return false;
+  const str = n.trim();
+  if (str === '' || str === '-') return false;
+  // Must contain at least one alphabet character (a-z)
+  if (!/[a-zA-Z]/i.test(str)) return false;
+  // Ignore internal reference codes or transaction IDs
+  if (/^(INQ|CEK|REF|TRX|ORD|INV|PAY|DEV|APP)[A-Z0-9\-_]+$/i.test(str)) return false;
+  return true;
+}
+
 function selectBestName(candidates: (string | null | undefined)[]): string | null {
   const valid = candidates
-    .filter((n): n is string => typeof n === 'string' && n.trim() !== '' && n.trim() !== '-')
-    .map(n => n.trim());
+    .filter(isValidCustomerName)
+    .map(n => String(n).trim());
 
   if (valid.length === 0) return null;
 
@@ -131,8 +142,18 @@ function selectBestName(candidates: (string | null | undefined)[]): string | nul
 function findAllNameCandidates(obj: any, candidates: string[] = [], depth = 0): string[] {
   if (!obj || typeof obj !== 'object' || depth > 5) return candidates;
   for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && isValidCustomerName(value)) {
       const k = key.toLowerCase();
+      // Exclude obvious non-name keys
+      if (
+        k.includes('_no') || k.includes('no_') || k.includes('number') || 
+        k.includes('_id') || k.includes('id_') || k === 'id' || k.includes('code') || 
+        k.includes('kode') || k.includes('ref') || k.includes('sku') || k.includes('price') || 
+        k.includes('amount') || k.includes('total') || k.includes('admin') || k.includes('username') || 
+        k.includes('product') || k.includes('brand') || k.includes('category') || k.includes('cmd')
+      ) {
+        continue;
+      }
       if (
         k.includes('nama') || 
         k.includes('name') || 
@@ -145,7 +166,7 @@ function findAllNameCandidates(obj: any, candidates: string[] = [], depth = 0): 
         k === 'namapel' ||
         k === 'owner'
       ) {
-        if (value.trim() !== '' && value.trim() !== '-' && !candidates.includes(value.trim())) {
+        if (!candidates.includes(value.trim())) {
           candidates.push(value.trim());
         }
       }

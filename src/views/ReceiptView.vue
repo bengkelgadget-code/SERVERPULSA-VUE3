@@ -186,7 +186,7 @@ const plnData = computed(() => {
 
 const selectUncensoredName = (candidates: (string | undefined | null)[]): string => {
   const valid = candidates
-    .filter((n): n is string => typeof n === 'string' && n.trim() !== '' && n.trim() !== '-')
+    .filter((n): n is string => typeof n === 'string' && n.trim() !== '' && n.trim() !== '-' && /[a-zA-Z]/.test(n))
     .map(n => n.trim())
 
   if (valid.length === 0) return '-'
