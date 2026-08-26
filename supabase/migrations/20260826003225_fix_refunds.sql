@@ -1,6 +1,10 @@
 BEGIN;
 
--- 1. Create process_purchase to properly deduct harga_modal and insert mitra_id
+-- 0. CRITICAL: Add missing 'note' column to transactions table
+-- This column is referenced by fail_and_refund but was never created!
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS note TEXT;
+
+-- 1. Fix process_purchase to properly deduct harga_modal and insert mitra_id
 CREATE OR REPLACE FUNCTION public.process_purchase(
   p_user_id UUID,
   p_sku_code TEXT,
@@ -44,7 +48,6 @@ BEGIN
 
     -- Check if balance is sufficient based on HARGA MODAL
     IF v_saldo >= p_harga_modal THEN
-      -- Deduct balance using harga_modal from mitras table
       UPDATE public.mitras SET saldo = saldo - p_harga_modal WHERE id = v_mitra_id;
     ELSE
       RAISE EXCEPTION 'Saldo Mitra tidak mencukupi';
@@ -79,7 +82,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
--- 2. Create fail_and_refund to refund harga_modal (since process_purchase deducted harga_modal)
+-- 2. Fix fail_and_refund to refund harga_modal and use the correct 'note' column
 CREATE OR REPLACE FUNCTION public.fail_and_refund(
   p_transaction_id UUID,
   p_sn TEXT DEFAULT NULL,
@@ -104,7 +107,7 @@ BEGIN
 
   -- Only refund if not already refunded
   IF v_is_refunded THEN
-    -- Idempotent: return true without raising exception so webhook/check-status doesn't crash
+    -- Idempotent: just update status metadata, don't refund again
     UPDATE public.transactions
     SET status = 'gagal',
         sn = COALESCE(p_sn, sn),
@@ -114,13 +117,13 @@ BEGIN
     RETURN TRUE;
   END IF;
 
-  -- Return balance to Mitra (using harga_modal)
+  -- Return balance to Mitra (using harga_modal = what was originally deducted)
   IF v_mitra_id IS NOT NULL THEN
     UPDATE public.mitras
     SET saldo = saldo + v_harga_modal
     WHERE id = v_mitra_id;
   ELSE
-    -- Fallback for legacy transactions that might not have a mitra_id
+    -- Fallback for legacy transactions without mitra_id
     UPDATE public.users
     SET saldo = saldo + v_harga_modal
     WHERE id = v_user_id;
