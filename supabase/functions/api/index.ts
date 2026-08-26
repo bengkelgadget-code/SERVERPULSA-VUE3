@@ -350,8 +350,10 @@ async function handleDigiflazzWebhook(c: any) {
         p_note: data.message || 'Webhook failed'
       })
       if (error) {
-        await updateLog(false, 'Database update failed (fail_and_refund)');
-        return c.json({ error: 'Database update failed' }, 500);
+        console.error('Webhook fail_and_refund error:', error);
+        await supabase.from('transactions').update({ status: 'gagal', sn: finalSn, note: data.message, updated_at: new Date().toISOString() }).eq('id', tx.id);
+        await updateLog(false, 'Database update failed (fail_and_refund fallback used)');
+        return c.json({ error: 'Database update failed, fallback used' }, 500);
       }
     } else {
       const updatePayload: any = {
@@ -946,11 +948,16 @@ app.post('/mobile/transaction/purchase', async (c) => {
       
       if (dbStatus === 'gagal') {
         // Idempotent refund via atomic fail_and_refund RPC
-        await supabaseService.rpc('fail_and_refund', { 
+        const { error: refundError } = await supabaseService.rpc('fail_and_refund', { 
           p_transaction_id: transactionId,
           p_sn: finalSn,
           p_note: response.message || 'Digiflazz call failed'
         })
+        if (refundError) {
+          console.error('Failed to refund transaction:', refundError);
+          // Force update status directly as fallback if RPC fails
+          await supabaseService.from('transactions').update({ status: 'gagal', note: response.message, updated_at: new Date().toISOString() }).eq('id', transactionId);
+        }
         return c.json({ success: false, error: `Transaction failed: ${response.message}`, status: dbStatus, ref_id: refId })
       } else {
         await supabaseService.from('transactions').update(updatePayload).eq('id', transactionId)
@@ -967,10 +974,14 @@ app.post('/mobile/transaction/purchase', async (c) => {
         // Jika error bukan karena timeout, kemungkinan besar masalah Proxy / Jaringan.
         // Transaksi tidak pernah sampai ke Digiflazz. Batalkan dan refund otomatis!
         const supabaseService = createClient(Deno.env.get('SUPABASE_URL') || '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '');
-        await supabaseService.rpc('fail_and_refund', { 
+        const { error: refundError } = await supabaseService.rpc('fail_and_refund', { 
           p_transaction_id: transactionId,
           p_note: 'DigiFlazz Network/Proxy Error'
         })
+        if (refundError) {
+          console.error('Failed to refund transaction on proxy error:', refundError);
+          await supabaseService.from('transactions').update({ status: 'gagal', note: 'DigiFlazz Network/Proxy Error', updated_at: new Date().toISOString() }).eq('id', transactionId);
+        }
         
         return c.json({ 
           success: false, 
@@ -1094,11 +1105,15 @@ app.post('/admin-action', async (c) => {
         response = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id);
       }
       if (response.status === 'Gagal') {
-        await supabaseService.rpc('fail_and_refund', { 
+        const { error: refundError } = await supabaseService.rpc('fail_and_refund', { 
           p_transaction_id: transaction_id,
           p_sn: response.sn || trx.sn || null,
           p_note: response.message || 'Admin manual check status failed'
         })
+        if (refundError) {
+          console.error('Failed to refund transaction in check-status:', refundError);
+          await supabaseService.from('transactions').update({ status: 'gagal', note: response.message, updated_at: new Date().toISOString() }).eq('id', transaction_id);
+        }
         return c.json({ success: true, status: 'gagal', message: response.message })
       } else if (response.status === 'Sukses') {
         await supabaseService.from('transactions')
