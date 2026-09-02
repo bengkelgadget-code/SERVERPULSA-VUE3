@@ -252,22 +252,24 @@ const handleRpInput = (field: any, event: any) => {
               <th class="px-4 py-2.5">Nama ACC</th>
               <th class="px-4 py-2.5 text-right">Harga Beli</th>
               <th class="px-4 py-2.5 text-right">Harga Jual</th>
+              <th class="px-4 py-2.5 text-right">Margin</th>
               <th class="px-4 py-2.5 text-center">Stok</th>
               <th class="px-4 py-2.5 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="loading">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-400">Memuat data...</td>
+              <td colspan="7" class="px-4 py-6 text-center text-gray-400">Memuat data...</td>
             </tr>
             <tr v-else-if="filteredProducts.length === 0">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-400">Belum ada data ACC</td>
+              <td colspan="7" class="px-4 py-6 text-center text-gray-400">Belum ada data ACC</td>
             </tr>
             <tr v-else v-for="item in filteredProducts" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
               <td class="px-4 py-2.5 font-semibold text-gray-700">{{ item.provider_kategori }}</td>
               <td class="px-4 py-2.5 font-semibold text-gray-900">{{ item.nama_produk }}</td>
               <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ formatRp(item.harga_beli) }}</td>
               <td class="px-4 py-2.5 text-right font-bold text-gray-800">{{ formatRp(item.harga_jual) }}</td>
+              <td class="px-4 py-2.5 text-right font-bold text-green-600">{{ formatRp(item.harga_jual - item.harga_beli) }}</td>
               <td class="px-4 py-2.5 text-center">
                 <span class="px-2.5 py-1 rounded-lg text-xs font-bold" :class="item.stok > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'">
                   {{ item.stok }}
