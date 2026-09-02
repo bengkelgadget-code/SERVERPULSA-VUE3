@@ -105,6 +105,19 @@ const uniqueProviders = computed(() => {
   return [...new Set(providers)].sort()
 })
 
+const parseVoucherName = (name: string) => {
+  const match = name.match(/^(.*?)\b(\d+(?:\.\d+)?)\s*[a-zA-Z]*\s*\/\s*(\d+)\s*[a-zA-Z]*\s*$/)
+  if (match) {
+    return {
+      prefix: match[1].trim().toLowerCase(),
+      kuota: parseFloat(match[2]),
+      hari: parseInt(match[3], 10),
+      isMatched: true
+    }
+  }
+  return { isMatched: false, raw: name.toLowerCase() }
+}
+
 const filteredProducts = computed(() => {
   let result = products.value
   
@@ -118,7 +131,30 @@ const filteredProducts = computed(() => {
   }
   
   return result.slice().sort((a: any, b: any) => {
-    return (a.nama_produk || '').localeCompare(b.nama_produk || '', undefined, { numeric: true, sensitivity: 'base' })
+    const nameA = a.nama_produk || ''
+    const nameB = b.nama_produk || ''
+    
+    const parsedA = parseVoucherName(nameA)
+    const parsedB = parseVoucherName(nameB)
+    
+    if (parsedA.isMatched && parsedB.isMatched) {
+      // 1. Sort by Prefix
+      const prefixCmp = parsedA.prefix.localeCompare(parsedB.prefix)
+      if (prefixCmp !== 0) return prefixCmp
+      
+      // 2. Sort by Hari (smallest first)
+      if (parsedA.hari !== parsedB.hari) {
+        return parsedA.hari - parsedB.hari
+      }
+      
+      // 3. Sort by Kuota (smallest first)
+      if (parsedA.kuota !== parsedB.kuota) {
+        return parsedA.kuota - parsedB.kuota
+      }
+    }
+    
+    // Fallback to natural numeric sort
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' })
   })
 })
 
