@@ -101,6 +101,20 @@ onMounted(() => {
 const formatRp = (val: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 }
+
+const formatInputRp = (val) => {
+  if (val === 0 || val === '0') return '0';
+  if (!val) return '';
+  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+const handleRpInput = (field, event) => {
+  const target = event.target;
+  let val = target.value.replace(/[^0-9]/g, '');
+  form.value[field] = val ? parseInt(val, 10) : 0;
+  target.value = formatInputRp(form.value[field]);
+};
+
 </script>
 
 <template>
@@ -187,16 +201,16 @@ const formatRp = (val: number) => {
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nominal Awal (Beli)</label>
-            <input v-model.number="form.nominal_awal" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
+            <input :value="formatInputRp(form.nominal_awal)" @input="handleRpInput('nominal_awal', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Akhir / Persentase</label>
-              <input v-model.number="form.akhir_persentase" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
+              <input :value="formatInputRp(form.akhir_persentase)" @input="handleRpInput('akhir_persentase', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Keuntungan (Rp)</label>
-              <input v-model.number="form.keuntungan" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
+              <input :value="formatInputRp(form.keuntungan)" @input="handleRpInput('keuntungan', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
             </div>
           </div>
         </div>

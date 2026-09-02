@@ -103,6 +103,20 @@ onMounted(() => {
 const formatRp = (val: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 }
+
+const formatInputRp = (val) => {
+  if (val === 0 || val === '0') return '0';
+  if (!val) return '';
+  return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+const handleRpInput = (field, event) => {
+  const target = event.target;
+  let val = target.value.replace(/[^0-9]/g, '');
+  form.value[field] = val ? parseInt(val, 10) : 0;
+  target.value = formatInputRp(form.value[field]);
+};
+
 </script>
 
 <template>
@@ -183,16 +197,16 @@ const formatRp = (val: number) => {
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Harga Beli (Rp)</label>
-              <input v-model.number="form.harga_beli" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
+              <input :value="formatInputRp(form.harga_beli)" @input="handleRpInput('harga_beli', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Harga Jual (Rp)</label>
-              <input v-model.number="form.harga_jual" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
+              <input :value="formatInputRp(form.harga_jual)" @input="handleRpInput('harga_jual', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
             </div>
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Stok</label>
-            <input v-model.number="form.stok" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
+            <input :value="formatInputRp(form.stok)" @input="handleRpInput('stok', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all">
           </div>
         </div>
         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
