@@ -52,8 +52,8 @@ const openModal = (mode = 'add', fund: any = null) => {
 const saveFund = async () => {
   try {
     if (modalMode.value === 'add') {
-      const { data: profile } = await supabase.from('users').select('mitra_id').eq('id', auth.user?.id).single()
-      const mitraId = profile?.mitra_id || auth.user?.id
+      const { data: profile } = await supabase.from('users').select('admin_id, role').eq('id', auth.user?.id).single()
+      const mitraId = (profile?.role === 'staff') ? profile.admin_id : auth.user?.id
       
       await supabase.from('sumber_dana').insert({
         mitra_id: mitraId,
