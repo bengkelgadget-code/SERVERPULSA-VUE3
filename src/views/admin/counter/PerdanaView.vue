@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { Plus, Trash2, Edit2, Smartphone } from 'lucide-vue-next'
+import { Plus, Trash2, Edit2, Smartphone , Search } from 'lucide-vue-next'
 
 const auth = useAuthStore()
 const products = ref<any[]>([])
@@ -96,6 +96,32 @@ const deleteProduct = async (id: string) => {
   }
 }
 
+
+const searchQuery = ref('')
+const filterProvider = ref('')
+
+const uniqueProviders = computed(() => {
+  const providers = products.value.map((p: any) => p.provider_kategori || '').filter(Boolean)
+  return [...new Set(providers)].sort()
+})
+
+const filteredProducts = computed(() => {
+  let result = products.value
+  
+  if (filterProvider.value) {
+    result = result.filter((p: any) => p.provider_kategori === filterProvider.value)
+  }
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter((p: any) => (p.nama_produk || '').toLowerCase().includes(q))
+  }
+  
+  return result.slice().sort((a: any, b: any) => {
+    return (a.nama_produk || '').localeCompare(b.nama_produk || '', undefined, { numeric: true, sensitivity: 'base' })
+  })
+})
+
 onMounted(() => {
   fetchProducts()
 })
@@ -135,6 +161,23 @@ const handleRpInput = (field: any, event: any) => {
       </button>
     </div>
 
+    
+    <!-- Filter & Search -->
+    <div class="flex flex-col md:flex-row gap-3 mb-4">
+      <div class="relative flex-1">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search class="w-4 h-4 text-gray-400" />
+        </div>
+        <input v-model="searchQuery" type="text" placeholder="Cari nama produk..." class="w-full pl-10 pr-4 py-2 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all shadow-sm">
+      </div>
+      <div class="w-full md:w-64">
+        <select v-model="filterProvider" class="w-full px-4 py-2 bg-white border border-gray-100 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm transition-all shadow-sm">
+          <option value="">Semua Kategori / Provider</option>
+          <option v-for="prov in uniqueProviders" :key="prov" :value="prov">{{ prov }}</option>
+        </select>
+      </div>
+    </div>
+    
     <!-- Table -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-220px)]">
@@ -153,10 +196,10 @@ const handleRpInput = (field: any, event: any) => {
             <tr v-if="loading">
               <td colspan="6" class="px-4 py-6 text-center text-gray-400">Memuat data...</td>
             </tr>
-            <tr v-else-if="products.length === 0">
+            <tr v-else-if="filteredProducts.length === 0">
               <td colspan="6" class="px-4 py-6 text-center text-gray-400">Belum ada data PERDANA</td>
             </tr>
-            <tr v-else v-for="item in products" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
+            <tr v-else v-for="item in filteredProducts" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
               <td class="px-4 py-2.5 font-semibold text-gray-700">{{ item.provider_kategori }}</td>
               <td class="px-4 py-2.5 font-semibold text-gray-900">{{ item.nama_produk }}</td>
               <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ formatRp(item.harga_beli) }}</td>
