@@ -105,17 +105,25 @@ const uniqueProviders = computed(() => {
   return [...new Set(providers)].sort()
 })
 
-const parseVoucherName = (name: string) => {
-  const match = name.match(/^(.*?)\b(\d+(?:\.\d+)?)\s*[a-zA-Z]*\s*\/\s*(\d+)\s*[a-zA-Z]*\s*$/)
+const parseVoucherName = (name: any) => {
+  const strName = (name || '').toString()
+  const match = strName.match(/^(.*?)\b(\d+(?:\.\d+)?)\s*[a-zA-Z]*\s*\/\s*(\d+)\s*[a-zA-Z]*\s*$/)
   if (match) {
     return {
+      isMatched: true,
       prefix: match[1].trim().toLowerCase(),
       kuota: parseFloat(match[2]),
       hari: parseInt(match[3], 10),
-      isMatched: true
+      raw: strName.toLowerCase()
     }
   }
-  return { isMatched: false, raw: name.toLowerCase() }
+  return { 
+    isMatched: false, 
+    prefix: '', 
+    kuota: 0, 
+    hari: 0, 
+    raw: strName.toLowerCase() 
+  }
 }
 
 const filteredProducts = computed(() => {
@@ -131,8 +139,8 @@ const filteredProducts = computed(() => {
   }
   
   return result.slice().sort((a: any, b: any) => {
-    const nameA = a.nama_produk || ''
-    const nameB = b.nama_produk || ''
+    const nameA = (a.nama_produk || '').toString()
+    const nameB = (b.nama_produk || '').toString()
     
     const parsedA = parseVoucherName(nameA)
     const parsedB = parseVoucherName(nameB)
