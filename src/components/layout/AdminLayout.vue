@@ -9,7 +9,12 @@ import {
   ArrowLeftRight,
   LogOut,
   ChevronLeft,
-  Menu
+  Menu,
+  Wallet,
+  Ticket,
+  Smartphone,
+  Headphones,
+  Settings2
 } from 'lucide-vue-next'
 import { ref } from 'vue'
 
@@ -32,6 +37,14 @@ const menuItems = [
   { name: 'Kasir/Staff', path: '/admin/users', icon: Users },
   { name: 'Riwayat Saldo', path: '/admin/deposits', icon: CreditCard },
   { name: 'Transaksi Toko', path: '/admin/transactions', icon: ArrowLeftRight }
+]
+
+const counterMenuItems = [
+  { name: 'Sumber Dana', path: '/admin/counter/funds', icon: Wallet },
+  { name: 'Voucher', path: '/admin/counter/voucher', icon: Ticket },
+  { name: 'Perdana', path: '/admin/counter/perdana', icon: Smartphone },
+  { name: 'ACC', path: '/admin/counter/acc', icon: Headphones },
+  { name: 'Pengaturan Margin', path: '/admin/counter/margin', icon: Settings2 }
 ]
 </script>
 
@@ -63,7 +76,7 @@ const menuItems = [
         <div class="flex-1 overflow-y-auto no-scrollbar flex flex-col">
           <nav class="px-3 py-6 flex-1 flex flex-col">
             <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">MENU ADMIN</div>
-            <ul class="space-y-1 flex-none flex flex-col">
+            <ul class="space-y-1 flex-none flex flex-col mb-4">
               <li v-for="item in menuItems" :key="item.path" class="shrink-0 relative z-10">
                 <router-link
                   :to="item.path"
@@ -72,6 +85,30 @@ const menuItems = [
                     $route.path === item.path 
                       ? 'bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white shadow-md shadow-blue-200/50' 
                       : 'text-gray-500 hover:bg-gradient-to-r hover:from-[#2563eb] hover:to-[#3b82f6] hover:text-white hover:shadow-md hover:shadow-blue-200/50'
+                  ]"
+                  :title="!isSidebarOpen ? item.name : ''"
+                >
+                  <component :is="item.icon" class="w-[20px] h-[20px] flex-shrink-0" :class="$route.path === item.path ? 'text-white' : 'text-gray-400 group-hover:text-white'" />
+                  <span 
+                    class="ml-3 truncate transition-opacity duration-300"
+                    :class="isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'"
+                  >
+                    {{ item.name }}
+                  </span>
+                </router-link>
+              </li>
+            </ul>
+
+            <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">DATA KONTER</div>
+            <ul class="space-y-1 flex-none flex flex-col mb-4">
+              <li v-for="item in counterMenuItems" :key="item.path" class="shrink-0 relative z-10">
+                <router-link
+                  :to="item.path"
+                  class="flex items-center px-4 py-3 rounded-xl transition-all group relative font-medium text-[14px]"
+                  :class="[
+                    $route.path === item.path 
+                      ? 'bg-gradient-to-r from-[#8b5cf6] to-[#a855f7] text-white shadow-md shadow-purple-200/50' 
+                      : 'text-gray-500 hover:bg-gradient-to-r hover:from-[#8b5cf6] hover:to-[#a855f7] hover:text-white hover:shadow-md hover:shadow-purple-200/50'
                   ]"
                   :title="!isSidebarOpen ? item.name : ''"
                 >

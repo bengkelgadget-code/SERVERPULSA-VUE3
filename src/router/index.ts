@@ -120,6 +120,31 @@ const router = createRouter({
           path: 'transactions',
           name: 'admin-transactions',
           component: AllTransactions
+        },
+        {
+          path: 'counter/funds',
+          name: 'counter-funds',
+          component: () => import('@/views/admin/counter/FundsView.vue')
+        },
+        {
+          path: 'counter/voucher',
+          name: 'counter-voucher',
+          component: () => import('@/views/admin/counter/VoucherView.vue')
+        },
+        {
+          path: 'counter/perdana',
+          name: 'counter-perdana',
+          component: () => import('@/views/admin/counter/PerdanaView.vue')
+        },
+        {
+          path: 'counter/acc',
+          name: 'counter-acc',
+          component: () => import('@/views/admin/counter/AccView.vue')
+        },
+        {
+          path: 'counter/margin',
+          name: 'counter-margin',
+          component: () => import('@/views/admin/counter/MarginView.vue')
         }
       ]
     },
