@@ -139,28 +139,28 @@ const handleRpInput = (field: any, event: any) => {
         <table class="w-full text-sm text-left">
           <thead class="bg-gray-50 text-gray-500 font-medium sticky top-0 z-10 shadow-sm">
             <tr>
-              <th class="px-6 py-4">Tipe Perhitungan</th>
-              <th class="px-6 py-4">Layanan Terkait</th>
-              <th class="px-6 py-4 text-right">Nominal Awal</th>
-              <th class="px-6 py-4 text-right">Akhir / Persen</th>
-              <th class="px-6 py-4 text-right">Keuntungan</th>
-              <th class="px-6 py-4 text-center">Aksi</th>
+              <th class="px-4 py-2.5">Tipe Perhitungan</th>
+              <th class="px-4 py-2.5">Layanan Terkait</th>
+              <th class="px-4 py-2.5 text-right">Nominal Awal</th>
+              <th class="px-4 py-2.5 text-right">Akhir / Persen</th>
+              <th class="px-4 py-2.5 text-right">Keuntungan</th>
+              <th class="px-4 py-2.5 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <tr v-if="loading">
-              <td colspan="6" class="px-6 py-8 text-center text-gray-400">Memuat data...</td>
+              <td colspan="6" class="px-4 py-6 text-center text-gray-400">Memuat data...</td>
             </tr>
             <tr v-else-if="margins.length === 0">
-              <td colspan="6" class="px-6 py-8 text-center text-gray-400">Belum ada data pengaturan margin</td>
+              <td colspan="6" class="px-4 py-6 text-center text-gray-400">Belum ada data pengaturan margin</td>
             </tr>
             <tr v-else v-for="item in margins" :key="item.id" class="hover:bg-gray-50/50 transition-colors">
-              <td class="px-6 py-4 font-semibold text-gray-700">{{ item.tipe_perhitungan }}</td>
-              <td class="px-6 py-4 font-semibold text-gray-900">{{ item.layanan_terkait }}</td>
-              <td class="px-6 py-4 text-right font-medium text-gray-500">{{ formatRp(item.nominal_awal) }}</td>
-              <td class="px-6 py-4 text-right font-medium text-gray-500">{{ item.tipe_perhitungan === 'PERSENTASE' ? item.akhir_persentase + '%' : formatRp(item.akhir_persentase) }}</td>
-              <td class="px-6 py-4 text-right font-bold text-green-600">{{ formatRp(item.keuntungan) }}</td>
-              <td class="px-6 py-4">
+              <td class="px-4 py-2.5 font-semibold text-gray-700">{{ item.tipe_perhitungan }}</td>
+              <td class="px-4 py-2.5 font-semibold text-gray-900">{{ item.layanan_terkait }}</td>
+              <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ formatRp(item.nominal_awal) }}</td>
+              <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ item.tipe_perhitungan === 'PERSENTASE' ? item.akhir_persentase + '%' : formatRp(item.akhir_persentase) }}</td>
+              <td class="px-4 py-2.5 text-right font-bold text-green-600">{{ formatRp(item.keuntungan) }}</td>
+              <td class="px-4 py-2.5">
                 <div class="flex items-center justify-center gap-2">
                   <button @click="openModal('edit', item)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 class="w-4 h-4" /></button>
                   <button @click="deleteMargin(item.id)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 class="w-4 h-4" /></button>
@@ -175,7 +175,7 @@ const handleRpInput = (field: any, event: any) => {
     <!-- Modal -->
     <div v-if="showModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
           <h3 class="font-bold text-lg text-gray-900">{{ modalMode === 'add' ? 'Tambah' : 'Edit' }} Margin</h3>
           <button @click="showModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
         </div>
@@ -214,7 +214,7 @@ const handleRpInput = (field: any, event: any) => {
             </div>
           </div>
         </div>
-        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+        <div class="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
           <button @click="showModal = false" class="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors">Batal</button>
           <button @click="saveMargin" class="px-4 py-2 text-sm font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-xl transition-colors shadow-sm">Simpan</button>
         </div>
