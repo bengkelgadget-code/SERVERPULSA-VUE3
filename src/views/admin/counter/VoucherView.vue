@@ -122,7 +122,71 @@ const filteredProducts = computed(() => {
   })
 })
 
+
+const categories = ref<any[]>([])
+const showCategoryModal = ref(false)
+const categoryForm = ref({ id: '', nama: '' })
+const catLoading = ref(false)
+
+const fetchCategories = async () => {
+  try {
+    const { data } = await supabase
+      .from('counter_categories')
+      .select('*')
+      .eq('tipe', 'PROVIDER')
+      .order('nama')
+    categories.value = data || []
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const openCategoryModal = (cat: any = null) => {
+  if (cat) {
+    categoryForm.value = { id: cat.id, nama: cat.nama }
+  } else {
+    categoryForm.value = { id: '', nama: '' }
+  }
+  showCategoryModal.value = true
+}
+
+const saveCategory = async () => {
+  if (!categoryForm.value.nama) return
+  catLoading.value = true
+  try {
+    const profile = auth.user?.user_metadata || auth.user
+    const mitraId = (profile?.role === 'staff') ? profile.admin_id : auth.user?.id
+
+    if (categoryForm.value.id) {
+      await supabase.from('counter_categories').update({ nama: categoryForm.value.nama }).eq('id', categoryForm.value.id)
+    } else {
+      await supabase.from('counter_categories').insert({
+        mitra_id: mitraId,
+        tipe: 'PROVIDER',
+        nama: categoryForm.value.nama
+      })
+    }
+    await fetchCategories()
+    categoryForm.value = { id: '', nama: '' }
+  } catch (err: any) {
+    alert('Gagal menyimpan: ' + err.message)
+  } finally {
+    catLoading.value = false
+  }
+}
+
+const deleteCategory = async (id: string) => {
+  if (!confirm('Hapus kategori ini?')) return
+  try {
+    await supabase.from('counter_categories').delete().eq('id', id)
+    await fetchCategories()
+  } catch (err: any) {
+    alert('Gagal menghapus: ' + err.message)
+  }
+}
+
 onMounted(() => {
+  fetchCategories()
   fetchProducts()
 })
 
@@ -259,4 +323,45 @@ const handleRpInput = (field: any, event: any) => {
       </div>
     </div>
   </div>
+
+    <!-- Category Management Modal -->
+    <div v-if="showCategoryModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="font-bold text-lg text-gray-900">Kelola Provider</h3>
+          <button @click="showCategoryModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        <div class="p-4 space-y-4">
+          <div class="flex gap-2">
+            <input v-model="categoryForm.nama" type="text" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all" placeholder="Nama Provider baru...">
+            <button @click="saveCategory" :disabled="catLoading" class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-sm disabled:opacity-50">
+              {{ categoryForm.id ? 'Simpan' : 'Tambah' }}
+            </button>
+            <button v-if="categoryForm.id" @click="categoryForm = {id:'', nama:''}" class="px-3 py-2 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Batal</button>
+          </div>
+          
+          <div class="mt-4 border border-gray-100 rounded-xl overflow-hidden">
+            <div class="max-h-64 overflow-y-auto">
+              <table class="w-full text-sm text-left">
+                <tbody class="divide-y divide-gray-100">
+                  <tr v-if="categories.length === 0">
+                    <td class="px-4 py-4 text-center text-gray-400">Belum ada data</td>
+                  </tr>
+                  <tr v-else v-for="cat in categories" :key="cat.id" class="hover:bg-gray-50">
+                    <td class="px-4 py-2.5 font-semibold text-gray-700">{{ cat.nama }}</td>
+                    <td class="px-4 py-2.5 text-right w-24">
+                      <div class="flex items-center justify-end gap-2">
+                        <button @click="openCategoryModal(cat)" class="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 class="w-3.5 h-3.5" /></button>
+                        <button @click="deleteCategory(cat.id)" class="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 class="w-3.5 h-3.5" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  
 </template>
