@@ -12,7 +12,7 @@ const modalMode = ref('add')
 const selectedId = ref('')
 
 const form = ref({
-  tipe_perhitungan: 'FIXED',
+  tipe_perhitungan: 'Range Nominal',
   layanan_terkait: 'VOUCHER',
   nominal_awal: 0,
   akhir_persentase: 0,
@@ -48,7 +48,7 @@ const openModal = (mode = 'add', item: any = null) => {
       keuntungan: item.keuntungan
     }
   } else {
-    form.value = { tipe_perhitungan: 'FIXED', layanan_terkait: 'VOUCHER', nominal_awal: 0, akhir_persentase: 0, keuntungan: 0 }
+    form.value = { tipe_perhitungan: 'Range Nominal', layanan_terkait: 'VOUCHER', nominal_awal: 0, akhir_persentase: 0, keuntungan: 0 }
   }
   showModal.value = true
 }
@@ -158,7 +158,7 @@ const handleRpInput = (field: any, event: any) => {
               <td class="px-4 py-2.5 font-semibold text-gray-700">{{ item.tipe_perhitungan }}</td>
               <td class="px-4 py-2.5 font-semibold text-gray-900">{{ item.layanan_terkait }}</td>
               <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ formatRp(item.nominal_awal) }}</td>
-              <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ item.tipe_perhitungan === 'PERSENTASE' ? item.akhir_persentase + '%' : formatRp(item.akhir_persentase) }}</td>
+              <td class="px-4 py-2.5 text-right font-medium text-gray-500">{{ item.tipe_perhitungan === 'Persentase' ? item.akhir_persentase + '%' : (item.akhir_persentase ? formatRp(item.akhir_persentase) : 'Maksimal') }}</td>
               <td class="px-4 py-2.5 text-right font-bold text-green-600">{{ formatRp(item.keuntungan) }}</td>
               <td class="px-4 py-2.5">
                 <div class="flex items-center justify-center gap-2">
@@ -179,45 +179,53 @@ const handleRpInput = (field: any, event: any) => {
           <h3 class="font-bold text-lg text-gray-900">{{ modalMode === 'add' ? 'Tambah' : 'Edit' }} Margin</h3>
           <button @click="showModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
         </div>
-        <div class="p-6 space-y-4">
+                <div class="p-6 space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tipe Perhitungan</label>
               <select v-model="form.tipe_perhitungan" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
-                <option value="FIXED">FIXED</option>
-                <option value="PERSENTASE">PERSENTASE</option>
-                <option value="RANGE">RANGE</option>
+                <option value="Range Nominal">Range Nominal</option>
+                <option value="Persentase">Persentase</option>
               </select>
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Layanan Terkait</label>
               <select v-model="form.layanan_terkait" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
-                <option value="VOUCHER">VOUCHER</option>
-                <option value="PERDANA">PERDANA</option>
-                <option value="ACC">ACC</option>
-                <option value="GAME">GAME</option>
                 <option value="TRANSFER">TRANSFER</option>
-                <option value="TARIK TUNAI">TARIK TUNAI</option>
                 <option value="JASA TRANSFER">JASA TRANSFER</option>
+                <option value="TARIK TUNAI">TARIK TUNAI</option>
                 <option value="E-WALLET">E-WALLET</option>
                 <option value="PPOB">PPOB</option>
                 <option value="TOKEN PLN">TOKEN PLN</option>
+                <option value="VOUCHER">VOUCHER</option>
+                <option value="PERDANA">PERDANA</option>
+                <option value="PULSA">PULSA</option>
+                <option value="KUOTA INTERNET">KUOTA INTERNET</option>
+                <option value="ACC">ACC</option>
+                <option value="GAME">GAME</option>
               </select>
             </div>
           </div>
+          
           <div>
-            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nominal Awal (Beli)</label>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nominal Awal (>=)</label>
             <input :value="formatInputRp(form.nominal_awal)" @input="handleRpInput('nominal_awal', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
           </div>
-          <div class="grid grid-cols-2 gap-4">
+          
+          <div v-if="form.tipe_perhitungan === 'Range Nominal'" class="grid grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Akhir / Persentase</label>
-              <input :value="formatInputRp(form.akhir_persentase)" @input="handleRpInput('akhir_persentase', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nominal Akhir (<) (Opsional)</label>
+              <input :value="formatInputRp(form.akhir_persentase)" @input="handleRpInput('akhir_persentase', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all" placeholder="Kosongkan jika maks">
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Keuntungan (Rp)</label>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Margin / Keuntungan (Rp)</label>
               <input :value="formatInputRp(form.keuntungan)" @input="handleRpInput('keuntungan', $event)" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
             </div>
+          </div>
+
+          <div v-if="form.tipe_perhitungan === 'Persentase'">
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Besaran Persentase (%)</label>
+            <input v-model.number="form.akhir_persentase" type="number" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
           </div>
         </div>
         <div class="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
