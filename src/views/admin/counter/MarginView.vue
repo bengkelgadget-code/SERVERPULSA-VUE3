@@ -196,6 +196,12 @@ const handleRpInput = (field: any, event: any) => {
                 <option value="PERDANA">PERDANA</option>
                 <option value="ACC">ACC</option>
                 <option value="GAME">GAME</option>
+                <option value="TRANSFER">TRANSFER</option>
+                <option value="TARIK TUNAI">TARIK TUNAI</option>
+                <option value="JASA TRANSFER">JASA TRANSFER</option>
+                <option value="E-WALLET">E-WALLET</option>
+                <option value="PPOB">PPOB</option>
+                <option value="TOKEN PLN">TOKEN PLN</option>
               </select>
             </div>
           </div>
