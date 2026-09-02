@@ -137,9 +137,9 @@ const handleRpInput = (field, event) => {
 
     <!-- Table -->
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-auto max-h-[calc(100vh-220px)]">
         <table class="w-full text-sm text-left">
-          <thead class="bg-gray-50/50 text-gray-500 font-medium">
+          <thead class="bg-gray-50 text-gray-500 font-medium sticky top-0 z-10 shadow-sm">
             <tr>
               <th class="px-6 py-4">Provider</th>
               <th class="px-6 py-4">Nama PERDANA</th>
