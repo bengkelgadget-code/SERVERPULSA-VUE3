@@ -13,7 +13,7 @@ const selectedId = ref('')
 
 const form = ref({
   tipe_perhitungan: 'Range Nominal',
-  layanan_terkait: 'VOUCHER',
+  layanan_terkait: [] as string[],
   nominal_awal: 0,
   akhir_persentase: 0,
   keuntungan: 0
@@ -42,13 +42,13 @@ const openModal = (mode = 'add', item: any = null) => {
     selectedId.value = item.id
     form.value = {
       tipe_perhitungan: item.tipe_perhitungan,
-      layanan_terkait: item.layanan_terkait,
+      layanan_terkait: item.layanan_terkait ? item.layanan_terkait.split(', ') : [],
       nominal_awal: item.nominal_awal,
       akhir_persentase: item.akhir_persentase,
       keuntungan: item.keuntungan
     }
   } else {
-    form.value = { tipe_perhitungan: 'Range Nominal', layanan_terkait: 'VOUCHER', nominal_awal: 0, akhir_persentase: 0, keuntungan: 0 }
+    form.value = { tipe_perhitungan: 'Range Nominal', layanan_terkait: [], nominal_awal: 0, akhir_persentase: 0, keuntungan: 0 }
   }
   showModal.value = true
 }
@@ -62,7 +62,7 @@ const saveMargin = async () => {
       await supabase.from('pengaturan_margin').insert({
         mitra_id: mitraId,
         tipe_perhitungan: form.value.tipe_perhitungan,
-        layanan_terkait: form.value.layanan_terkait,
+        layanan_terkait: Array.isArray(form.value.layanan_terkait) ? form.value.layanan_terkait.join(', ') : form.value.layanan_terkait,
         nominal_awal: form.value.nominal_awal,
         akhir_persentase: form.value.akhir_persentase,
         keuntungan: form.value.keuntungan
@@ -70,7 +70,7 @@ const saveMargin = async () => {
     } else {
       await supabase.from('pengaturan_margin').update({
         tipe_perhitungan: form.value.tipe_perhitungan,
-        layanan_terkait: form.value.layanan_terkait,
+        layanan_terkait: Array.isArray(form.value.layanan_terkait) ? form.value.layanan_terkait.join(', ') : form.value.layanan_terkait,
         nominal_awal: form.value.nominal_awal,
         akhir_persentase: form.value.akhir_persentase,
         keuntungan: form.value.keuntungan,
@@ -190,7 +190,7 @@ const handleRpInput = (field: any, event: any) => {
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-600 mb-1.5">Layanan Terkait</label>
-              <select v-model="form.layanan_terkait" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all">
+              <select v-model="form.layanan_terkait" multiple class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-500/20 focus:border-gray-500 outline-none text-sm transition-all min-h-[140px]">
                 <option value="TRANSFER">TRANSFER</option>
                 <option value="JASA TRANSFER">JASA TRANSFER</option>
                 <option value="TARIK TUNAI">TARIK TUNAI</option>
