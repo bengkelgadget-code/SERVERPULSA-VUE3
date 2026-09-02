@@ -102,17 +102,17 @@ const formatRp = (val: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
 }
 
-const formatInputRp = (val) => {
+const formatInputRp = (val: any) => {
   if (val === 0 || val === '0') return '0';
   if (!val) return '';
   return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 };
 
-const handleRpInput = (field, event) => {
-  const target = event.target;
+const handleRpInput = (field: any, event: any) => {
+  const target = event.target as HTMLInputElement;
   let val = target.value.replace(/[^0-9]/g, '');
-  form.value[field] = val ? parseInt(val, 10) : 0;
-  target.value = formatInputRp(form.value[field]);
+  (form.value as any)[field] = val ? parseInt(val, 10) : 0;
+  target.value = formatInputRp((form.value as any)[field]);
 };
 
 </script>
