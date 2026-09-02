@@ -53,19 +53,39 @@ export const useProductsStore = defineStore('products', () => {
               .select('product_sku, markup_amount')
               .eq('mitra_id', mitraId)
             
+            const pricingMap: Record<string, number> = {}
             if (pricingData && pricingData.length > 0) {
-              const pricingMap: Record<string, number> = {}
               pricingData.forEach(p => {
                 pricingMap[p.product_sku] = p.markup_amount
               })
-
-              // Override harga_jual in prodData
-              prodData.forEach(p => {
-                const markup = pricingMap[p.sku_code] || 0
-                // For transactions, the true selling price for customer/staff is Superadmin's selling price + Mitra Markup
-                p.harga_jual = p.harga_jual + markup
-              })
             }
+
+            // Apply pricing
+            prodData.forEach(p => {
+              const customMarkup = pricingMap[p.sku_code];
+              let finalMarkup = 0;
+              
+              if (customMarkup !== undefined) {
+                finalMarkup = customMarkup;
+              } else if (p.category === 'Pulsa') {
+                // Apply auto default markup for Pulsa
+                const match = p.product_name.match(/\d{1,3}(?:\.\d{3})+|\d+/g);
+                if (match) {
+                  let maxNum = 0;
+                  match.forEach((m: string) => {
+                    const num = parseInt(m.replace(/\./g, ''));
+                    if (num >= 1000 && num > maxNum) maxNum = num;
+                  });
+                  if (maxNum > 0) {
+                    const targetJual = maxNum < 100000 ? maxNum + 3000 : maxNum + 5000;
+                    finalMarkup = Math.max(0, targetJual - p.harga_jual);
+                  }
+                }
+              }
+              
+              // For transactions, the true selling price for customer/staff is Superadmin's selling price + finalMarkup
+              p.harga_jual = p.harga_jual + finalMarkup
+            })
           }
         }
       }

@@ -174,7 +174,28 @@ const getHargaModal = (product: any) => {
 
 const getHargaJual = (product: any) => {
   if (isSuperadmin.value) return product.harga_jual
-  return product.harga_jual + (mitraPricing.value[product.sku_code] || 0)
+
+  let finalMarkup = 0;
+  const customMarkup = mitraPricing.value[product.sku_code];
+  
+  if (customMarkup !== undefined) {
+    finalMarkup = customMarkup;
+  } else if (product.category === 'Pulsa') {
+    const match = product.product_name.match(/\d{1,3}(?:\.\d{3})+|\d+/g);
+    if (match) {
+      let maxNum = 0;
+      match.forEach((m: string) => {
+        const num = parseInt(m.replace(/\./g, ''));
+        if (num >= 1000 && num > maxNum) maxNum = num;
+      });
+      if (maxNum > 0) {
+        const targetJual = maxNum < 100000 ? maxNum + 3000 : maxNum + 5000;
+        finalMarkup = Math.max(0, targetJual - product.harga_jual);
+      }
+    }
+  }
+
+  return product.harga_jual + finalMarkup;
 }
 
 const handlePriceChange = (product: any, event: Event) => {

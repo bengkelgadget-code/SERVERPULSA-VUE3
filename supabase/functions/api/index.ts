@@ -82,6 +82,41 @@ app.get('/admin/digiflazz-balance', async (c) => {
   }
 })
 
+
+
+app.get('/admin/fix-pulsa', async (c) => {
+  const supabase = getSupabaseService();
+  try {
+    const { data, error } = await supabase.from('products').select('sku_code, product_name, harga_jual, harga_modal').eq('category', 'Pulsa');
+    if (error) throw error;
+    
+    let updatedCount = 0;
+    const updates = [];
+    
+    const { data: pulsaProducts } = await supabase.from('products').select('sku_code').eq('category', 'Pulsa');
+    const skus = pulsaProducts ? pulsaProducts.map((p: any) => p.sku_code) : [];
+    
+    let deletedCount = 0;
+    if (skus.length > 0) {
+      // Chunk delete
+      const chunkSize = 100;
+      for (let i = 0; i < skus.length; i += chunkSize) {
+        const chunk = skus.slice(i, i + chunkSize);
+        const { data, error: delErr } = await supabase.from('mitra_pricing').delete().in('product_sku', chunk);
+        if (delErr) {
+          console.error(delErr);
+        } else {
+          deletedCount += chunk.length;
+        }
+      }
+    }
+    
+    return c.json({ success: true, deletedCount });
+  } catch (error: any) {
+    return c.json({ success: false, error: error.message });
+  }
+});
+
 async function verifyDigiflazzSignature(payload: string, signatureHeader: string, secret: string) {
   if (!signatureHeader || !secret) return false;
   
@@ -872,7 +907,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
     }
 
     const { data: product, error: productError } = await supabase
-      .from('products').select('harga_modal, harga_jual, is_active, product_name').eq('sku_code', sku_code).single()
+      .from('products').select('harga_modal, harga_jual, is_active, product_name, category').eq('sku_code', sku_code).single()
 
     if (productError || !product) return c.json({ error: 'Product not found' }, 404)
     if (!product.is_active) return c.json({ error: 'Product is currently inactive' }, 400)
@@ -894,6 +929,20 @@ app.post('/mobile/transaction/purchase', async (c) => {
         
         if (mitraPricing) {
           finalHargaJual = finalHargaModal + mitraPricing.markup_amount
+        } else if (product.category === 'Pulsa') {
+          // Apply auto default markup for Pulsa
+          const match = product.product_name.match(/\d{1,3}(?:\.\d{3})+|\d+/g);
+          if (match) {
+            let maxNum = 0;
+            match.forEach((m: string) => {
+              const num = parseInt(m.replace(/\./g, ''));
+              if (num >= 1000 && num > maxNum) maxNum = num;
+            });
+            if (maxNum > 0) {
+              const targetJual = maxNum < 100000 ? maxNum + 3000 : maxNum + 5000;
+              finalHargaJual = finalHargaModal + Math.max(0, targetJual - finalHargaModal);
+            }
+          }
         }
       }
     } else if (profile?.role === 'superadmin') {
