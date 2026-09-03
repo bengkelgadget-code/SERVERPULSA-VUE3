@@ -258,96 +258,82 @@ const processUpload = async (toInsert: any[], toUpdate: any[]) => {
   }
 }
 
-const fileInput = ref<HTMLInputElement | null>(null)
+const showBatchModal = ref(false)
+const batchForm = ref<any[]>([])
 
-const downloadFormat = () => {
-  const ws = XLSX.utils.json_to_sheet([
-    {
-      'Provider': 'Telkomsel',
-      'Nama Produk': 'Perdana Tsel',
-      'Harga Beli': 10000,
-      'Harga Jual': 12000,
-      'Stok': 5
-    }
-  ])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Format_PERDANA')
-  XLSX.writeFile(wb, 'Format_PERDANA.xlsx')
+const openBatchModal = () => {
+  batchForm.value = [
+    { provider_kategori: '', nama_produk: '', harga_beli: 0, harga_jual: 0, stok: 0 }
+  ]
+  showBatchModal.value = true
 }
 
-const handleFileUpload = async (event: Event) => {
+const addBatchRow = () => {
+  batchForm.value.push({ provider_kategori: '', nama_produk: '', harga_beli: 0, harga_jual: 0, stok: 0 })
+}
+
+const removeBatchRow = (index: number) => {
+  batchForm.value.splice(index, 1)
+  if (batchForm.value.length === 0) addBatchRow()
+}
+
+const handleBatchRpInput = (index: number, field: string, event: Event) => {
   const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
+  const numericVal = parseInt(target.value.replace(/[^\d]/g, '')) || 0
+  batchForm.value[index][field] = numericVal
+  // the `:value="formatInputRp(...)"` in template will handle formatting automatically on render
+}
 
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    try {
-      loading.value = true
-      const data = new Uint8Array(e.target?.result as ArrayBuffer)
-      const workbook = XLSX.read(data, { type: 'array' })
-      const firstSheet = workbook.SheetNames[0]
-      const rows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet])
-      
-      const profile = auth.user?.user_metadata || auth.user
-      const mitraId = (profile?.role === 'staff') ? profile.admin_id : auth.user?.id
+const saveBatch = async () => {
+  const profile = auth.user?.user_metadata || auth.user
+  const mitraId = (profile?.role === 'staff') ? profile.admin_id : auth.user?.id
 
-      const itemsToInsert = rows.map(row => ({
-        mitra_id: mitraId,
-        tipe_produk: 'PERDANA',
-        provider_kategori: (row['Provider'] || row['Kategori'] || '').toString().trim(),
-        nama_produk: (row['Nama Produk'] || row['Nama Voucher'] || row['Nama Perdana'] || row['Nama ACC'] || '').toString().trim(),
-        harga_beli: parseInt(row['Harga Beli']) || 0,
-        harga_jual: parseInt(row['Harga Jual']) || 0,
-        stok: parseInt(row['Stok']) || 0
-      })).filter(item => item.nama_produk && item.provider_kategori)
-      
-      if (itemsToInsert.length === 0) {
-        alert('Tidak ada data valid yang ditemukan di Excel.')
-        loading.value = false
-        if (target) target.value = ''
-        return
-      }
-
-      // Check against existing products in memory
-      const existingMap = new Map()
-      products.value.forEach(p => {
-        existingMap.set(p.provider_kategori.toLowerCase() + '|' + p.nama_produk.toLowerCase(), p)
-      })
-
-      const newEntries: any[] = []
-      const duplicateEntries: any[] = []
-
-      itemsToInsert.forEach(item => {
-        const key = item.provider_kategori.toLowerCase() + '|' + item.nama_produk.toLowerCase()
-        if (existingMap.has(key)) {
-          duplicateEntries.push({
-            existingId: existingMap.get(key).id,
-            existingStok: existingMap.get(key).stok,
-            newData: item
-          })
-        } else {
-          newEntries.push(item)
-        }
-      })
-
-      if (duplicateEntries.length > 0) {
-        duplicateItems.value = duplicateEntries
-        newItems.value = newEntries
-        showDuplicateModal.value = true
-        loading.value = false
-      } else {
-        await processUpload(newEntries, [])
-      }
-
-    } catch (err: any) {
-      alert('Gagal membaca Excel: ' + err.message)
-      loading.value = false
-    } finally {
-      if (target) target.value = '' 
-    }
+  const itemsToInsert = batchForm.value
+    .map(row => ({
+      mitra_id: mitraId,
+      tipe_produk: 'PERDANA',
+      provider_kategori: row.provider_kategori.trim(),
+      nama_produk: row.nama_produk.trim(),
+      harga_beli: row.harga_beli || 0,
+      harga_jual: row.harga_jual || 0,
+      stok: row.stok || 0
+    }))
+    .filter(item => item.nama_produk && item.provider_kategori)
+    
+  if (itemsToInsert.length === 0) {
+    alert('Tidak ada baris data yang lengkap (Provider & Nama wajib diisi).')
+    return
   }
-  reader.readAsArrayBuffer(file)
+
+  const existingMap = new Map()
+  products.value.forEach(p => {
+    existingMap.set(p.provider_kategori.toLowerCase() + '|' + p.nama_produk.toLowerCase(), p)
+  })
+
+  const newEntries: any[] = []
+  const duplicateEntries: any[] = []
+
+  itemsToInsert.forEach(item => {
+    const key = item.provider_kategori.toLowerCase() + '|' + item.nama_produk.toLowerCase()
+    if (existingMap.has(key)) {
+      duplicateEntries.push({
+        existingId: existingMap.get(key).id,
+        existingStok: existingMap.get(key).stok,
+        newData: item
+      })
+    } else {
+      newEntries.push(item)
+    }
+  })
+
+  if (duplicateEntries.length > 0) {
+    duplicateItems.value = duplicateEntries
+    newItems.value = newEntries
+    showDuplicateModal.value = true
+  } else {
+    await processUpload(newEntries, [])
+    showBatchModal.value = false
+  }
 }
 
 onMounted(() => {
@@ -385,13 +371,11 @@ const handleRpInput = (field: any, event: any) => {
         <p class="text-sm text-gray-500 mt-1">Kelola stok dan harga modal/jual PERDANA fisik.</p>
       </div>
       <div class="flex items-center gap-2">
-        <button @click="downloadFormat" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-          Download Format
+        
+        <button @click="openBatchModal" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+          Input Massal
         </button>
-        <button @click="fileInput?.click()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
-          Upload Excel
-        </button>
-        <input type="file" ref="fileInput" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload" />
         <button @click="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
           <Plus class="w-4 h-4" />
           Tambah PERDANA
@@ -548,6 +532,74 @@ const handleRpInput = (field: any, event: any) => {
       </div>
     </div>
   
+    
+    <!-- Batch Input Modal -->
+    <div v-if="showBatchModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[55] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="font-bold text-lg text-gray-900 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+            Input Massal Perdana
+          </h3>
+          <button @click="showBatchModal = false" class="text-gray-400 hover:text-gray-600">&times;</button>
+        </div>
+        
+        <div class="p-5 overflow-y-auto flex-1 bg-gray-50/30">
+          <div class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-gray-50 text-gray-500 font-semibold text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3 w-48">Provider</th>
+                  <th class="px-4 py-3">Nama Produk</th>
+                  <th class="px-4 py-3 w-40">Harga Beli (Rp)</th>
+                  <th class="px-4 py-3 w-40">Harga Jual (Rp)</th>
+                  <th class="px-4 py-3 w-24">Stok</th>
+                  <th class="px-4 py-3 w-16 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="(row, idx) in batchForm" :key="idx" class="hover:bg-gray-50/50 group">
+                  <td class="p-2">
+                    <select v-model="row.provider_kategori" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm">
+                      <option value="">-- Pilih --</option>
+                      <option v-for="cat in categories" :key="cat.id" :value="cat.nama">{{ cat.nama }}</option>
+                    </select>
+                  </td>
+                  <td class="p-2">
+                    <input v-model="row.nama_produk" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm" placeholder="Nama Produk">
+                  </td>
+                  <td class="p-2">
+                    <input :value="formatInputRp(row.harga_beli)" @input="handleBatchRpInput(idx, 'harga_beli', $event)" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm text-right">
+                  </td>
+                  <td class="p-2">
+                    <input :value="formatInputRp(row.harga_jual)" @input="handleBatchRpInput(idx, 'harga_jual', $event)" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm text-right font-semibold">
+                  </td>
+                  <td class="p-2">
+                    <input :value="formatInputRp(row.stok)" @input="handleBatchRpInput(idx, 'stok', $event)" type="text" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-sm text-center">
+                  </td>
+                  <td class="p-2 text-center">
+                    <button @click="removeBatchRow(idx)" class="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100" title="Hapus Baris">
+                      <Trash2 class="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button @click="addBatchRow" class="mt-4 flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
+            <Plus class="w-4 h-4" /> Tambah Baris
+          </button>
+        </div>
+        
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2 shrink-0">
+          <button @click="showBatchModal = false" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Batal</button>
+          <button @click="saveBatch" class="px-4 py-2 text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-sm flex items-center gap-2">
+            Simpan Semua Data
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Duplicate Warning Modal -->
     <div v-if="showDuplicateModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
