@@ -290,7 +290,7 @@ const saveBatch = async () => {
   const itemsToInsert = batchForm.value
     .map(row => ({
       mitra_id: mitraId,
-      tipe_produk: 'PERDANA',
+      jenis: 'PERDANA',
       provider_kategori: row.provider_kategori.trim(),
       nama_produk: row.nama_produk.trim(),
       harga_beli: row.harga_beli || 0,
