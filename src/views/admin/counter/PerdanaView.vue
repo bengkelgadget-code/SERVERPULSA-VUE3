@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { Plus, Trash2, Edit2, Smartphone , Search } from 'lucide-vue-next'
@@ -229,6 +230,71 @@ const deleteCategory = async (id: string) => {
   }
 }
 
+
+const fileInput = ref<HTMLInputElement | null>(null)
+
+const downloadFormat = () => {
+  const ws = XLSX.utils.json_to_sheet([
+    {
+      'Provider': 'Telkomsel',
+      'Nama Produk': 'Perdana Tsel',
+      'Harga Beli': 10000,
+      'Harga Jual': 12000,
+      'Stok': 5
+    }
+  ])
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Format_PERDANA')
+  XLSX.writeFile(wb, 'Format_PERDANA.xlsx')
+}
+
+const handleFileUpload = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      loading.value = true
+      const data = new Uint8Array(e.target?.result as ArrayBuffer)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const firstSheet = workbook.SheetNames[0]
+      const rows: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet])
+      
+      const profile = auth.user?.user_metadata || auth.user
+      const mitraId = (profile?.role === 'staff') ? profile.admin_id : auth.user?.id
+
+      const itemsToInsert = rows.map(row => ({
+        mitra_id: mitraId,
+        tipe_produk: 'PERDANA',
+        provider_kategori: (row['Provider'] || row['Kategori'] || '').toString().trim(),
+        nama_produk: (row['Nama Produk'] || row['Nama Voucher'] || row['Nama Perdana'] || row['Nama ACC'] || '').toString().trim(),
+        harga_beli: parseInt(row['Harga Beli']) || 0,
+        harga_jual: parseInt(row['Harga Jual']) || 0,
+        stok: parseInt(row['Stok']) || 0
+      })).filter(item => item.nama_produk && item.provider_kategori)
+      
+      if (itemsToInsert.length === 0) {
+        alert('Tidak ada data valid yang ditemukan di Excel.')
+        return
+      }
+
+      const { error } = await supabase.from('counter_products').insert(itemsToInsert)
+      if (error) throw error
+      
+      alert(`Berhasil mengimpor ${itemsToInsert.length} data!`)
+      await fetchProducts()
+    } catch (err: any) {
+      alert('Gagal impor: ' + err.message)
+    } finally {
+      loading.value = false
+      if (target) target.value = '' 
+    }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
 onMounted(() => {
   fetchCategories()
   fetchProducts()
@@ -263,10 +329,19 @@ const handleRpInput = (field: any, event: any) => {
         </h1>
         <p class="text-sm text-gray-500 mt-1">Kelola stok dan harga modal/jual PERDANA fisik.</p>
       </div>
-      <button @click="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
-        <Plus class="w-4 h-4" />
-        Tambah PERDANA
-      </button>
+      <div class="flex items-center gap-2">
+        <button @click="downloadFormat" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+          Download Format
+        </button>
+        <button @click="fileInput?.click()" class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
+          Upload Excel
+        </button>
+        <input type="file" ref="fileInput" accept=".xlsx, .xls" class="hidden" @change="handleFileUpload" />
+        <button @click="openModal('add')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 transition-colors">
+          <Plus class="w-4 h-4" />
+          Tambah PERDANA
+        </button>
+      </div>
     </div>
 
     
