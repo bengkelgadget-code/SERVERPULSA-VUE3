@@ -231,6 +231,33 @@ const deleteCategory = async (id: string) => {
 }
 
 
+
+const showDuplicateModal = ref(false)
+const duplicateItems = ref<any[]>([])
+const newItems = ref<any[]>([])
+
+const processUpload = async (toInsert: any[], toUpdate: any[]) => {
+  loading.value = true
+  try {
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('counter_products').insert(toInsert)
+      if (error) throw error
+    }
+    if (toUpdate.length > 0) {
+      const upsertData = toUpdate.map(u => ({ id: u.existingId, ...u.newData }))
+      const { error } = await supabase.from('counter_products').upsert(upsertData)
+      if (error) throw error
+    }
+    alert('Upload selesai! ' + (toInsert.length + toUpdate.length) + ' data diproses.')
+    showDuplicateModal.value = false
+    await fetchProducts()
+  } catch (err: any) {
+    alert('Gagal memproses upload: ' + err.message)
+  } finally {
+    loading.value = false
+  }
+}
+
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const downloadFormat = () => {
@@ -277,18 +304,46 @@ const handleFileUpload = async (event: Event) => {
       
       if (itemsToInsert.length === 0) {
         alert('Tidak ada data valid yang ditemukan di Excel.')
+        loading.value = false
+        if (target) target.value = ''
         return
       }
 
-      const { error } = await supabase.from('counter_products').insert(itemsToInsert)
-      if (error) throw error
-      
-      alert(`Berhasil mengimpor ${itemsToInsert.length} data!`)
-      await fetchProducts()
+      // Check against existing products in memory
+      const existingMap = new Map()
+      products.value.forEach(p => {
+        existingMap.set(p.provider_kategori.toLowerCase() + '|' + p.nama_produk.toLowerCase(), p)
+      })
+
+      const newEntries: any[] = []
+      const duplicateEntries: any[] = []
+
+      itemsToInsert.forEach(item => {
+        const key = item.provider_kategori.toLowerCase() + '|' + item.nama_produk.toLowerCase()
+        if (existingMap.has(key)) {
+          duplicateEntries.push({
+            existingId: existingMap.get(key).id,
+            existingStok: existingMap.get(key).stok,
+            newData: item
+          })
+        } else {
+          newEntries.push(item)
+        }
+      })
+
+      if (duplicateEntries.length > 0) {
+        duplicateItems.value = duplicateEntries
+        newItems.value = newEntries
+        showDuplicateModal.value = true
+        loading.value = false
+      } else {
+        await processUpload(newEntries, [])
+      }
+
     } catch (err: any) {
-      alert('Gagal impor: ' + err.message)
-    } finally {
+      alert('Gagal membaca Excel: ' + err.message)
       loading.value = false
+    } finally {
       if (target) target.value = '' 
     }
   }
@@ -489,6 +544,50 @@ const handleRpInput = (field: any, event: any) => {
               </table>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Duplicate Warning Modal -->
+    <div v-if="showDuplicateModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-yellow-50">
+          <h3 class="font-bold text-lg text-yellow-800 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            Peringatan: Data Duplikat Ditemukan
+          </h3>
+          <button @click="showDuplicateModal = false" class="text-yellow-600 hover:text-yellow-800">&times;</button>
+        </div>
+        <div class="p-5 overflow-y-auto flex-1">
+          <p class="text-sm text-gray-600 mb-4">
+            Ditemukan <strong>{{ duplicateItems.length }}</strong> data di dalam Excel yang sudah ada di sistem (Nama & Provider Sama). 
+            Selain itu, ada <strong>{{ newItems.length }}</strong> data baru.
+          </p>
+          <div class="border border-gray-200 rounded-xl overflow-hidden">
+            <table class="w-full text-sm text-left">
+              <thead class="bg-gray-50 text-gray-500 font-semibold text-xs uppercase tracking-wider">
+                <tr>
+                  <th class="px-4 py-3">Nama Produk</th>
+                  <th class="px-4 py-3 text-center">Stok Lama</th>
+                  <th class="px-4 py-3 text-center">Stok Excel</th>
+                  <th class="px-4 py-3 text-right">Harga Excel</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="(dup, idx) in duplicateItems" :key="idx" class="hover:bg-gray-50">
+                  <td class="px-4 py-3 font-medium text-gray-800">{{ dup.newData.provider_kategori }} - {{ dup.newData.nama_produk }}</td>
+                  <td class="px-4 py-3 text-center text-red-500 font-bold">{{ dup.existingStok }}</td>
+                  <td class="px-4 py-3 text-center text-green-600 font-bold">{{ dup.newData.stok }}</td>
+                  <td class="px-4 py-3 text-right text-gray-600">{{ formatRp(dup.newData.harga_jual) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3 shrink-0">
+          <button @click="showDuplicateModal = false" class="px-4 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-200 rounded-xl transition-colors">Batal (Batalkan Semua)</button>
+          <button @click="processUpload(newItems, [])" class="px-4 py-2.5 text-sm font-semibold text-blue-600 bg-blue-100 hover:bg-blue-200 rounded-xl transition-colors">Abaikan Duplikat (Hanya Data Baru)</button>
+          <button @click="processUpload(newItems, duplicateItems)" class="px-4 py-2.5 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-sm">Timpa Data (Replace)</button>
         </div>
       </div>
     </div>
