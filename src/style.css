@@ -222,3 +222,12 @@ html, body {
   box-shadow: none !important; /* Remove top shadow to make it seamless */
   padding-bottom: 12px !important; /* Reduced bottom padding */
 }
+
+/* Desktop constraints for neumorphic theme */
+.theme-neumorph .desktop-outer {
+  background-color: #d1d9e6 !important; /* Slightly darker than app bg to make it pop on desktop */
+}
+.theme-neumorph .mobile-app-wrapper {
+  background-color: var(--bg-color) !important;
+  box-shadow: 0 0 50px rgba(100, 90, 80, 0.2) !important;
+}

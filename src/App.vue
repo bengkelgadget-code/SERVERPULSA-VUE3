@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth'
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { App as CapacitorApp } from '@capacitor/app'
 import { Toast } from '@capacitor/toast'
@@ -15,6 +15,12 @@ const printer = usePrinterStore()
 const bluetooth = useBluetooth()
 const router = useRouter()
 let lastBackPress = 0
+
+
+const isAdminRoute = computed(() => {
+  const path = router.currentRoute.value.path
+  return path.startsWith('/admin') || path.startsWith('/superadmin')
+})
 
 onMounted(() => {
   auth.initialize()
@@ -103,8 +109,16 @@ onMounted(() => {
   <div v-if="auth.loading" class="min-h-screen flex items-center justify-center">
     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
   </div>
-  <div v-else>
-    <router-view></router-view>
-    <TransactionPopup v-if="auth.user" />
+  <div v-else :class="!isAdminRoute ? 'min-h-screen w-full flex justify-center bg-gray-100 desktop-outer' : ''">
+    <div 
+      :class="{
+        'w-full max-w-[480px] min-h-screen bg-white relative shadow-[0_0_50px_rgba(0,0,0,0.1)] overflow-hidden mobile-app-wrapper': !isAdminRoute,
+        'w-full min-h-screen': isAdminRoute
+      }"
+      :style="!isAdminRoute ? 'transform: translateZ(0);' : ''"
+    >
+      <router-view></router-view>
+      <TransactionPopup v-if="auth.user" />
+    </div>
   </div>
 </template>
