@@ -328,21 +328,21 @@ const snParts = computed(() => {
   let finalSn = snValue
 
   // Extract Periode (BL/TH)
-  const periodeMatch = finalSn.match(/\/?\s*(?:BL\/TH|PERIODE|BLN)[:=]\s*([^/,]+)/i)
+  const periodeMatch = finalSn.match(/\/?\s*(?:BL\/TH|PERIODE|BLN)\s*[:=]\s*([^/,]+)/i)
   if (periodeMatch) {
     result.push({ label: 'PERIODE', value: periodeMatch[1].trim() })
     finalSn = finalSn.replace(periodeMatch[0], '')
   }
 
   // Extract STD MTR (usually for PDAM)
-  const stdMtrMatch = finalSn.match(/\/?\s*(?:STD MTR|STAND METER|STAND|METER|MTR)[:=]\s*([^/,]+)/i)
+  const stdMtrMatch = finalSn.match(/\/?\s*(?:STD MTR|STAND METER|STAND|METER|MTR)\s*[:=]\s*([^/,]+)/i)
   if (stdMtrMatch) {
     result.push({ label: 'STD MTR', value: stdMtrMatch[1].trim() })
     finalSn = finalSn.replace(stdMtrMatch[0], '')
   }
   
   // Extract TRF/DAYA
-  const trfDayaMatch = finalSn.match(/\/?\s*(?:TRF\/DAYA|TARIF|DAYA)[:=]\s*([^/,]+)/i)
+  const trfDayaMatch = finalSn.match(/\/?\s*(?:TRF\/DAYA|TARIF|DAYA)\s*[:=]\s*([^/,]+)/i)
   if (trfDayaMatch) {
     result.push({ label: 'TRF/DAYA', value: trfDayaMatch[1].trim() })
     finalSn = finalSn.replace(trfDayaMatch[0], '')
