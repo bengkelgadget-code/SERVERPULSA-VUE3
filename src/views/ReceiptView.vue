@@ -328,21 +328,21 @@ const snParts = computed(() => {
   let finalSn = snValue
 
   // Extract Periode (BL/TH)
-  const periodeMatch = finalSn.match(/\/?\s*BL\/TH:\s*([^/]+)/i)
+  const periodeMatch = finalSn.match(/\/?\s*(?:BL\/TH|PERIODE|BLN)[:=]\s*([^/,]+)/i)
   if (periodeMatch) {
     result.push({ label: 'PERIODE', value: periodeMatch[1].trim() })
     finalSn = finalSn.replace(periodeMatch[0], '')
   }
 
   // Extract STD MTR (usually for PDAM)
-  const stdMtrMatch = finalSn.match(/\/?\s*STD MTR:\s*([^/]+)/i)
+  const stdMtrMatch = finalSn.match(/\/?\s*(?:STD MTR|STAND METER|STAND|METER|MTR)[:=]\s*([^/,]+)/i)
   if (stdMtrMatch) {
     result.push({ label: 'STD MTR', value: stdMtrMatch[1].trim() })
     finalSn = finalSn.replace(stdMtrMatch[0], '')
   }
   
   // Extract TRF/DAYA
-  const trfDayaMatch = finalSn.match(/\/?\s*TRF\/DAYA:\s*([^/]+)/i)
+  const trfDayaMatch = finalSn.match(/\/?\s*(?:TRF\/DAYA|TARIF|DAYA)[:=]\s*([^/,]+)/i)
   if (trfDayaMatch) {
     result.push({ label: 'TRF/DAYA', value: trfDayaMatch[1].trim() })
     finalSn = finalSn.replace(trfDayaMatch[0], '')
@@ -706,11 +706,16 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 <template>
   <div class="min-h-screen bg-neutral-100 flex flex-col font-sans">
     <!-- Header (no print button) -->
-    <div class="bg-primary-600 text-white p-4 flex items-center gap-4 shadow-sm sticky top-0 z-10 print:hidden">
-      <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    <div class="bg-primary-600 text-white p-4 flex items-center justify-between shadow-sm sticky top-0 z-10 print:hidden">
+      <div class="flex items-center gap-4">
+        <button @click="router.replace('/history')" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <h1 class="text-xl font-bold">Nota Transaksi</h1>
+      </div>
+      <button @click="router.replace('/')" class="p-2 -mr-2 rounded-full hover:bg-white/20 transition-colors" title="Ke Beranda">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </button>
-      <h1 class="text-xl font-bold">Nota Transaksi</h1>
     </div>
 
     <div class="flex-1 p-4 flex flex-col items-center justify-start print:p-0 print:bg-white overflow-y-auto">
@@ -801,10 +806,14 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
               <div v-for="(part, i) in snParts" :key="i" class="flex">
-                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ part.value }}</span>
+                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span>
+                <span class="flex-1" :class="part.label.includes('REFF') || part.label.includes('SN') ? 'break-all' : 'break-words'">{{ part.value }}</span>
               </div>
             </template>
-            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.sn || trx.ref_id || '' }}</span></div>
+            <div v-else class="flex">
+              <span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span>
+              <span class="flex-1 break-all">{{ trx.sn || trx.ref_id || '' }}</span>
+            </div>
             <div class="flex mt-2 font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
@@ -851,7 +860,7 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
               {{ isSharing ? 'Memproses...' : 'Kirim / Bagikan' }}
             </button>
           </template>
-          <button @click="router.push('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
+          <button @click="router.replace('/history')" class="w-full bg-white hover:bg-neutral-50 text-neutral-700 font-bold py-3.5 px-4 rounded-xl shadow-sm border border-neutral-200 transition-all flex justify-center items-center gap-2">
             Kembali ke Riwayat
           </button>
         </div>
