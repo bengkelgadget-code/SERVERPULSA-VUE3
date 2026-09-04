@@ -292,7 +292,7 @@ const pascaStdMtr = computed(() => {
     const akhir = akhirMatch ? akhirMatch[1].trim() : ''
     return `${awal}-${akhir}`.replace(/^-|-$/g, '') || '-'
   }
-  const stdMatch = sn.match(/(?:STD\s*MTR|STD|STAND|METER|MTR)\s*[:=]\s*([0-9\-\s\.]+)/i)
+  const stdMatch = sn.match(/(?:STD\s*MTR|STD|STAND|METER|MTR)\s*[:=]\s*([^/,]+)/i)
   if (stdMatch && stdMatch[1]) {
     const val = stdMatch[1].trim().replace(/\.$/, '')
     return val || '-'
@@ -508,6 +508,18 @@ const buildReceiptLines = async () => {
     addRow('PLN REFF', pascaReff.value)
     addRow('BL/TH', pascaPeriode.value)
     addRow('STD MTR', pascaStdMtr.value)
+    addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
+  } else if (isPascaNonPln.value) {
+    const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
+    addRow('TANGGAL', dateStr)
+    addRow('IDPEL', trx.value.customer_no)
+    addRow('NAMA', pascaName.value)
+    addRow('TAGIHAN', formatRp(trx.value.harga_modal))
+    addRow('PERIODE', pascaPeriode.value)
+    if (pascaStdMtr.value && pascaStdMtr.value !== '-') {
+      addRow('STD MTR', pascaStdMtr.value)
+    }
+    addRow('REFF', pascaReff.value)
     addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else {
     addRow('PRODUK', trx.value.products?.product_name || '')
@@ -782,12 +794,20 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PASCABAYAR NON-PLN FORMAT (INTERNET, BPJS, PDAM) -->
           <div v-else-if="isPascaNonPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaName }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">PERIODE</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPeriode }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">REFF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaReff }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaName }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PERIODE</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaPeriode }}</span></div>
+            <div v-if="pascaStdMtr && pascaStdMtr !== '-'" class="flex">
+              <span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaStdMtr }}</span>
+            </div>
+            <div class="flex"><span class="w-24 shrink-0">REFF</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaReff }}</span></div>
+            
+            <div v-if="trx && trx.sn" class="text-[8px] text-gray-300 mt-2 text-left break-all print:hidden" data-html2canvas-ignore>
+              RAW: {{ trx.sn }}
+            </div>
+            
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
