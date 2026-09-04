@@ -1079,6 +1079,10 @@ app.post('/mobile/transaction/check-status', async (c) => {
     }
 
     // Check status in digiflazz
+    if (!trx.ref_id) {
+      return c.json({ success: true, status: trx.status, message: 'No ref_id, skipped digiflazz check' })
+    }
+
     const cleanCustomerNo = String(trx.customer_no).replace(/[^0-9]/g, '');
     let dfData;
     if (trx.ref_id.startsWith('INQPASCA-')) {
