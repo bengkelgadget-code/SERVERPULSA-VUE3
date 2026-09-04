@@ -805,14 +805,14 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
-              <div v-for="(part, i) in snParts" :key="i" class="flex">
+              <div v-for="(part, i) in snParts" :key="i" class="flex w-full">
                 <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span>
-                <span class="flex-1" :class="part.label.includes('REFF') || part.label.includes('SN') ? 'break-all' : 'break-words'">{{ part.value }}</span>
+                <span class="flex-1 min-w-0" :class="part.label.includes('REFF') || part.label.includes('SN') ? 'break-all' : 'break-words'">{{ part.value }}</span>
               </div>
             </template>
-            <div v-else class="flex">
+            <div v-else class="flex w-full">
               <span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span>
-              <span class="flex-1 break-all">{{ trx.sn || trx.ref_id || '' }}</span>
+              <span class="flex-1 min-w-0 break-all">{{ trx.sn || trx.ref_id || '' }}</span>
             </div>
             <div class="flex mt-2 font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>

@@ -115,7 +115,6 @@ onMounted(() => {
         'w-full max-w-[480px] min-h-screen bg-white relative shadow-[0_0_50px_rgba(0,0,0,0.1)] overflow-hidden mobile-app-wrapper': !isAdminRoute,
         'w-full min-h-screen': isAdminRoute
       }"
-      :style="!isAdminRoute ? 'transform: translateZ(0);' : ''"
     >
       <router-view></router-view>
       <TransactionPopup v-if="auth.user" />

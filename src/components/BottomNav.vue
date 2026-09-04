@@ -23,7 +23,7 @@ const navItems = [
 </script>
 
 <template>
-  <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 p-3 flex justify-center items-center gap-[20px] pb-safe z-50">
+  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-neutral-200 p-3 flex justify-center items-center gap-[20px] pb-safe z-50">
     <button 
       v-for="item in navItems" 
       :key="item.name"
