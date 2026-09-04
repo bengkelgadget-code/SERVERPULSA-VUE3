@@ -585,16 +585,18 @@ const handleRpInput = (field: any, event: any) => {
               </tbody>
             </table>
           </div>
-          <button @click="addBatchRow" class="mt-4 flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700 px-2 py-1 rounded-lg hover:bg-purple-50 transition-colors">
-            <Plus class="w-4 h-4" /> Tambah Baris
-          </button>
         </div>
         
-        <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2 shrink-0">
-          <button @click="showBatchModal = false" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Batal</button>
+        <div class="px-5 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between shrink-0">
+          <button @click="addBatchRow" class="flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-700 px-3 py-2 rounded-xl hover:bg-purple-100 transition-colors">
+            <Plus class="w-4 h-4" /> Tambah Baris
+          </button>
+          <div class="flex gap-2">
+            <button @click="showBatchModal = false" class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">Batal</button>
           <button @click="saveBatch" class="px-4 py-2 text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 rounded-xl transition-colors shadow-sm flex items-center gap-2">
             Simpan Semua Data
           </button>
+          </div>
         </div>
       </div>
     </div>
