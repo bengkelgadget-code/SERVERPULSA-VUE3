@@ -335,12 +335,6 @@ const snParts = computed(() => {
   return result
 })
 
-// Truncate long values (e.g. REFF) for display
-const truncateVal = (val: string, max = 35) => {
-  if (!val) return '-'
-  return val.length > max ? val.substring(0, max) + '...' : val
-}
-
 const printReceipt = async () => {
   if (!trx.value) return
   
@@ -405,22 +399,56 @@ const buildReceiptLines = async () => {
   lines.push({ text: '' })
 
   const dateStr = formatDate(trx.value.created_at || '').substring(0, 16)
-  if (!isPascaPln.value) {
+    if (!isPascaPln.value) {
     lines.push({ text: `TANGGAL     : ${dateStr}` })
     lines.push({ text: '' })
   }
   
   const addRow = (label: string, value: string, bold = false) => {
     const maxValLen = 18
-    if (value.length > maxValLen) {
-      lines.push({ text: `${label.padEnd(12)}: ${value.substring(0, maxValLen)}`, bold })
-      let remaining = value.substring(maxValLen)
-      while (remaining.length > 0) {
-        lines.push({ text: `              ${remaining.substring(0, maxValLen)}`, bold })
-        remaining = remaining.substring(maxValLen)
-      }
-    } else {
+    if (!value) value = '-'
+    
+    if (value.length <= maxValLen) {
       lines.push({ text: `${label.padEnd(12)}: ${value}`, bold })
+      return
+    }
+
+    let remaining = value
+    let isFirstLine = true
+
+    while (remaining.length > 0) {
+      let chunk = ''
+      if (remaining.length <= maxValLen) {
+        chunk = remaining
+        remaining = ''
+      } else {
+        // Find last space within maxValLen
+        let breakIdx = remaining.lastIndexOf(' ', maxValLen)
+        // Also try breaking at '/' or '-' if no space is found
+        if (breakIdx === -1 || breakIdx === 0) {
+          const slashIdx = remaining.lastIndexOf('/', maxValLen)
+          const dashIdx = remaining.lastIndexOf('-', maxValLen)
+          breakIdx = Math.max(slashIdx, dashIdx)
+        }
+        
+        if (breakIdx === -1 || breakIdx === 0) {
+          // Force break at maxValLen
+          breakIdx = maxValLen
+          chunk = remaining.substring(0, breakIdx)
+          remaining = remaining.substring(breakIdx)
+        } else {
+          // Break at space or separator (keep separator in chunk)
+          chunk = remaining.substring(0, breakIdx + (remaining[breakIdx] === ' ' ? 0 : 1))
+          remaining = remaining.substring(breakIdx + 1).trimStart()
+        }
+      }
+
+      if (isFirstLine) {
+        lines.push({ text: `${label.padEnd(12)}: ${chunk.trim()}`, bold })
+        isFirstLine = false
+      } else {
+        lines.push({ text: `              ${chunk.trim()}`, bold })
+      }
     }
   }
   
@@ -738,10 +766,10 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
               <div v-for="(part, i) in snParts" :key="i" class="flex">
-                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(part.value) }}</span>
+                <span class="w-24 shrink-0">{{ part.label }}</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ part.value }}</span>
               </div>
             </template>
-            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-all">{{ truncateVal(trx.sn || trx.ref_id || '') }}</span></div>
+            <div v-else class="flex"><span class="w-24 shrink-0">SN / REF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.sn || trx.ref_id || '' }}</span></div>
             <div class="flex mt-2 font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">

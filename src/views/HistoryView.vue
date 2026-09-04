@@ -332,7 +332,7 @@ const closePopup = () => {
             </div>
             <div>
               <p class="text-sm text-neutral-500 mb-1">SN / Ref ID</p>
-              <p class="font-mono text-xs text-neutral-600 break-all bg-neutral-50 p-2 rounded border border-neutral-100">
+              <p class="font-mono text-xs text-neutral-600 break-words bg-neutral-50 p-2 rounded border border-neutral-100">
                 {{ formatSn(selectedTrx) }}
               </p>
             </div>
