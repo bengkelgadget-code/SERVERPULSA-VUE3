@@ -163,6 +163,28 @@ const getStatusColor = (status: string) => {
   if (status === 'proses') return 'bg-blue-100 text-blue-700'
   return 'bg-yellow-100 text-yellow-700'
 }
+const formatSn = (trx: any) => {
+  if (!trx) return '-';
+  const sn = trx.sn;
+  if (!sn) return trx.ref_id || '-';
+  
+  try {
+    if (typeof sn === 'string' && sn.includes('| SN: ')) {
+      const parts = sn.split('| SN: ');
+      if (parts.length > 1 && parts[1]) {
+        const snVal = parts[1];
+        const reffMatch = snVal.match(/Reff:\s*([a-zA-Z0-9\-]+)/i);
+        if (reffMatch && reffMatch[1]) {
+          return reffMatch[1].trim();
+        }
+        return snVal.trim();
+      }
+    }
+    return sn;
+  } catch (e) {
+    return sn || trx.ref_id || '-';
+  }
+}
 
 const getDisplayStatus = (status: string, createdAt: string) => {
   if (status !== 'pending') return status;
@@ -182,6 +204,47 @@ const getStatusIndicator = (status: string) => {
 
 const openPopup = (trx: any) => {
   router.push({ query: { trx: trx.id } })
+}
+
+const isChecking = ref(false)
+const checkStatusManual = async () => {
+  if (!selectedTrx.value || selectedTrx.value.status !== 'pending' || isChecking.value) return
+  
+  isChecking.value = true
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/mobile/transaction/check-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ transaction_id: selectedTrx.value.id })
+    })
+    
+    const result = await res.json()
+    if (result.success) {
+      if (result.status !== selectedTrx.value.status) {
+        const idx = transactions.value.findIndex(t => t.id === selectedTrx.value.id)
+        if (idx !== -1) {
+          transactions.value[idx].status = result.status
+          transactions.value[idx].sn = result.sn || transactions.value[idx].sn
+          transactions.value = [...transactions.value]
+          alert(`Status berhasil diperbarui menjadi: ${result.status.toUpperCase()}`)
+        }
+      } else {
+        alert('Status di server Digiflazz masih PENDING.')
+      }
+    } else {
+      alert(`Gagal mengecek status: ${result.error || result.message || 'Unknown error'}`)
+    }
+  } catch (e: any) {
+    alert(`Terjadi kesalahan sistem: ${e.message}`)
+  } finally {
+    isChecking.value = false
+  }
 }
 
 const closePopup = () => {
@@ -250,6 +313,9 @@ const closePopup = () => {
             </span>
           </div>
           <p v-if="selectedTrx.status === 'pending'" class="text-xs text-neutral-400 mt-2">Menunggu respons dari server...</p>
+          <button v-if="selectedTrx.status === 'pending'" @click="checkStatusManual" :disabled="isChecking" class="mt-3 text-xs bg-primary-50 text-primary-600 font-semibold px-3 py-1.5 rounded-full hover:bg-primary-100 transition-colors disabled:opacity-50">
+            {{ isChecking ? 'Mengecek...' : 'Cek Status Sekarang' }}
+          </button>
         </div>
         
         <div class="space-y-4">
@@ -264,7 +330,7 @@ const closePopup = () => {
           <div>
             <p class="text-sm text-neutral-500 mb-1">SN / Ref ID</p>
             <p class="font-mono text-xs text-neutral-600 break-all bg-neutral-50 p-2 rounded border border-neutral-100">
-              {{ selectedTrx.sn?.includes('| SN: ') ? selectedTrx.sn.split('| SN: ')[1].match(/Reff:\s*([a-zA-Z0-9\-]+)/i)?.[1]?.trim() || selectedTrx.sn.split('| SN: ')[1] : selectedTrx.sn || selectedTrx.ref_id || '-' }}
+              {{ formatSn(selectedTrx) }}
             </p>
           </div>
           <div class="flex justify-between items-center pt-2 border-t border-dashed border-neutral-200">
