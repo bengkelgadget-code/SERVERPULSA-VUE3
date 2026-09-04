@@ -305,19 +305,15 @@ const snParts = computed(() => {
   const raw = trx.value?.sn || trx.value?.ref_id || ''
   const result: { label: string; value: string }[] = []
 
-  // Try to parse "A/N name | SN: sn_value" format or just "A/N name"
+  let snValue = raw
+  
+  // Try to parse "A/N name | SN: sn_value" format
   if (raw.includes('A/N ')) {
     const parts = raw.split(' | SN: ')
-    const name = parts[0].replace('A/N ', '')
+    const name = parts[0].replace('A/N ', '').trim()
     result.push({ label: 'NAMA PEMILIK', value: name })
-    if (parts.length > 1 && parts[1]) {
-      const snValue = parts[1]
-      const reffMatch = snValue.match(/Reff:\s*([a-zA-Z0-9\-]+)/i)
-      result.push({ label: 'SN / REFF', value: reffMatch ? cleanReff(reffMatch[1].trim()) : cleanReff(snValue) })
-    } else if (trx.value?.ref_id) {
-       result.push({ label: 'SN / REFF', value: cleanReff(trx.value.ref_id) })
-    }
-  }
+    snValue = parts.length > 1 && parts[1] ? parts[1] : (trx.value?.ref_id || '')
+  } 
   // Try to parse "Nama: x, No: y, Reff: z" format
   else if (raw.includes('Nama:') && raw.includes('Reff:')) {
     const namaMatch = raw.match(/Nama:\s*([^,]+)/)
@@ -325,11 +321,50 @@ const snParts = computed(() => {
     const reffMatch = raw.match(/Reff:\s*(.+)/)
     if (namaMatch) result.push({ label: 'NAMA PEMILIK', value: namaMatch[1].trim() })
     if (noMatch) result.push({ label: 'NO', value: noMatch[1].trim() })
-    if (reffMatch) result.push({ label: 'SN / REFF', value: cleanReff(reffMatch[1].trim()) })
+    snValue = reffMatch ? reffMatch[1].trim() : ''
   }
-  // Fallback: show raw as single line
-  else {
-    result.push({ label: 'SN / REFF', value: cleanReff(raw) })
+
+  // Parse Periode, STD MTR, TRF/DAYA out of snValue
+  let finalSn = snValue
+
+  // Extract Periode (BL/TH)
+  const periodeMatch = finalSn.match(/\/?\s*BL\/TH:\s*([^/]+)/i)
+  if (periodeMatch) {
+    result.push({ label: 'PERIODE', value: periodeMatch[1].trim() })
+    finalSn = finalSn.replace(periodeMatch[0], '')
+  }
+
+  // Extract STD MTR (usually for PDAM)
+  const stdMtrMatch = finalSn.match(/\/?\s*STD MTR:\s*([^/]+)/i)
+  if (stdMtrMatch) {
+    result.push({ label: 'STD MTR', value: stdMtrMatch[1].trim() })
+    finalSn = finalSn.replace(stdMtrMatch[0], '')
+  }
+  
+  // Extract TRF/DAYA
+  const trfDayaMatch = finalSn.match(/\/?\s*TRF\/DAYA:\s*([^/]+)/i)
+  if (trfDayaMatch) {
+    result.push({ label: 'TRF/DAYA', value: trfDayaMatch[1].trim() })
+    finalSn = finalSn.replace(trfDayaMatch[0], '')
+  }
+
+  // Check if it's a PPOB/Postpaid transaction to add Tagihan
+  const cat = (trx.value?.products?.category || '').toLowerCase()
+  const isPostpaid = cat.includes('pasca') || cat === 'pdam' || cat === 'bpjs' || cat === 'internet' || cat === 'pbb' || cat === 'multifinance' || cat === 'tv kabel' || raw.includes('A/N ') || raw.includes('Nama:')
+  
+  if (isPostpaid && trx.value?.harga_modal) {
+    result.push({ label: 'TAGIHAN', value: formatRp(trx.value.harga_modal) })
+  }
+
+  // Clean up finalSn from trailing slashes or spaces
+  finalSn = finalSn.replace(/^\s*\/\s*|\s*\/\s*$/g, '').trim()
+
+  // Clean Reff if any
+  const reffMatch = finalSn.match(/Reff:\s*([a-zA-Z0-9\-]+)/i)
+  const cleanFinalSn = reffMatch ? cleanReff(reffMatch[1].trim()) : cleanReff(finalSn)
+  
+  if (cleanFinalSn) {
+    result.push({ label: 'SN / REFF', value: cleanFinalSn })
   }
   
   return result
