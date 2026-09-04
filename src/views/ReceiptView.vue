@@ -754,16 +754,16 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PLN PRABAYAR FORMAT -->
           <div v-if="isPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.nama }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00</span></div>
-            <div class="flex"><span class="w-24 shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 break-words">RP. 0,00/0,00</span></div>
-            <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal || 0) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ plnData?.kwh }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(customHargaJual - (trx.harga_modal || 0)) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ plnData?.nama }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ plnData?.tarif }}/{{ plnData?.daya }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NOMINAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatRp(trx.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PPN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">RP. 0,00</span></div>
+            <div class="flex"><span class="w-24 shrink-0">ANGS/MAT</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">RP. 0,00/0,00</span></div>
+            <div class="flex"><span class="w-24 shrink-0">RP TOKEN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatRp(trx.harga_modal || 0) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">JML KWH</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ plnData?.kwh }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BIAYA ADM</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatRp(customHargaJual - (trx.harga_modal || 0)) }}</span></div>
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
@@ -775,14 +775,14 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PLN PASCABAYAR FORMAT -->
           <div v-else-if="isPascaPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaName }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaTarifDaya }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">PLN REFF</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaReff }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaPeriode }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ pascaStdMtr }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaName }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TRF/DAYA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaTarifDaya }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatRp(trx.harga_modal) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PLN REFF</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaReff }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">BL/TH</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaPeriode }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaStdMtr }}</span></div>
             <div class="flex font-bold cursor-pointer hover:bg-gray-100 p-1 -m-1 rounded transition-colors" @click="openEditModal" title="Klik untuk edit Total Bayar">
               <span class="w-24 shrink-0 mt-1">TOTAL BAYAR</span><span class="mr-2 mt-1">:</span>
               <span class="flex-1 break-words flex items-center gap-1 mt-1">
@@ -794,13 +794,13 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- PASCABAYAR NON-PLN FORMAT (INTERNET, BPJS, PDAM) -->
           <div v-else-if="isPascaNonPln" class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ trx.customer_no }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaName }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ formatRp(trx.harga_modal) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">PERIODE</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaPeriode }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">IDPEL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.customer_no }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NAMA</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaName }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TAGIHAN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatRp(trx.harga_modal) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PERIODE</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaPeriode }}</span></div>
             <div v-if="pascaStdMtr && pascaStdMtr !== '-'" class="flex">
-              <span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-words">{{ pascaStdMtr }}</span>
+              <span class="w-24 shrink-0">STD MTR</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaStdMtr }}</span>
             </div>
             <div class="flex"><span class="w-24 shrink-0">REFF</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ pascaReff }}</span></div>
             
@@ -819,10 +819,10 @@ const shareReceipt = async (format: 'jpg' | 'pdf') => {
 
           <!-- NON-PLN/PASCABAYAR FORMAT -->
           <div v-else class="space-y-1 mb-4">
-            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.products?.product_name }}</span></div>
-            <div class="flex"><span class="w-24 shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_no }}</span></div>
-            <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 break-words">{{ trx.customer_name }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">TANGGAL</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ formatDate(trx.created_at).substring(0, 16) }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">PRODUK</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.products?.product_name }}</span></div>
+            <div class="flex"><span class="w-24 shrink-0">NO TUJUAN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.customer_no }}</span></div>
+            <div v-if="trx.customer_name" class="flex"><span class="w-24 shrink-0">NAMA AKUN</span><span class="mr-2">:</span><span class="flex-1 min-w-0 break-all">{{ trx.customer_name }}</span></div>
             <!-- SN / REF - each part on its own line -->
             <template v-if="snParts.length > 0 && snParts[0].label">
               <div v-for="(part, i) in snParts" :key="i" class="flex w-full">
