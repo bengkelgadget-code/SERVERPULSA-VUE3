@@ -74,6 +74,9 @@ const checkPendingStatuses = async (pendingTrx: any[]) => {
         body: JSON.stringify({ transaction_id: trx.id })
       })
       const result = await res.json()
+      if (!res.ok || !result.success) {
+        console.error(`Check status failed for ${trx.id}:`, result.error || result)
+      }
       if (result.success && result.status !== trx.status) {
         const idx = transactions.value.findIndex(t => t.id === trx.id)
         if (idx !== -1) {

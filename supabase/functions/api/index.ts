@@ -368,7 +368,7 @@ async function handleDigiflazzWebhook(c: any) {
     // Check if transaction exists and is pending (also check is_refunded)
     const { data: tx, error: txError } = await supabase
       .from('transactions')
-      .select('id, status, sn, customer_name')
+      .select('id, status, sn')
       .eq('ref_id', data.ref_id)
       .single()
 
@@ -377,8 +377,8 @@ async function handleDigiflazzWebhook(c: any) {
       return c.json({ error: 'Transaction not found' }, 404);
     }
 
-    const finalSn = enhanceDigiflazzSn(tx.sn, data, tx.customer_name);
-    const bestName = extractNameFromDigiflazz(data, tx.customer_name);
+    const finalSn = enhanceDigiflazzSn(tx.sn, data, undefined);
+    const bestName = extractNameFromDigiflazz(data, undefined);
 
     if (data.status.toLowerCase() === 'gagal') {
       const { error } = await supabase.rpc('fail_and_refund', { 
@@ -398,7 +398,7 @@ async function handleDigiflazzWebhook(c: any) {
         sn: finalSn
       };
       if (bestName && !bestName.includes('*')) {
-        updatePayload.customer_name = bestName;
+        
       }
       const { error } = await supabase
         .from('transactions')
@@ -672,7 +672,7 @@ app.post('/check-stale-pending', async (c) => {
     const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString()
     const { data: pendingTrx, error: fetchErr } = await supabaseService
       .from('transactions')
-      .select('id, ref_id, sku_code, customer_no, customer_name, status, sn')
+      .select('id, ref_id, sku_code, customer_no, status, sn')
       .eq('status', 'pending')
       .lt('created_at', fifteenMinsAgo)
       
@@ -700,15 +700,15 @@ app.post('/check-stale-pending', async (c) => {
       
       const dfStatus = response.status?.toLowerCase() || 'pending';
       if (dfStatus === 'sukses') {
-        const finalSn = enhanceDigiflazzSn(trx.sn, response, trx.customer_name);
-        const bestName = extractNameFromDigiflazz(response, trx.customer_name);
+        const finalSn = enhanceDigiflazzSn(trx.sn, response, undefined);
+        const bestName = extractNameFromDigiflazz(response, undefined);
         const updateData: any = { 
           status: 'sukses', 
           sn: finalSn || trx.sn || null, 
           updated_at: new Date().toISOString() 
         };
         if (bestName && !bestName.includes('*')) {
-          updateData.customer_name = bestName;
+          
         }
         await supabaseService.from('transactions').update(updateData).eq('id', trx.id)
       } else if (dfStatus === 'gagal') {
@@ -1003,7 +1003,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
         updated_at: new Date().toISOString(),
       };
       if (bestName && !bestName.includes('*')) {
-        updatePayload.customer_name = bestName;
+        
       }
       
       if (dbStatus === 'gagal') {
@@ -1104,11 +1104,11 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const dfStatus = dfData.status?.toLowerCase() || 'pending'
     
     if (dfStatus === 'sukses' && trx.status !== 'sukses') {
-      const finalSn = enhanceDigiflazzSn(trx.sn, dfData, trx.customer_name);
-      const bestName = extractNameFromDigiflazz(dfData, trx.customer_name);
+      const finalSn = enhanceDigiflazzSn(trx.sn, dfData, undefined);
+      const bestName = extractNameFromDigiflazz(dfData, undefined);
       const updateData: any = { status: 'sukses', sn: finalSn || null, updated_at: new Date().toISOString() };
       if (bestName && !bestName.includes('*')) {
-        updateData.customer_name = bestName;
+        
       }
       const { error: updErr } = await supabaseService.from('transactions').update(updateData).eq('id', trx.id)
       if (updErr) throw new Error(`DB update failed: ${updErr.message}`)
@@ -1184,8 +1184,8 @@ app.post('/admin-action', async (c) => {
         }
         return c.json({ success: true, status: 'gagal', message: response.message })
       } else if (response.status === 'Sukses') {
-        const finalSn = enhanceDigiflazzSn(trx.sn, response, trx.customer_name);
-        const bestName = extractNameFromDigiflazz(response, trx.customer_name);
+        const finalSn = enhanceDigiflazzSn(trx.sn, response, undefined);
+        const bestName = extractNameFromDigiflazz(response, undefined);
         const updateData: any = { 
           status: 'sukses', 
           sn: finalSn || response.sn || null, 
@@ -1193,7 +1193,7 @@ app.post('/admin-action', async (c) => {
           updated_at: new Date().toISOString()
         };
         if (bestName && !bestName.includes('*')) {
-          updateData.customer_name = bestName;
+          
         }
         await supabaseService.from('transactions')
           .update(updateData)
