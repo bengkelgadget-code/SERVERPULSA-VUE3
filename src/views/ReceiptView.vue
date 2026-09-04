@@ -440,11 +440,11 @@ const buildReceiptLines = async () => {
     addRow('TANGGAL', dateStr)
     addRow('IDPEL', trx.value.customer_no)
     addRow('NAMA', pascaName.value)
-    addRow('TRF/DAYA', '-') // Since we don't store it in db right now
+    addRow('TRF/DAYA', pascaTarifDaya.value)
     addRow('TAGIHAN', formatRp(trx.value.harga_modal))
     addRow('PLN REFF', pascaReff.value)
     addRow('BL/TH', pascaPeriode.value)
-    addRow('STD MTR', '-')
+    addRow('STD MTR', pascaStdMtr.value)
     addRow('TOTAL BAYAR', formatRp(customHargaJual.value), true)
   } else {
     addRow('PRODUK', trx.value.products?.product_name || '')

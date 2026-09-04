@@ -234,8 +234,7 @@ function extractNameFromDigiflazz(data: any, customName?: string | null): string
 }
 
 function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?: string): string | null {
-  let sn = newData.sn || existingSn || null;
-  if (!sn) return null;
+  let sn = newData.sn || existingSn || '';
 
   let existingAn: string | null = null;
   if (existingSn && existingSn.includes('A/N ')) {
@@ -275,10 +274,13 @@ function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?
     if (stdMtr && !baseSn.includes('STD MTR:')) extras.push(`STD MTR: ${stdMtr}`);
 
     if (extras.length > 0) {
-      baseSn = `${baseSn} / ${extras.join(' / ')}`;
+      baseSn = baseSn ? `${baseSn} / ${extras.join(' / ')}` : extras.join(' / ');
     }
   }
 
+  // If we have nothing at all, return null
+  if (!baseSn && !namePart) return null;
+  if (!baseSn) return namePart;
   return namePart ? `${namePart} | SN: ${baseSn}` : baseSn;
 }
 
@@ -670,7 +672,7 @@ app.post('/check-stale-pending', async (c) => {
     const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString()
     const { data: pendingTrx, error: fetchErr } = await supabaseService
       .from('transactions')
-      .select('id, ref_id, sku_code, customer_no, status, sn')
+      .select('id, ref_id, sku_code, customer_no, customer_name, status, sn')
       .eq('status', 'pending')
       .lt('created_at', fifteenMinsAgo)
       
@@ -678,6 +680,9 @@ app.post('/check-stale-pending', async (c) => {
     
     let checkedCount = 0;
     for (const trx of pendingTrx) {
+      // Skip transactions without ref_id (e.g. offline/counter transactions)
+      if (!trx.ref_id) continue;
+
       // Avoid hammering Digiflazz API
       await new Promise(r => setTimeout(r, 500));
       
@@ -685,7 +690,7 @@ app.post('/check-stale-pending', async (c) => {
       let response;
       try {
         if (trx.ref_id.startsWith('INQPASCA-')) {
-          response = await digiflazz.payPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
+          response = await digiflazz.statusPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
         } else {
           response = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id);
         }
@@ -695,11 +700,17 @@ app.post('/check-stale-pending', async (c) => {
       
       const dfStatus = response.status?.toLowerCase() || 'pending';
       if (dfStatus === 'sukses') {
-        await supabaseService.from('transactions').update({ 
+        const finalSn = enhanceDigiflazzSn(trx.sn, response, trx.customer_name);
+        const bestName = extractNameFromDigiflazz(response, trx.customer_name);
+        const updateData: any = { 
           status: 'sukses', 
-          sn: response.sn || trx.sn || null, 
+          sn: finalSn || trx.sn || null, 
           updated_at: new Date().toISOString() 
-        }).eq('id', trx.id)
+        };
+        if (bestName && !bestName.includes('*')) {
+          updateData.customer_name = bestName;
+        }
+        await supabaseService.from('transactions').update(updateData).eq('id', trx.id)
       } else if (dfStatus === 'gagal') {
         await supabaseService.rpc('fail_and_refund', { 
           p_transaction_id: trx.id,
@@ -1149,6 +1160,10 @@ app.post('/admin-action', async (c) => {
       if (trx.status !== 'pending') {
         return c.json({ success: true, message: 'Transaction is no longer pending', status: trx.status })
       }
+
+      if (!trx.ref_id) {
+        return c.json({ success: true, status: trx.status, message: 'No ref_id, skipped digiflazz check' })
+      }
       
       // Call Digiflazz
       let response;
@@ -1169,10 +1184,21 @@ app.post('/admin-action', async (c) => {
         }
         return c.json({ success: true, status: 'gagal', message: response.message })
       } else if (response.status === 'Sukses') {
+        const finalSn = enhanceDigiflazzSn(trx.sn, response, trx.customer_name);
+        const bestName = extractNameFromDigiflazz(response, trx.customer_name);
+        const updateData: any = { 
+          status: 'sukses', 
+          sn: finalSn || response.sn || null, 
+          note: response.message,
+          updated_at: new Date().toISOString()
+        };
+        if (bestName && !bestName.includes('*')) {
+          updateData.customer_name = bestName;
+        }
         await supabaseService.from('transactions')
-          .update({ status: 'sukses', sn: response.sn, note: response.message })
+          .update(updateData)
           .eq('id', transaction_id)
-        return c.json({ success: true, status: 'sukses', sn: response.sn })
+        return c.json({ success: true, status: 'sukses', sn: finalSn || response.sn })
       } else {
         return c.json({ success: true, status: 'pending', message: 'Still pending on Digiflazz' })
       }
