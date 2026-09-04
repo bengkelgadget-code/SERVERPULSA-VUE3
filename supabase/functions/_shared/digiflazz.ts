@@ -162,6 +162,10 @@ export class DigiFlazzClient {
   async payPasca(sku_code: string, customer_no: string, ref_id: string): Promise<any> {
     return this.createTransaction(sku_code, customer_no, ref_id, 'pay-pasca');
   }
+
+  async statusPasca(sku_code: string, customer_no: string, ref_id: string): Promise<any> {
+    return this.createTransaction(sku_code, customer_no, ref_id, 'status-pasca');
+  }
 }
 
 export const digiflazz = new DigiFlazzClient();

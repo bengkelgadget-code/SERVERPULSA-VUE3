@@ -1086,7 +1086,7 @@ app.post('/mobile/transaction/check-status', async (c) => {
     const cleanCustomerNo = String(trx.customer_no).replace(/[^0-9]/g, '');
     let dfData;
     if (trx.ref_id.startsWith('INQPASCA-')) {
-      dfData = await digiflazz.payPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
+      dfData = await digiflazz.statusPasca(trx.sku_code, cleanCustomerNo, trx.ref_id);
     } else {
       dfData = await digiflazz.createTransaction(trx.sku_code, cleanCustomerNo, trx.ref_id);
     }
@@ -1153,7 +1153,7 @@ app.post('/admin-action', async (c) => {
       // Call Digiflazz
       let response;
       if (trx.ref_id.startsWith('INQPASCA-')) {
-        response = await digiflazz.payPasca(trx.sku_code, trx.customer_no, trx.ref_id);
+        response = await digiflazz.statusPasca(trx.sku_code, trx.customer_no, trx.ref_id);
       } else {
         response = await digiflazz.createTransaction(trx.sku_code, trx.customer_no, trx.ref_id);
       }
