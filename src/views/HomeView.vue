@@ -72,6 +72,28 @@ const categories = [
     color: 'bg-orange-100 text-orange-600'
   }
 ]
+
+const counterCategories = [
+  {
+    name: 'Data Voucher',
+    path: '/admin/counter/voucher',
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>`,
+    color: 'bg-indigo-100 text-indigo-600'
+  },
+  {
+    name: 'Perdana',
+    path: '/admin/counter/perdana',
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>`,
+    color: 'bg-teal-100 text-teal-600'
+  },
+  {
+    name: 'Aksesoris',
+    path: '/admin/counter/acc',
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>`,
+    color: 'bg-pink-100 text-pink-600'
+  }
+]
+
 </script>
 
 <template>
@@ -111,10 +133,29 @@ const categories = [
         </div>
       </div>
       
-    </div>
     
-  </div>
-  </PullToRefresh>
+      <!-- Inventori Fisik -->
+      <div class="px-5 mt-6 mb-4">
+        <h3 class="font-bold text-lg text-neutral-800 mb-3">Inventori Konter</h3>
+        
+        <div class="grid grid-cols-3 gap-y-4 gap-x-2 justify-items-center">
+          <div 
+            v-for="cat in counterCategories" 
+            :key="cat.name"
+            @click="router.push(cat.path)"
+            class="flex flex-col items-center w-full cursor-pointer active:scale-95 transition-transform"
+          >
+            <div :class="['w-[72px] h-[72px] rounded-2xl flex items-center justify-center mb-2 shadow-sm', cat.color]">
+              <div v-html="cat.icon"></div>
+            </div>
+            <span class="text-[13px] font-semibold text-neutral-700 text-center">{{ cat.name }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    </PullToRefresh>
+
   
   <BottomNav />
 </template>
