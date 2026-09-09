@@ -82,6 +82,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/tv/vouchers',
+      name: 'tv-vouchers',
+      component: () => import('@/views/DisplayTvVoucherView.vue')
+      // No meta.requiresAuth here so it can be opened directly or as desired.
+    },
+    {
       path: '/favorites/:category',
       name: 'favorites',
       component: () => import('@/views/FavoritesView.vue'),
