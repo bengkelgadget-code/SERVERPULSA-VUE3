@@ -253,8 +253,12 @@ router.beforeEach(async (to, _from, next) => {
     }
 
     if (to.meta.requiresAdmin && role !== 'admin' && role !== 'superadmin') {
-      next('/')
-      return
+      if (role === 'staff' && to.path.startsWith('/admin/counter')) {
+        // allow staff to access counter inventory
+      } else {
+        next('/')
+        return
+      }
     }
   }
 

@@ -75,29 +75,28 @@ const counterMenuItems = [
 
         <div class="flex-1 overflow-y-auto no-scrollbar flex flex-col">
           <nav class="px-3 py-6 flex-1 flex flex-col">
-            <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">MENU ADMIN</div>
-            <ul class="space-y-1 flex-none flex flex-col mb-4">
-              <li v-for="item in menuItems" :key="item.path" class="shrink-0 relative z-10">
-                <router-link
-                  :to="item.path"
-                  class="flex items-center px-4 py-3 rounded-xl transition-all group relative font-medium text-[14px]"
-                  :class="[
-                    $route.path === item.path 
-                      ? 'bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white shadow-md shadow-blue-200/50' 
-                      : 'text-gray-500 hover:bg-gradient-to-r hover:from-[#2563eb] hover:to-[#3b82f6] hover:text-white hover:shadow-md hover:shadow-blue-200/50'
-                  ]"
-                  :title="!isSidebarOpen ? item.name : ''"
-                >
-                  <component :is="item.icon" class="w-[20px] h-[20px] flex-shrink-0" :class="$route.path === item.path ? 'text-white' : 'text-gray-400 group-hover:text-white'" />
-                  <span 
-                    class="ml-3 truncate transition-opacity duration-300"
-                    :class="isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'"
+            <!-- Hide MENU ADMIN from staff -->
+            <template v-if="auth.userProfile?.role === 'admin' || auth.userProfile?.role === 'superadmin'">
+              <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">MENU ADMIN</div>
+              <ul class="space-y-1 flex-none flex flex-col mb-4">
+                <li v-for="item in menuItems" :key="item.path" class="shrink-0 relative z-10">
+                  <router-link
+                    :to="item.path"
+                    class="flex items-center px-4 py-3 rounded-xl transition-all group relative font-medium text-[14px]"
+                    :class="[
+                      $route.path === item.path 
+                        ? 'bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white shadow-md shadow-blue-200/50' 
+                        : 'text-gray-500 hover:bg-gradient-to-r hover:from-[#2563eb] hover:to-[#3b82f6] hover:text-white hover:shadow-md hover:shadow-blue-200/50'
+                    ]"
                   >
-                    {{ item.name }}
-                  </span>
-                </router-link>
-              </li>
-            </ul>
+                    <component :is="item.icon" class="w-[22px] h-[22px] mr-3" :class="[$route.path === item.path ? 'text-white' : 'text-gray-400 group-hover:text-white']" />
+                    <span v-if="isSidebarOpen" class="truncate">{{ item.name }}</span>
+                    <!-- Active indicator dot -->
+                    <div v-if="$route.path === item.path" class="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-white rounded-r-md"></div>
+                  </router-link>
+                </li>
+              </ul>
+            </template>
 
             <div v-if="isSidebarOpen" class="px-4 text-[10px] font-bold text-gray-400 mb-2 mt-2 tracking-widest shrink-0">DATA KONTER</div>
             <ul class="space-y-1 flex-none flex flex-col mb-4">
