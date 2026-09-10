@@ -139,7 +139,7 @@ const handleCreateUser = async () => {
       throw new Error(errorData.error || 'Failed to create user')
     }
 
-    alert('Berhasil membuat Staff/Kasir baru!')
+    alert('Berhasil membuat Akun baru!')
     showAddModal.value = false
     addEmail.value = ''
     addPassword.value = ''

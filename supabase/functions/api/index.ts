@@ -1291,7 +1291,10 @@ app.post('/admin-action', async (c) => {
       const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
         email: payload.email,
         password: payload.password,
-        email_confirm: true
+        email_confirm: true,
+        user_metadata: {
+           role: newRole // optionally pass to metadata if trigger supports it
+        }
       })
       if (authError) throw authError
       
@@ -1302,12 +1305,24 @@ app.post('/admin-action', async (c) => {
         mitraId = callerProfile.mitra_id;
       }
       
-      await supabaseService.from('users').update({
-        role: newRole,
-        mitra_id: mitraId
-      }).eq('id', authData.user.id)
+      // Retry loop to avoid race condition with auth trigger inserting public.users row
+      let updateSuccess = false;
+      let retries = 5;
+      while (retries > 0 && !updateSuccess) {
+        const { error, count } = await supabaseService.from('users').update({
+          role: newRole,
+          mitra_id: mitraId
+        }).eq('id', authData.user.id).select('id');
+        
+        if (!error && count && count > 0) {
+          updateSuccess = true;
+        } else {
+          retries--;
+          await new Promise(r => setTimeout(r, 1000)); // wait 1s before retry
+        }
+      }
       
-      return c.json({ success: true, user: authData.user })
+      return c.json({ success: true, user: authData.user, roleAssigned: newRole, profileUpdated: updateSuccess })
     }
 
     if (action === 'update_product_markup') {
