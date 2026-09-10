@@ -168,6 +168,7 @@ const verifyPin = async () => {
     const validPin = data?.pin_transaksi || '123456'
 
     if (pinInput.value === validPin) {
+      sessionStorage.setItem('pin_verified', 'true')
       router.push('/')
     } else {
       pinError.value = 'PIN SALAH! Silakan coba lagi.'

@@ -230,6 +230,8 @@ router.beforeEach(async (to, _from, next) => {
         next('/superadmin')
       } else if (role === 'admin') {
         next('/admin')
+      } else if (role === 'display') {
+        next('/tv/vouchers')
       } else {
         next('/')
       }
@@ -241,9 +243,17 @@ router.beforeEach(async (to, _from, next) => {
         next('/superadmin')
       } else if (role === 'admin') {
         next('/admin')
+      } else if (role === 'display' && sessionStorage.getItem('pin_verified') !== 'true') {
+        next('/tv/vouchers')
       } else {
         next()
       }
+      return
+    }
+
+    // Block staff from accessing TV display
+    if (to.path.startsWith('/tv') && role === 'staff') {
+      next('/')
       return
     }
 
