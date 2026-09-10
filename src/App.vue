@@ -19,7 +19,8 @@ let lastBackPress = 0
 
 const isAdminRoute = computed(() => {
   const path = router.currentRoute.value.path
-  return path.startsWith('/admin') || path.startsWith('/superadmin') || path.startsWith('/tv')
+  const isDisplayRole = auth.userProfile?.role === 'display'
+  return path.startsWith('/admin') || path.startsWith('/superadmin') || path.startsWith('/tv') || isDisplayRole
 })
 
 onMounted(() => {
