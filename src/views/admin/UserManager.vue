@@ -29,7 +29,7 @@ const fetchUsers = async () => {
       .from('users')
       .select('*')
       .eq('mitra_id', auth.userProfile?.mitra_id)
-      .in('role', ['staff', 'display'])
+      .or('role.eq.staff,role.eq.display')
       .order('created_at', { ascending: false })
       
     const { data, error } = await query
