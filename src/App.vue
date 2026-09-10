@@ -19,7 +19,7 @@ let lastBackPress = 0
 
 const isAdminRoute = computed(() => {
   const path = router.currentRoute.value.path
-  return path.startsWith('/admin') || path.startsWith('/superadmin')
+  return path.startsWith('/admin') || path.startsWith('/superadmin') || path.startsWith('/tv')
 })
 
 onMounted(() => {
