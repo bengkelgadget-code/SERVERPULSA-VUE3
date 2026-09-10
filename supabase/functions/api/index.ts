@@ -1138,7 +1138,7 @@ app.post('/admin-action', async (c) => {
   if (!user) return c.json({ error: 'Unauthorized' }, 401)
 
   // Verify if caller is superadmin or admin
-  const { data: callerProfile } = await supabase.from('users').select('role, mitra_id').eq('id', user.id).single()
+    const { data: callerProfile } = await supabase.from('users').select('role, mitra_id, nama_toko').eq('id', user.id).single()
   if (callerProfile?.role !== 'superadmin' && callerProfile?.role !== 'admin') {
     return c.json({ error: 'Forbidden' }, 403)
   }
@@ -1300,21 +1300,24 @@ app.post('/admin-action', async (c) => {
       
       // Update the automatically created profile
       let mitraId = payload.mitra_id;
+      let namaToko = payload.nama_toko;
       if (callerProfile.role === 'admin') {
         // Admins can only create staff for their own mitra
         mitraId = callerProfile.mitra_id;
+        namaToko = callerProfile.nama_toko;
       }
       
       // Retry loop to avoid race condition with auth trigger inserting public.users row
       let updateSuccess = false;
       let retries = 5;
       while (retries > 0 && !updateSuccess) {
-        const { error, count } = await supabaseService.from('users').update({
+        const { error, data } = await supabaseService.from('users').update({
           role: newRole,
-          mitra_id: mitraId
+          mitra_id: mitraId,
+          nama_toko: namaToko
         }).eq('id', authData.user.id).select('id');
         
-        if (!error && count && count > 0) {
+        if (!error && data && data.length > 0) {
           updateSuccess = true;
         } else {
           retries--;
@@ -1468,6 +1471,12 @@ app.get('/get-admin-balance', async (c) => {
   } catch (err: any) {
     return c.json({ error: err.message }, 500)
   }
+})
+
+app.get('/debug-users', async (c) => {
+  const supabaseService = getSupabaseService()
+  const { data, error } = await supabaseService.from('users').select('*')
+  return c.json({ data, error })
 })
 
 Deno.serve(app.fetch)
