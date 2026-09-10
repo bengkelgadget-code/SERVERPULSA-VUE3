@@ -13,12 +13,14 @@ const searchQuery = ref('')
 const showEditModal = ref(false)
 const selectedUser = ref<any>(null)
 const editEmail = ref('')
+const editRole = ref('staff')
 const editPassword = ref('')
 const actionLoading = ref(false)
 
 const showAddModal = ref(false)
 const addEmail = ref('')
 const addPassword = ref('')
+const addRole = ref('staff')
 
 const fetchUsers = async () => {
   loading.value = true
@@ -27,7 +29,7 @@ const fetchUsers = async () => {
       .from('users')
       .select('*')
       .eq('mitra_id', auth.userProfile?.mitra_id)
-      .eq('role', 'staff')
+      .in('role', ['staff', 'display'])
       .order('created_at', { ascending: false })
       
     const { data, error } = await query
@@ -57,6 +59,7 @@ const filteredUsers = computed(() => {
 const openEditModal = (user: any) => {
   selectedUser.value = user
   editEmail.value = user.email || ''
+  editRole.value = user.role || 'staff'
   editPassword.value = ''
   showEditModal.value = true
 }
@@ -81,8 +84,8 @@ const handleEditUser = async () => {
         payload: {
           id: selectedUser.value.id,
           email: editEmail.value,
-          password: editPassword.value || undefined,
-          role: 'staff'
+          password: editPassword.value ? editPassword.value : undefined,
+          role: editRole.value
         }
       })
     })
@@ -127,7 +130,7 @@ const handleCreateUser = async () => {
         payload: {
           email: addEmail.value,
           password: addPassword.value,
-          role: 'staff'
+          role: addRole.value
         }
       })
     })
@@ -265,31 +268,45 @@ const handleDeleteUser = async (user: any) => {
       </div>
     </div>
 
-    <!-- Edit User Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Edit Staff</h3>
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-          <input type="email" v-model="editEmail" class="block w-full border-gray-300 rounded-lg px-3 py-2 border" />
-        </div>
-        <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 mb-2">Password Baru <span class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak diubah)</span></label>
-          <input type="password" v-model="editPassword" placeholder="Minimal 8 karakter" class="block w-full border-gray-300 rounded-lg px-3 py-2 border" />
-        </div>
-        <div class="flex justify-end gap-3">
-          <button @click="showEditModal = false" class="px-4 py-2 border rounded-lg" :disabled="actionLoading">Cancel</button>
-          <button @click="handleEditUser" class="px-4 py-2 bg-blue-600 text-white rounded-lg" :disabled="actionLoading">Save Changes</button>
+      <!-- Edit User Modal -->
+      <div v-if="showEditModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 class="text-lg font-bold text-gray-900 mb-4">Edit Akun</h3>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+            <select v-model="editRole" class="block w-full border-gray-300 rounded-lg px-3 py-2 border">
+              <option value="staff">Kasir / Staff</option>
+              <option value="display">TV Display</option>
+            </select>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input type="email" v-model="editEmail" class="block w-full border-gray-300 rounded-lg px-3 py-2 border" />
+          </div>
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Password Baru <span class="text-xs text-gray-400 font-normal">(Kosongkan jika tidak diubah)</span></label>
+            <input type="password" v-model="editPassword" placeholder="Minimal 8 karakter" class="block w-full border-gray-300 rounded-lg px-3 py-2 border" />
+          </div>
+          <div class="flex justify-end gap-3">
+            <button @click="showEditModal = false" class="px-4 py-2 border rounded-lg" :disabled="actionLoading">Cancel</button>
+            <button @click="handleEditUser" class="px-4 py-2 bg-blue-600 text-white rounded-lg" :disabled="actionLoading">Save Changes</button>
+          </div>
         </div>
       </div>
-    </div>
     
     <!-- Add Modal -->
     <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" @click="showAddModal = false"></div>
       <div class="bg-white rounded-2xl shadow-xl w-full max-w-md relative z-10 p-6">
-        <h3 class="text-lg font-bold text-gray-900 mb-4">Tambah Staff Baru</h3>
+        <h3 class="text-lg font-bold text-gray-900 mb-4">Tambah Akun Baru</h3>
         <form @submit.prevent="handleCreateUser" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select v-model="addRole" required class="block w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="staff">Kasir / Staff</option>
+              <option value="display">TV Display</option>
+            </select>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" v-model="addEmail" required class="block w-full border border-gray-300 rounded-lg px-3 py-2" />
@@ -300,7 +317,7 @@ const handleDeleteUser = async (user: any) => {
           </div>
           <div class="flex gap-3 mt-4">
             <button type="button" @click="showAddModal = false" class="flex-1 border rounded-lg py-2">Batal</button>
-            <button type="submit" class="flex-1 bg-blue-600 text-white rounded-lg py-2" :disabled="actionLoading">Buat Staff</button>
+            <button type="submit" class="flex-1 bg-blue-600 text-white rounded-lg py-2" :disabled="actionLoading">Buat Akun</button>
           </div>
         </form>
       </div>
