@@ -29,14 +29,13 @@ const fetchUsers = async () => {
       .from('users')
       .select('*')
       .eq('mitra_id', auth.userProfile?.mitra_id)
-      .or('role.eq.staff,role.eq.display')
       .order('created_at', { ascending: false })
       
     const { data, error } = await query
       
     if (error) throw error
     if (data) {
-      users.value = data
+      users.value = data.filter((u: any) => u.role === 'staff' || u.role === 'display')
     }
   } catch (err) {
     console.error('Error fetching users:', err)
