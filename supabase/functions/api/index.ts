@@ -1240,9 +1240,13 @@ app.post('/admin-action', async (c) => {
         if (emailError) console.warn('Sync email to auth failed:', emailError)
       }
       
-      // Only superadmins can change roles
-      if (payload.role && callerProfile.role === 'superadmin') {
-        updateData.role = payload.role
+      // Superadmins can change to any role. Admins can only change between staff and display.
+      if (payload.role) {
+        if (callerProfile.role === 'superadmin') {
+          updateData.role = payload.role
+        } else if (callerProfile.role === 'admin' && ['staff', 'display'].includes(payload.role)) {
+          updateData.role = payload.role
+        }
       }
       
       const { error } = await supabaseService.from('users').update(updateData).eq('id', payload.id)
@@ -1275,10 +1279,10 @@ app.post('/admin-action', async (c) => {
       // Validate requested role based on caller
       let newRole = payload.role;
       if (callerProfile.role === 'admin') {
-        if (newRole && newRole !== 'staff') {
-           return c.json({ error: 'Admin can only create staff users' }, 403);
+        if (newRole && !['staff', 'display'].includes(newRole)) {
+           return c.json({ error: 'Admin can only create staff or display users' }, 403);
         }
-        newRole = 'staff';
+        newRole = newRole || 'staff';
       } else {
         newRole = newRole || 'admin';
       }
