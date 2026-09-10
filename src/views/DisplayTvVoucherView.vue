@@ -106,6 +106,82 @@ const openGroupPopup = (group: any) => {
   resetIdleTimer()
 }
 
+// PIN Logic
+const showPinModal = ref(false)
+const pinInput = ref('')
+const pinError = ref('')
+const pinLoading = ref(false)
+
+const openPinModal = () => {
+  showPinModal.value = true
+  pinInput.value = ''
+  pinError.value = ''
+  resetIdleTimer()
+}
+
+const closePinModal = () => {
+  showPinModal.value = false
+  pinInput.value = ''
+  pinError.value = ''
+  resetIdleTimer()
+}
+
+const addPin = async (num: string) => {
+  resetIdleTimer()
+  if (pinInput.value.length < 6) {
+    pinInput.value += num
+    pinError.value = ''
+    
+    if (pinInput.value.length === 6) {
+      await verifyPin()
+    }
+  }
+}
+
+const removePin = () => {
+  resetIdleTimer()
+  if (pinInput.value.length > 0) {
+    pinInput.value = pinInput.value.slice(0, -1)
+    pinError.value = ''
+  }
+}
+
+const verifyPin = async () => {
+  pinLoading.value = true
+  try {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error('Not authenticated')
+
+    // Fetch mitra_id for current user to get the global pin
+    const { data: userRow } = await supabase.from('users').select('mitra_id, role, admin_id').eq('id', userData.user.id).single()
+    const mitraId = userRow?.role === 'staff' ? userRow.admin_id : (userRow?.mitra_id || userData.user.id) // Fallback logic
+
+    const { data, error } = await supabase
+      .from('mitras')
+      .select('pin_transaksi')
+      .eq('id', mitraId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') throw error
+    
+    // Default PIN if not set is 123456
+    const validPin = data?.pin_transaksi || '123456'
+
+    if (pinInput.value === validPin) {
+      router.push('/')
+    } else {
+      pinError.value = 'PIN SALAH! Silakan coba lagi.'
+      pinInput.value = ''
+    }
+  } catch (err: any) {
+    console.error('Error verifying PIN:', err)
+    pinError.value = 'Terjadi kesalahan sistem'
+    pinInput.value = ''
+  } finally {
+    pinLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchVouchers()
   
@@ -148,7 +224,7 @@ onUnmounted(() => {
       <div class="flex items-center gap-4">
         <!-- Back Button (acts as PPOB trigger for now) -->
         <div class="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 shadow-xl">
-          <button @click="router.push('/')" class="text-white hover:text-gray-300 transition-colors font-bold tracking-widest text-xl cursor-pointer flex items-center gap-2">
+          <button @click="openPinModal" class="text-white hover:text-gray-300 transition-colors font-bold tracking-widest text-xl cursor-pointer flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
             MENU TRANSAKSI
           </button>
@@ -207,7 +283,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Popup Modal for Enlarged View -->
+        <!-- Popup Modal for Enlarged View -->
     <transition name="fade">
       <div v-if="selectedGroup" 
            class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-10 bg-slate-900/80 backdrop-blur-xl"
@@ -248,6 +324,57 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- PIN Modal -->
+    <transition name="fade">
+      <div v-if="showPinModal" 
+           class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl"
+           @click.self="closePinModal">
+        
+        <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col w-full max-w-sm animate-scale-up p-8 relative">
+          <button @click="closePinModal" class="absolute top-4 right-4 text-white/50 hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          
+          <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </div>
+            <h3 class="text-2xl font-black text-white mb-2">PIN KEAMANAN</h3>
+            <p class="text-gray-400 text-sm">Masukkan PIN Global untuk mengakses Menu Transaksi PPOB</p>
+          </div>
+
+          <div class="flex justify-center gap-3 mb-8">
+            <div v-for="i in 6" :key="i" 
+                 class="w-4 h-4 rounded-full transition-all duration-300"
+                 :class="pinInput.length >= i ? 'bg-blue-500 scale-110 shadow-[0_0_10px_rgba(59,130,246,0.8)]' : 'bg-slate-700'">
+            </div>
+          </div>
+
+          <p v-if="pinError" class="text-red-400 text-center text-sm font-bold mb-4 animate-bounce">{{ pinError }}</p>
+
+          <div class="grid grid-cols-3 gap-3">
+            <button v-for="n in 9" :key="n" @click="addPin(n.toString())" 
+                    class="bg-white/5 hover:bg-white/10 text-white font-bold text-2xl py-4 rounded-2xl transition-colors active:scale-95 border border-white/5">
+              {{ n }}
+            </button>
+            <button @click="pinInput = ''" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-lg py-4 rounded-2xl transition-colors active:scale-95 border border-red-500/20">
+              C
+            </button>
+            <button @click="addPin('0')" class="bg-white/5 hover:bg-white/10 text-white font-bold text-2xl py-4 rounded-2xl transition-colors active:scale-95 border border-white/5">
+              0
+            </button>
+            <button @click="removePin" class="bg-slate-700/50 hover:bg-slate-700 text-white font-bold py-4 rounded-2xl transition-colors active:scale-95 border border-white/5 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" /></svg>
+            </button>
+          </div>
+          
+          <div v-if="pinLoading" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-10">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500"></div>
           </div>
         </div>
       </div>
