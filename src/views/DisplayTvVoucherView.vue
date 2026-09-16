@@ -2,8 +2,17 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+
+const handleLogout = async () => {
+  if (confirm('Apakah Anda yakin ingin keluar?')) {
+    await auth.signOut()
+    router.push('/login')
+  }
+}
 
 // Data structure
 interface Voucher {
@@ -223,6 +232,10 @@ onUnmounted(() => {
         <p class="text-gray-400 mt-2 text-lg font-medium">Silakan sentuh provider untuk melihat detail</p>
       </div>
       <div class="flex items-center gap-4">
+        <button @click="handleLogout" class="bg-red-500/20 hover:bg-red-500/40 backdrop-blur-md px-6 py-3 rounded-2xl border border-red-500/30 text-red-100 font-bold tracking-widest text-xl cursor-pointer transition-colors shadow-xl flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          LOGOUT
+        </button>
         <!-- Back Button (acts as PPOB trigger for now) -->
         <div class="bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10 shadow-xl">
           <button @click="openPinModal" class="text-white hover:text-gray-300 transition-colors font-bold tracking-widest text-xl cursor-pointer flex items-center gap-2">
