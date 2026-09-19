@@ -32,7 +32,15 @@ const colorMap: Record<string, string> = {
 const wallets = computed(() => {
   const ewalletProducts = productsStore.products.filter(p => {
     const catLower = p.category?.toLowerCase() || ''
-    return catLower.includes('e-money') || catLower.includes('wallet') || catLower.includes('dana') || catLower.includes('ovo') || catLower.includes('gopay')
+    const brandLower = p.brand?.toLowerCase() || ''
+    return catLower.includes('e-money') || 
+           catLower.includes('wallet') || 
+           brandLower.includes('dana') || 
+           brandLower.includes('ovo') || 
+           brandLower.includes('gopay') || 
+           brandLower.includes('go pay') ||
+           brandLower.includes('shopee') ||
+           brandLower.includes('linkaja')
   })
   const brands = [...new Set(ewalletProducts.map(p => p.brand))]
   
