@@ -18,7 +18,7 @@ const mitraPricing = ref<Record<string, number>>({})
 
 const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
-let typingTimers: Record<string, NodeJS.Timeout> = {}
+let typingTimers: Record<string, any> = {}
 
 const handlePriceFocus = (product: any, event: Event) => {
   const target = event.target as HTMLInputElement
@@ -516,5 +516,6 @@ const syncDigiflazz = async () => {
     </div>
   </div>
 </template>
+
 
 
