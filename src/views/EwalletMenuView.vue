@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductsStore } from '@/stores/products'
 
 const router = useRouter()
 const productsStore = useProductsStore()
+
+const imageError = ref<Record<string, boolean>>({})
 
 onMounted(() => {
   if (productsStore.products.length === 0) {
@@ -28,7 +30,10 @@ const colorMap: Record<string, string> = {
 }
 
 const wallets = computed(() => {
-  const ewalletProducts = productsStore.products.filter(p => p.category?.toLowerCase() === 'e-money')
+  const ewalletProducts = productsStore.products.filter(p => {
+    const catLower = p.category?.toLowerCase() || ''
+    return catLower.includes('e-money') || catLower.includes('wallet') || catLower.includes('dana') || catLower.includes('ovo') || catLower.includes('gopay')
+  })
   const brands = [...new Set(ewalletProducts.map(p => p.brand))]
   
   return brands.map(brand => {
