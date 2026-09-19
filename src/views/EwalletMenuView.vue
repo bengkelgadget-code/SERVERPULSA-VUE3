@@ -76,18 +76,28 @@ const wallets = computed(() => {
       <div v-if="productsStore.loading && wallets.length === 0" class="flex justify-center p-8">
         <div class="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
       </div>
-      <div v-else class="grid grid-cols-3 gap-4">
+      <div v-else class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
         <button 
           v-for="w in wallets" 
           :key="w.id"
           @click="router.push(`/ewallet/${w.id}`)"
-          class="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 hover:border-primary-300 transition-colors active:scale-95"
+          class="relative aspect-square w-full rounded-2xl shadow-sm border border-neutral-100 hover:border-primary-300 transition-all active:scale-95 overflow-hidden bg-white"
         >
-          <img v-show="!imageError[w.id]" :src="`/icons/${w.id}.png`" class="w-14 h-14 rounded-full object-cover mb-3 shadow-sm border border-neutral-100" @error="imageError[w.id] = true" :alt="w.name" /><div v-show="imageError[w.id]" :class="['w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-xl mb-3 shadow-sm', w.icon]">{{ w.letter }}</div>
-          <span class="text-xs font-bold text-neutral-700 text-center leading-tight">{{ w.name }}</span>
+          <img 
+            v-show="!imageError[w.id]" 
+            :src="`/icons/${w.id}.png`" 
+            class="w-full h-full object-cover" 
+            @error="imageError[w.id] = true" 
+            :alt="w.name" 
+          />
+          <div 
+            v-show="imageError[w.id]" 
+            :class="['w-full h-full flex items-center justify-center font-extrabold text-2xl sm:text-3xl', w.icon]"
+          >
+            {{ w.letter }}
+          </div>
         </button>
       </div>
     </div>
   </div>
 </template>
-
