@@ -103,7 +103,7 @@ const formatCurrency = (value: number) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="h-full overflow-y-auto space-y-6 pb-8 pr-2">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <h2 class="text-3xl font-bold text-gray-800">Riwayat Transaksi Toko</h2>
       
