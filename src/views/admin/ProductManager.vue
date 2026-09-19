@@ -11,13 +11,24 @@ const categoryFilter = ref('')
 const brandFilter = ref('')
 const categories = ref<string[]>([])
 const saveLoading = ref<Record<string, boolean>>({})
+const editingPrices = ref<Record<string, string>>({})
 const syncLoading = ref(false)
 const lastSyncTime = ref('')
 const mitraPricing = ref<Record<string, number>>({})
 
 const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
-let typingTimers: Record<string, any> = {}
+let typingTimers: Record<string, NodeJS.Timeout> = {}
+
+const handlePriceFocus = (product: any, event: Event) => {
+  const target = event.target as HTMLInputElement
+  editingPrices.value[product.sku_code] = getHargaJual(product)?.toString() || ''
+  setTimeout(() => { target.select() }, 10)
+}
+
+const handlePriceBlur = (product: any) => {
+  delete editingPrices.value[product.sku_code]
+}
 
 const fetchLastSyncTime = async () => {
   try {
@@ -200,7 +211,10 @@ const getHargaJual = (product: any) => {
 
 const handlePriceChange = (product: any, event: Event) => {
   const target = event.target as HTMLInputElement
-  const newPrice = parseInt(target.value.replace(/[^0-9]/g, '')) || 0
+  const rawVal = target.value.replace(/[^0-9]/g, '')
+  editingPrices.value[product.sku_code] = rawVal
+  
+  const newPrice = parseInt(rawVal) || 0
   
   if (typingTimers[product.sku_code]) {
     clearTimeout(typingTimers[product.sku_code])
@@ -240,11 +254,10 @@ const handlePriceChange = (product: any, event: Event) => {
       }
     } catch (err) {
       console.error('Error saving price:', err)
-      alert('Gagal menyimpan harga')
     } finally {
       saveLoading.value[product.sku_code] = false
     }
-  }, 800)
+  }, 500)
 }
 
 const setAutoSama = async () => {
@@ -435,16 +448,18 @@ const syncDigiflazz = async () => {
                 <span class="text-[12px] text-gray-500">{{ formatCurrency(getHargaModal(product)) }}</span>
               </td>
               <td class="px-4 py-1.5 whitespace-nowrap">
-                <div class="flex items-center gap-2 relative">
-                  <span class="absolute left-3 text-[12px] text-gray-400">Rp</span>
-                  <input 
-                    type="text" 
-                    :value="getHargaJual(product)?.toLocaleString('id-ID')"
-                    @input="(e) => handlePriceChange(product, e)"
-                    class="block w-28 pl-8 pr-2 py-1 border border-gray-200 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[12px] font-bold text-gray-800 transition-colors"
-                    :class="{'bg-gray-50 border-gray-200': saveLoading[product.sku_code]}"
-                  />
-                  <div class="absolute right-[-24px]">
+                  <div class="flex items-center gap-2 relative">
+                    <span class="absolute left-3 text-[12px] text-gray-400">Rp</span>
+                    <input 
+                      type="text" 
+                      :value="editingPrices[product.sku_code] !== undefined ? editingPrices[product.sku_code] : getHargaJual(product)?.toLocaleString('id-ID')"
+                      @focus="(e) => handlePriceFocus(product, e)"
+                      @blur="() => handlePriceBlur(product)"
+                      @input="(e) => handlePriceChange(product, e)"
+                      class="block w-28 pl-8 pr-2 py-1 border border-gray-200 rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 text-[12px] font-bold text-gray-800 transition-colors"
+                      :class="{'bg-gray-50 border-gray-200': saveLoading[product.sku_code]}"
+                    />
+                    <div class="absolute right-[-24px]">
                     <svg v-if="saveLoading[product.sku_code]" class="animate-spin h-3.5 w-3.5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                     <svg v-else class="h-3.5 w-3.5 text-green-500 opacity-0 transition-opacity" :class="{'opacity-100': !saveLoading[product.sku_code] && product.harga_jual !== undefined}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                   </div>
@@ -501,4 +516,5 @@ const syncDigiflazz = async () => {
     </div>
   </div>
 </template>
+
 
