@@ -70,12 +70,11 @@ const wallets = computed(() => {
           @click="router.push(`/ewallet/${w.id}`)"
           class="flex flex-col items-center justify-center p-4 bg-white rounded-2xl shadow-sm border border-neutral-100 hover:border-primary-300 transition-colors active:scale-95"
         >
-          <div :class="['w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-xl mb-3 shadow-sm', w.icon]">
-            {{ w.letter }}
-          </div>
+          <img v-show="!imageError[w.id]" :src="`/icons/${w.id}.png`" class="w-14 h-14 rounded-full object-cover mb-3 shadow-sm border border-neutral-100" @error="imageError[w.id] = true" :alt="w.name" /><div v-show="imageError[w.id]" :class="['w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-xl mb-3 shadow-sm', w.icon]">{{ w.letter }}</div>
           <span class="text-xs font-bold text-neutral-700 text-center leading-tight">{{ w.name }}</span>
         </button>
       </div>
     </div>
   </div>
 </template>
+

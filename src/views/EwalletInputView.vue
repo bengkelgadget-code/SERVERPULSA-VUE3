@@ -18,6 +18,7 @@ const { startListening, isListening } = useSpeechToText()
 const showAlert = (msg: string) => window.alert(msg)
 
 const walletId = route.params.id as string
+const imageError = ref(false)
 const customerNo = ref('')
 const showCheckButton = ref(false)
 const ewalletName = ref('')
@@ -194,9 +195,7 @@ const doSpeech = async () => {
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
       </button>
       <div class="flex items-center gap-1.5">
-        <div :class="['w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold', walletInfo.icon]">
-          {{ walletInfo.letter }}
-        </div>
+        <img v-show="!imageError" :src="`/icons/${walletId.toLowerCase().replace(/\s+/g, '')}.png`" class="w-6 h-6 rounded-full object-cover shadow-sm border border-neutral-100" @error="imageError = true" :alt="walletInfo.name" /><div v-show="imageError" :class="['w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold', walletInfo.icon]">{{ walletInfo.letter }}</div>
         <h1 class="text-lg font-bold">Topup {{ walletInfo.name }}</h1>
       </div>
     </div>
@@ -297,3 +296,4 @@ const doSpeech = async () => {
     </div>
   </div>
 </template>
+
