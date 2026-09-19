@@ -76,23 +76,23 @@ const wallets = computed(() => {
       <div v-if="productsStore.loading && wallets.length === 0" class="flex justify-center p-8">
         <div class="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
       </div>
-      <div v-else class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+      <div v-else class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-4">
         <button 
           v-for="w in wallets" 
           :key="w.id"
           @click="router.push(`/ewallet/${w.id}`)"
-          class="relative aspect-square w-full rounded-2xl shadow-sm border border-neutral-100 hover:border-primary-300 transition-all active:scale-95 overflow-hidden bg-white"
+          class="relative aspect-square w-full transition-all active:scale-95 overflow-visible"
         >
           <img 
             v-show="!imageError[w.id]" 
             :src="`/icons/${w.id}.png`" 
-            class="w-full h-full object-cover" 
+            class="w-full h-full object-contain drop-shadow-md hover:drop-shadow-lg transition-all" 
             @error="imageError[w.id] = true" 
             :alt="w.name" 
           />
           <div 
             v-show="imageError[w.id]" 
-            :class="['w-full h-full flex items-center justify-center font-extrabold text-2xl sm:text-3xl', w.icon]"
+            :class="['w-full h-full rounded-2xl flex items-center justify-center font-extrabold text-2xl sm:text-3xl shadow-sm border border-neutral-100 bg-white', w.icon]"
           >
             {{ w.letter }}
           </div>
