@@ -106,7 +106,7 @@ const fetchStats = async () => {
     }
 
     // Uang Superadmin = Saldo di Digiflazz - Kewajiban (Total Saldo Mitra)
-    totalProfit.value = currentDigiflazzBalance - (totalSaldoMitra.value || 0)
+    totalProfit.value = Math.max(0, currentDigiflazzBalance - (totalSaldoMitra.value || 0))
 
   } catch (error) {
     console.error('Error fetching stats:', error)
@@ -137,7 +137,7 @@ const setupRealtime = () => {
     .on('broadcast', { event: 'digiflazz_update' }, (payload) => {
       if (payload.payload && payload.payload.balance !== undefined) {
         digiflazzBalance.value = payload.payload.balance
-        totalProfit.value = payload.payload.balance - (totalSaldoMitra.value || 0)
+        totalProfit.value = Math.max(0, payload.payload.balance - (totalSaldoMitra.value || 0))
       }
       debouncedFetchStats()
     })
