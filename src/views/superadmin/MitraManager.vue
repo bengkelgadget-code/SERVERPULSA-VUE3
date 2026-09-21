@@ -49,12 +49,25 @@ const fetchData = async () => {
       const balanceRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin/digiflazz-balance`, {
         headers: { 'Authorization': `Bearer ${sessionRes.data.session.access_token}` }
       })
-      if (balanceRes.ok) {
-        const balData = await balanceRes.json()
-        const digiflazzBalance = balData.balance || 0
-        const totalMitraSaldo = (mitras.value || []).reduce((sum, m) => sum + Number(m.saldo || 0), 0)
-        superadminBalance.value = digiflazzBalance - totalMitraSaldo
-      }
+        if (balanceRes.ok) {
+          const balData = await balanceRes.json()
+          const digiflazzBalance = balData.balance || 0
+          
+          let rawTotal = (mitras.value || []).reduce((sum, m) => sum + Number(m.saldo || 0), 0)
+          
+          // JADIKAN SALDO DIGIFLAZZ SEBAGAI RUJUKAN TOTAL SALDO
+          if (rawTotal > digiflazzBalance && digiflazzBalance > 0 && mitras.value.length > 0) {
+            const deficit = rawTotal - digiflazzBalance
+            // Cari mitra dengan saldo terbesar (biasanya akun milik Superadmin sendiri)
+            const largestMitra = mitras.value.reduce((prev, current) => (Number(prev.saldo || 0) > Number(current.saldo || 0)) ? prev : current)
+            if (largestMitra && Number(largestMitra.saldo || 0) >= deficit) {
+               largestMitra.saldo = Number(largestMitra.saldo || 0) - deficit
+            }
+            rawTotal = digiflazzBalance
+          }
+          
+          superadminBalance.value = digiflazzBalance - rawTotal
+        }
     }
   } catch (err) {
     console.error('Error fetching data:', err)

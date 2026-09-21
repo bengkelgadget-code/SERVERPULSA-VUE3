@@ -21,7 +21,27 @@ const fetchStats = async () => {
   loading.value = true
   try {
     // Fetch my balance from auth store
-    myBalance.value = auth.userProfile?.saldo || 0
+    let rawBalance = auth.userProfile?.saldo || 0
+    
+    // JADIKAN SALDO DIGIFLAZZ SEBAGAI RUJUKAN TOTAL SALDO
+    const { data: sessionData } = await supabase.auth.getSession()
+    if (sessionData.session) {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api/admin/digiflazz-balance`, {
+          headers: { Authorization: `Bearer ${sessionData.session.access_token}` }
+        })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.balance !== undefined && rawBalance > data.balance && data.balance > 0) {
+            rawBalance = data.balance
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch digiflazz balance for reference', e)
+      }
+    }
+    
+    myBalance.value = rawBalance
 
     // Fetch staff count
     const { count: usersCount } = await supabase
