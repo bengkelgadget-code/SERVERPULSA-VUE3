@@ -89,7 +89,7 @@ const fetchStats = async () => {
       .from('mitras')
       .select('saldo')
     
-    totalSaldoMitra.value = mitrasData?.reduce((acc, mitra) => acc + (Number(mitra.saldo) || 0), 0) || 0
+    let rawTotalSaldoMitra = mitrasData?.reduce((acc, mitra) => acc + (Number(mitra.saldo) || 0), 0) || 0
 
     // Fetch Digiflazz Balance first
     let currentDigiflazzBalance = 0
@@ -105,8 +105,17 @@ const fetchStats = async () => {
       }
     }
 
+    // JADIKAN SALDO DIGIFLAZZ SEBAGAI RUJUKAN TOTAL SALDO DI APLIKASI
+    // Jika total kewajiban mitra ternyata lebih besar dari uang riil di Digiflazz (defisit),
+    // maka total saldo mitra dikunci maksimal sebesar saldo Digiflazz agar sistem tidak bocor.
+    if (rawTotalSaldoMitra > currentDigiflazzBalance && currentDigiflazzBalance > 0) {
+      totalSaldoMitra.value = currentDigiflazzBalance
+    } else {
+      totalSaldoMitra.value = rawTotalSaldoMitra
+    }
+
     // Uang Superadmin = Saldo di Digiflazz - Kewajiban (Total Saldo Mitra)
-    totalProfit.value = Math.max(0, currentDigiflazzBalance - (totalSaldoMitra.value || 0))
+    totalProfit.value = currentDigiflazzBalance - (totalSaldoMitra.value || 0)
 
   } catch (error) {
     console.error('Error fetching stats:', error)
@@ -137,7 +146,13 @@ const setupRealtime = () => {
     .on('broadcast', { event: 'digiflazz_update' }, (payload) => {
       if (payload.payload && payload.payload.balance !== undefined) {
         digiflazzBalance.value = payload.payload.balance
-        totalProfit.value = Math.max(0, payload.payload.balance - (totalSaldoMitra.value || 0))
+        
+        let rawTotal = totalSaldoMitra.value || 0
+        if (rawTotal > payload.payload.balance && payload.payload.balance > 0) {
+          totalSaldoMitra.value = payload.payload.balance
+        }
+        
+        totalProfit.value = payload.payload.balance - (totalSaldoMitra.value || 0)
       }
       debouncedFetchStats()
     })
