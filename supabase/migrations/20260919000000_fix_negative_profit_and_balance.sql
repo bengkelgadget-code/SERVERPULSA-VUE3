@@ -5,8 +5,8 @@ UPDATE public.mitras SET saldo = 0 WHERE saldo < 0;
 UPDATE public.users SET saldo = 0 WHERE saldo < 0;
 
 -- 1. Tambahkan constraint keamanan agar saldo tidak pernah minus di level database
-ALTER TABLE public.mitras ADD CONSTRAINT check_saldo_positive CHECK (saldo >= 0);
-ALTER TABLE public.users ADD CONSTRAINT check_saldo_positive CHECK (saldo >= 0);
+DO $$ BEGIN ALTER TABLE public.mitras ADD CONSTRAINT check_saldo_positive CHECK (saldo >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE public.users ADD CONSTRAINT check_saldo_positive CHECK (saldo >= 0); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- 2. Perbaiki process_purchase agar memotong saldo Mitra sesuai Harga Jual (sehingga Superadmin mendapatkan profit)
 CREATE OR REPLACE FUNCTION public.process_purchase(
@@ -17,8 +17,7 @@ CREATE OR REPLACE FUNCTION public.process_purchase(
   p_harga_modal NUMERIC,
   p_harga_jual NUMERIC,
   p_product_name TEXT DEFAULT NULL
-) RETURNS UUID AS 
-DECLARE
+) RETURNS UUID AS $$ DECLARE
   v_transaction_id UUID;
   v_saldo NUMERIC;
   v_effective_user_id UUID;
@@ -83,7 +82,7 @@ BEGIN
 
   RETURN v_transaction_id;
 END;
- LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- 3. Perbaiki fail_and_refund agar mengembalikan saldo sejumlah Harga Jual (karena yang dipotong adalah harga jual)
@@ -92,8 +91,7 @@ CREATE OR REPLACE FUNCTION public.fail_and_refund(
   p_sn TEXT DEFAULT NULL,
   p_note TEXT DEFAULT NULL
 )
-RETURNS BOOLEAN AS 
-DECLARE
+RETURNS BOOLEAN AS $$ DECLARE
   v_user_id UUID;
   v_mitra_id UUID;
   v_harga_jual NUMERIC;
@@ -144,6 +142,6 @@ BEGIN
 
   RETURN TRUE;
 END;
- LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMIT;
