@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import { Plus, Trash2, Edit2, Ticket , Search } from 'lucide-vue-next'
@@ -22,7 +22,7 @@ const form = ref({
 })
 
 // Watcher to auto-generate nama_produk based on kuota and hari
-watch([() => form.value.provider_kategori, () => form.value.kuota, () => form.value.hari], ([provider, kuota, hari]) => {
+watch([() => form.value.provider_kategori, () => form.value.kuota, () => form.value.hari], ([provider, kuota, hari]: [any, any, any]) => {
   if ((kuota || hari) && provider) {
     const q = kuota || '0'
     const h = hari || '0'
