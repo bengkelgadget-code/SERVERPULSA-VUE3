@@ -13,10 +13,22 @@ const selectedId = ref('')
 
 const form = ref({
   provider_kategori: '',
+  kuota: '',
+  hari: '',
   nama_produk: '',
   harga_beli: 0,
   harga_jual: 0,
   stok: 0
+})
+
+// Watcher to auto-generate nama_produk based on kuota and hari
+watch([() => form.value.provider_kategori, () => form.value.kuota, () => form.value.hari], ([provider, kuota, hari]) => {
+  if ((kuota || hari) && provider) {
+    const q = kuota || '0'
+    const h = hari || '0'
+    // Hanya auto-generate jika user sedang menambah/mengedit dan mengubah field kuota/hari
+    form.value.nama_produk = `${provider} ${q}/${h}`.trim()
+  }
 })
 
 const fetchProducts = async () => {
@@ -29,7 +41,32 @@ const fetchProducts = async () => {
       .order('created_at', { ascending: false })
       
     if (error) throw error
-    products.value = data || []
+    
+    const items = data || []
+    
+    // Auto backfill missing kuota and hari
+    const toUpdate = []
+    for (const p of items) {
+      if (!p.kuota && !p.hari && p.nama_produk) {
+        const match = p.nama_produk.match(/\s+(\d+(?:\.\d+)?(?:GB|MB|KB)?)\/(\d+)\s*$/i) || p.nama_produk.match(/\b(\d+(?:\.\d+)?)\s*\/\s*(\d+)\b/)
+        if (match) {
+          const parsedKuota = match[1]
+          const parsedHari = match[2]
+          toUpdate.push({ id: p.id, kuota: parsedKuota, hari: parsedHari })
+          p.kuota = parsedKuota
+          p.hari = parsedHari
+        }
+      }
+    }
+    
+    products.value = items
+    
+    // Execute batch updates for backfill in background
+    if (toUpdate.length > 0) {
+      for (const u of toUpdate) {
+         await supabase.from('counter_products').update({ kuota: u.kuota, hari: u.hari }).eq('id', u.id)
+      }
+    }
   } catch (err: any) {
     console.error('Error fetching vouchers:', err)
   } finally {
@@ -43,13 +80,15 @@ const openModal = (mode = 'add', item: any = null) => {
     selectedId.value = item.id
     form.value = {
       provider_kategori: item.provider_kategori,
+      kuota: item.kuota || '',
+      hari: item.hari || '',
       nama_produk: item.nama_produk,
       harga_beli: item.harga_beli,
       harga_jual: item.harga_jual,
       stok: item.stok
     }
   } else {
-    form.value = { provider_kategori: '', nama_produk: '', harga_beli: 0, harga_jual: 0, stok: 0 }
+    form.value = { provider_kategori: '', kuota: '', hari: '', nama_produk: '', harga_beli: 0, harga_jual: 0, stok: 0 }
   }
   showModal.value = true
 }
@@ -63,7 +102,7 @@ const saveProduct = async () => {
       await supabase.from('counter_products').insert({
         mitra_id: mitraId,
         jenis: 'VOUCHER',
-        provider_kategori: form.value.provider_kategori,
+        provider_kategori: form.value.provider_kategori, kuota: form.value.kuota, hari: form.value.hari,
         nama_produk: form.value.nama_produk,
         harga_beli: form.value.harga_beli,
         harga_jual: form.value.harga_jual,
@@ -71,7 +110,7 @@ const saveProduct = async () => {
       })
     } else {
       await supabase.from('counter_products').update({
-        provider_kategori: form.value.provider_kategori,
+        provider_kategori: form.value.provider_kategori, kuota: form.value.kuota, hari: form.value.hari,
         nama_produk: form.value.nama_produk,
         harga_beli: form.value.harga_beli,
         harga_jual: form.value.harga_jual,
@@ -458,17 +497,28 @@ const handleRpInput = (field: any, event: any) => {
         <div class="p-6 space-y-4">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Provider (Cth: Telkomsel, XL)</label>
-            
-            <div class="flex items-center gap-2">
-              <select v-model="form.provider_kategori" class="flex-1 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all">
+            <div class="flex gap-2">
+              <select v-model="form.provider_kategori" class="flex-1 px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all appearance-none cursor-pointer">
                 <option value="">-- Pilih Provider --</option>
                 <option v-for="cat in categories" :key="cat.id" :value="cat.nama">{{ cat.nama }}</option>
               </select>
-              <button type="button" @click="openCategoryModal()" class="px-3 py-2 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-xl transition-colors shadow-sm flex items-center justify-center font-bold">
+              <button type="button" @click="openCategoryModal()" class="flex-none px-3 py-2 bg-purple-50 text-purple-600 rounded-xl text-sm font-semibold hover:bg-purple-100 flex items-center transition-colors">
                 <Plus class="w-4 h-4 mr-1" /> Kelola
               </button>
             </div>
           </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kuota (Cth: 4, 1.5, 10)</label>
+              <input v-model="form.kuota" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Hari / Masa Aktif</label>
+              <input v-model="form.hari" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all">
+            </div>
+          </div>
+          
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Nama Voucher</label>
             <input v-model="form.nama_produk" type="text" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none text-sm transition-all">
