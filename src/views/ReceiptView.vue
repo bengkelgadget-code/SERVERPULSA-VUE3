@@ -348,6 +348,17 @@ const snParts = computed(() => {
     finalSn = finalSn.replace(trfDayaMatch[0], '')
   }
 
+  // Extract DENDA
+  const dendaMatch = finalSn.match(/\/?\s*(?:DENDA)\s*[:=]\s*([^/,]+)/i)
+  if (dendaMatch) {
+    const val = dendaMatch[1].trim()
+    const num = parseInt(val.replace(/[^0-9]/g, ''), 10)
+    if (!isNaN(num) && num > 0) {
+      result.push({ label: 'DENDA', value: formatRp(num) })
+    }
+    finalSn = finalSn.replace(dendaMatch[0], '')
+  }
+
   // Check if it's a PPOB/Postpaid transaction to add Tagihan
   const cat = (trx.value?.products?.category || '').toLowerCase()
   const isPostpaid = cat.includes('pasca') || cat === 'pdam' || cat === 'bpjs' || cat === 'internet' || cat === 'pbb' || cat === 'multifinance' || cat === 'tv kabel' || raw.includes('A/N ') || raw.includes('Nama:')

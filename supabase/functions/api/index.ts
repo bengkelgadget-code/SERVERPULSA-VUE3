@@ -268,10 +268,14 @@ function enhanceDigiflazzSn(existingSn: string | null, newData: any, customName?
       }
     }
 
+    const dendaRaw = desc.denda !== undefined ? desc.denda : (detail.denda !== undefined ? detail.denda : '');
+    const dendaVal = parseInt(String(dendaRaw).replace(/[^0-9]/g, ''), 10);
+
     const extras: string[] = [];
     if (trfDaya && !baseSn.includes('TRF/DAYA:')) extras.push(`TRF/DAYA: ${trfDaya}`);
     if (periode && !baseSn.includes('BL/TH:')) extras.push(`BL/TH: ${periode}`);
     if (stdMtr && !baseSn.includes('STD MTR:')) extras.push(`STD MTR: ${stdMtr}`);
+    if (dendaVal > 0 && !baseSn.includes('DENDA:')) extras.push(`DENDA: ${dendaVal}`);
 
     if (extras.length > 0) {
       baseSn = baseSn ? `${baseSn} / ${extras.join(' / ')}` : extras.join(' / ');
