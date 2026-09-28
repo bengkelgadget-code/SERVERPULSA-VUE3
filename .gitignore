@@ -28,3 +28,13 @@ dist-ssr
 # Large binary files (JDK, etc)
 **/.jdk/
 **/jdk.zip
+
+# Security: prevent debug/scratch files from being committed
+scratch/
+check_*.js
+query_db.js
+fetch_debug.js
+sync.js
+patch.ts
+create_favorites.sql
+fix_rpcs.sql

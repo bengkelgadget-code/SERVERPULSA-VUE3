@@ -69,7 +69,7 @@ app.get('/admin/digiflazz-balance', async (c) => {
   }
 
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+  if (profile?.role !== 'superadmin') {
     return c.json({ error: 'Forbidden' }, 403)
   }
 
@@ -85,6 +85,16 @@ app.get('/admin/digiflazz-balance', async (c) => {
 
 
 app.get('/admin/fix-pulsa', async (c) => {
+  // [SECURITY] Require superadmin authentication
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) return c.json({ error: 'Unauthorized' }, 401);
+  const token = authHeader.replace('Bearer ', '').trim();
+  const supabaseUser = getSupabase(c);
+  const { data: { user } } = await supabaseUser.auth.getUser(token);
+  if (!user) return c.json({ error: 'Unauthorized' }, 401);
+  const { data: profile } = await supabaseUser.from('users').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'superadmin') return c.json({ error: 'Forbidden' }, 403);
+
   const supabase = getSupabaseService();
   try {
     const { data, error } = await supabase.from('products').select('sku_code, product_name, harga_jual, harga_modal').eq('category', 'Pulsa');
@@ -428,13 +438,9 @@ function generateRefId() {
   return `MOB-${Date.now()}-${hex}`;
 }
 
+// [SECURITY] debug-pln endpoint removed - was triggering Digiflazz transactions without authentication
 app.post('/debug-pln', async (c) => {
-  const body = await c.req.json()
-  const { customer_no } = body
-  const cleanCustomerNo = String(customer_no).replace(/[^0-9]/g, '').slice(0, 20);
-  const ref_id = `INQPLN-${Date.now()}`;
-  const result = await digiflazz.createTransaction('pln-subscribe', cleanCustomerNo, ref_id)
-  return c.json({ result })
+  return c.json({ error: 'Endpoint decommissioned' }, 404)
 })
 
 app.post('/inquiry-pln', async (c) => {
@@ -762,7 +768,7 @@ app.post('/sync-digiflazz', async (c) => {
     if (!user) return c.json({ error: 'Unauthorized' }, 401)
     
     const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
-    if (profile?.role !== 'superadmin' && profile?.role !== 'admin') {
+    if (profile?.role !== 'superadmin') {
       return c.json({ error: 'Forbidden' }, 403)
     }
   }
@@ -964,9 +970,25 @@ app.post('/mobile/transaction/purchase', async (c) => {
       finalHargaModal = product.harga_modal // Superadmin pays Digiflazz cost directly
     }
 
-    if (pasca_ref_id && pasca_amount !== undefined) {
-      finalHargaModal = pasca_amount;
-      finalHargaJual = pasca_amount; // You might want to add a fixed markup for pasca here later
+    // [SECURITY] Validate pasca_amount server-side: re-check with Digiflazz instead of trusting client
+    if (pasca_ref_id) {
+      try {
+        const statusResponse = await digiflazz.inquiryPasca(sku_code, cleanCustomerNo, pasca_ref_id);
+        if (statusResponse && (statusResponse.rc === '00' || statusResponse.status?.toLowerCase() === 'sukses')) {
+          const serverAmount = statusResponse.selling_price || statusResponse.price || 0;
+          if (serverAmount > 0) {
+            finalHargaModal = serverAmount;
+            finalHargaJual = serverAmount;
+          } else {
+            return c.json({ error: 'Tidak dapat memverifikasi nominal tagihan dari server' }, 400);
+          }
+        } else {
+          return c.json({ error: 'Inquiry tagihan tidak valid atau sudah kadaluarsa' }, 400);
+        }
+      } catch (inqErr: any) {
+        console.error('Pasca amount verification failed:', inqErr);
+        return c.json({ error: 'Gagal memverifikasi nominal tagihan' }, 500);
+      }
     }
 
     const refId = pasca_ref_id || generateRefId()
@@ -1161,6 +1183,11 @@ app.post('/admin-action', async (c) => {
       const { data: trx } = await supabaseService.from('transactions').select('*').eq('id', transaction_id).single()
       if (!trx) return c.json({ error: 'Transaction not found' }, 404)
       
+      // [SECURITY] Enforce tenant isolation - admin can only check their own mitra's transactions
+      if (callerProfile.role === 'admin' && trx.mitra_id && callerProfile.mitra_id && trx.mitra_id !== callerProfile.mitra_id) {
+        return c.json({ error: 'Forbidden: transaction belongs to another mitra' }, 403)
+      }
+      
       if (trx.status !== 'pending') {
         return c.json({ success: true, message: 'Transaction is no longer pending', status: trx.status })
       }
@@ -1223,7 +1250,7 @@ app.post('/admin-action', async (c) => {
       const updateData: any = {
         email: payload.email
       }
-      if (payload.mitra_id !== undefined) {
+      if (payload.mitra_id !== undefined && callerProfile.role === 'superadmin') {
         updateData.mitra_id = payload.mitra_id
       }
       
@@ -1477,10 +1504,9 @@ app.get('/get-admin-balance', async (c) => {
   }
 })
 
+// [SECURITY] debug-users endpoint removed - was exposing all user data without authentication
 app.get('/debug-users', async (c) => {
-  const supabaseService = getSupabaseService()
-  const { data, error } = await supabaseService.from('users').select('*')
-  return c.json({ data, error })
+  return c.json({ error: 'Endpoint decommissioned' }, 404)
 })
 
 Deno.serve(app.fetch)
