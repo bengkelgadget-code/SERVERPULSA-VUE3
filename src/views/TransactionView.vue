@@ -26,6 +26,7 @@ const pascaRefId = ref('')
 const pascaAmount = ref(0)
 const pascaAdmin = ref(0)
 const isPascaInquiryDone = ref(false)
+const pascaSign = ref('')
 const pascaDesc = ref<any>(null)
 
 const paymentMethods = [
@@ -110,6 +111,7 @@ const inquiryPasca = async () => {
       pascaAdmin.value = data.admin
       pascaRefId.value = data.ref_id
       pascaDesc.value = data.desc
+      pascaSign.value = data.pasca_sign || ''
       isPascaInquiryDone.value = true
       
       if (data.amount === 0 || data.desc?.detail?.[0]?.lembar_tagihan === 0) {
@@ -178,7 +180,7 @@ const buyProduct = async () => {
         sku_code: sku, 
         payment_method: selectedPayment.value,
         customer_name: customerName.value,
-        ...(isPasca.value ? { pasca_ref_id: pascaRefId.value, pasca_amount: pascaAmount.value } : {})
+        ...(isPasca.value ? { pasca_ref_id: pascaRefId.value, pasca_amount: pascaAmount.value, pasca_sign: pascaSign.value } : {})
       })
     })
     
@@ -327,3 +329,4 @@ const buyProduct = async () => {
 <style>
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
 </style>
+

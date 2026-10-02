@@ -23,6 +23,7 @@ export default function Transaction() {
   const [pascaRefId, setPascaRefId] = useState('')
   const [pascaAmount, setPascaAmount] = useState(0)
   const [pascaAdmin, setPascaAdmin] = useState(0)
+  const [pascaSign, setPascaSign] = useState('')
   const [isPascaInquiryDone, setIsPascaInquiryDone] = useState(false)
 
   const product = useMemo(() => products.find(p => p.sku_code === sku), [products, sku])
@@ -83,6 +84,7 @@ export default function Transaction() {
         setPascaAmount(data.amount)
         setPascaAdmin(data.admin)
         setPascaRefId(data.ref_id)
+        setPascaSign(data.pasca_sign || '')
         setIsPascaInquiryDone(true)
         if (data.amount === 0) setErrorMsg('Tagihan sudah lunas atau tidak ditemukan.')
       } else {
@@ -132,7 +134,7 @@ export default function Transaction() {
           sku_code: sku, 
           payment_method: selectedPayment,
           customer_name: customerName,
-          ...(isPasca ? { pasca_ref_id: pascaRefId, pasca_amount: pascaAmount } : {})
+          ...(isPasca ? { pasca_ref_id: pascaRefId, pasca_amount: pascaAmount, pasca_sign: pascaSign } : {})
         })
       })
       const data = await res.json()
@@ -297,3 +299,5 @@ export default function Transaction() {
     </View>
   )
 }
+
+
