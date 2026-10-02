@@ -973,7 +973,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
     // [SECURITY] Validate pasca_amount server-side: re-check with Digiflazz instead of trusting client
     if (pasca_ref_id) {
       try {
-        const statusResponse = await digiflazz.inquiryPasca(sku_code, cleanCustomerNo, pasca_ref_id);
+        const statusResponse = await digiflazz.statusPasca(sku_code, cleanCustomerNo, pasca_ref_id);
         if (statusResponse && (statusResponse.rc === '00' || statusResponse.status?.toLowerCase() === 'sukses')) {
           const serverAmount = statusResponse.selling_price || statusResponse.price || 0;
           if (serverAmount > 0) {

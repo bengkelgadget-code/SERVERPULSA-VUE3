@@ -9,4 +9,4 @@
   Saat memperbaiki atau menambahkan fitur baru, jaga keutuhan fitur yang sudah berjalan lancar sebelumnya (prinsip regresi nol).
 
 ## 2. Eksekusi Otomatis (Tanpa Pop-up Konfirmasi)
-- Perintah rutin seperti membaca file, membuat file baru, mengedit kode, menjalankan build (`npm run build`), instalasi dependensi, patch script, dan sinkronisasi Git (`commit` / `push`) harus dijalankan secara langsung dan efisien tanpa meminta konfirmasi berulang kali.
+- Perintah rutin seperti membaca file, membuat file baru, mengedit kode, menjalankan build (`npm run build`), instalasi dependensi, patch script, dan sinkronisasi Git (`commit` / `add`) harus dijalankan secara langsung dan efisien tanpa meminta konfirmasi berulang kali, untuk `add` berikan perintahnya ke aku karna di pc ku ada 2 akun github yang login
