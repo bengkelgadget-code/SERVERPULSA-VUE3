@@ -16,6 +16,29 @@ const syncLoading = ref(false)
 const lastSyncTime = ref('')
 const mitraPricing = ref<Record<string, number>>({})
 
+// In-app confirm modal + toast (pengganti confirm()/alert() bawaan browser
+// yang tidak bisa diklik oleh automation)
+const confirmRequest = ref<{ message: string; okLabel: string; onOk: () => void } | null>(null)
+const toast = ref<{ message: string; type: 'success' | 'error' } | null>(null)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+const askConfirm = (message: string, okLabel: string, onOk: () => void) => {
+  confirmRequest.value = { message, okLabel, onOk }
+}
+const cancelConfirm = () => {
+  confirmRequest.value = null
+}
+const acceptConfirm = () => {
+  const req = confirmRequest.value
+  confirmRequest.value = null
+  if (req) req.onOk()
+}
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  if (toastTimer) clearTimeout(toastTimer)
+  toast.value = { message, type }
+  toastTimer = setTimeout(() => { toast.value = null }, 5000)
+}
+
 const isSuperadmin = computed(() => auth.userProfile?.role === 'superadmin')
 
 let typingTimers: Record<string, any> = {}
@@ -175,7 +198,7 @@ const toggleActive = async (product: any) => {
     product.manual_override = true
   } catch (err) {
     console.error('Error toggling status:', err)
-    alert('Failed to update product status')
+    showToast('Failed to update product status', 'error')
   }
 }
 
@@ -260,9 +283,15 @@ const handlePriceChange = (product: any, event: Event) => {
   }, 500)
 }
 
-const setAutoSama = async () => {
-  if (!confirm(`Are you sure you want to set "Jual" price equal to "Modal" for ${filteredProducts.value.length} filtered products?`)) return
-  
+const setAutoSama = () => {
+  askConfirm(
+    `Samakan harga "Jual" dengan "Modal" untuk ${filteredProducts.value.length} produk yang difilter?`,
+    'Ya, Samakan',
+    () => runAutoSama()
+  )
+}
+
+const runAutoSama = async () => {
   loading.value = true
   try {
     const { data: session } = await supabase.auth.getSession()
@@ -303,18 +332,24 @@ const setAutoSama = async () => {
       }
     }
     
-    alert('Harga Jual telah disamakan dengan Harga Modal')
+    showToast('Harga Jual telah disamakan dengan Harga Modal', 'success')
   } catch (err) {
     console.error('Error auto-setting prices:', err)
-    alert('Terjadi kesalahan saat menyamakan harga')
+    showToast('Terjadi kesalahan saat menyamakan harga', 'error')
   } finally {
     loading.value = false
   }
 }
 
-const syncDigiflazz = async () => {
-  if (!confirm('Tarik data terbaru dari Digiflazz? Proses ini memakan waktu beberapa saat.')) return
-  
+const syncDigiflazz = () => {
+  askConfirm(
+    'Tarik data terbaru dari Digiflazz? Proses ini memakan waktu beberapa saat.',
+    'Ya, Sync',
+    () => runSyncDigiflazz()
+  )
+}
+
+const runSyncDigiflazz = async () => {
   syncLoading.value = true
   try {
     const { data: session } = await supabase.auth.getSession()
@@ -329,14 +364,14 @@ const syncDigiflazz = async () => {
     })
     const data = await res.json()
     if (data.success) {
-      alert(data.message)
+      showToast(data.message, 'success')
       await fetchProducts()
     } else {
-      alert('Gagal sinkronisasi: ' + (data.message || data.error))
+      showToast('Gagal sinkronisasi: ' + (data.message || data.error), 'error')
     }
   } catch (err) {
     console.error(err)
-    alert('Terjadi kesalahan saat menghubungi server sinkronisasi. Pastikan Anda sudah menjalankan backend di terminal terpisah ("node backend/server.js").')
+    showToast('Terjadi kesalahan saat menghubungi server sinkronisasi. Pastikan Anda sudah menjalankan backend di terminal terpisah ("node backend/server.js").', 'error')
   } finally {
     syncLoading.value = false
   }
@@ -513,6 +548,24 @@ const syncDigiflazz = async () => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Confirm Modal: pengganti confirm() bawaan browser (bisa diklik automation) -->
+    <div v-if="confirmRequest" data-testid="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6">
+        <h3 class="text-lg font-extrabold text-gray-800 mb-2">Konfirmasi</h3>
+        <p class="text-sm text-gray-600 mb-6">{{ confirmRequest.message }}</p>
+        <div class="flex justify-end gap-3">
+          <button @click="cancelConfirm" data-testid="confirm-cancel" class="px-4 py-2 rounded-full text-[13px] font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">Batal</button>
+          <button @click="acceptConfirm" data-testid="confirm-ok" class="px-4 py-2 rounded-full text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors">{{ confirmRequest.okLabel }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast: pengganti alert() bawaan browser (non-blocking, bisa dibaca automation) -->
+    <div v-if="toast" data-testid="app-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-full text-[13px] font-bold text-white shadow-lg"
+      :class="toast.type === 'error' ? 'bg-red-600' : 'bg-green-600'">
+      {{ toast.message }}
     </div>
   </div>
 </template>

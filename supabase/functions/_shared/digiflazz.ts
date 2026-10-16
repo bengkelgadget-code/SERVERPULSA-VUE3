@@ -31,8 +31,14 @@ export class DigiFlazzClient {
     if (proxyHost && proxyPort) {
       const auth = proxyUser && proxyPass ? `${proxyUser}:${proxyPass}@` : '';
       const proxyUrl = `http://${auth}${proxyHost}:${proxyPort}`;
+      const proxyConfig: any = { url: proxyUrl };
+      // Also set basicAuth for newer Deno versions that may require it
+      if (proxyUser && proxyPass) {
+        proxyConfig.basicAuth = { username: proxyUser, password: proxyPass };
+      }
       // @ts-ignore: Deno createHttpClient is available in Edge Runtime
-      client = typeof Deno.createHttpClient === 'function' ? Deno.createHttpClient({ proxy: { url: proxyUrl } }) : undefined;
+      client = typeof Deno.createHttpClient === 'function' ? Deno.createHttpClient({ proxy: proxyConfig }) : undefined;
+      console.log(`[proxy] Using proxy: ${proxyHost}:${proxyPort} user=${proxyUser} hasPass=${!!proxyPass} clientCreated=${!!client}`);
     }
 
     const bodyString = JSON.stringify(body);

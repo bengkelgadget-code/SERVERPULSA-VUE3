@@ -3,6 +3,16 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { digiflazz } from '../_shared/digiflazz.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
+async function createPascaSignature(refId: string, amount: number): Promise<string> {
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'default-secret';
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(`${refId}:${amount}`));
+  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 const app = new Hono().basePath('/api')
 
 app.use('*', async (c, next) => {
@@ -630,9 +640,10 @@ app.post('/inquiry-pasca', async (c) => {
         success: true, 
         name: bestName, 
         amount: response.selling_price || response.price || 0,
-        admin: response.admin || 0,
-        ref_id: refId,
-        desc: response.desc
+          admin: response.admin || 0,
+          ref_id: refId,
+          desc: response.desc,
+          pasca_sign: await createPascaSignature(refId, response.selling_price || response.price || 0)
       });
     }
 
@@ -774,7 +785,20 @@ app.post('/sync-digiflazz', async (c) => {
   }
 
   try {
-    const prepaidProducts = await digiflazz.getPriceList();
+    // Step 1: Fetch prepaid products from Digiflazz
+    console.log('[sync] Step 1: Fetching prepaid price list...');
+    let prepaidProducts;
+    try {
+      prepaidProducts = await digiflazz.getPriceList();
+    } catch (prepaidErr: any) {
+      const msg = prepaidErr.message || String(prepaidErr);
+      console.error('[sync] Prepaid fetch failed:', msg);
+      if (msg.includes('timeout')) {
+        return c.json({ success: false, message: 'Timeout saat mengambil data prepaid dari Digiflazz. Proxy mungkin lambat, coba lagi.' }, 504);
+      }
+      return c.json({ success: false, message: `Gagal ambil data prepaid: ${msg}` }, 502);
+    }
+
     if (prepaidProducts && !Array.isArray(prepaidProducts) && prepaidProducts.rc) {
       return c.json({ 
         success: false, 
@@ -782,7 +806,20 @@ app.post('/sync-digiflazz', async (c) => {
       }, 429);
     }
     
-    const pascaProducts = await digiflazz.getPascaList();
+    // Step 2: Fetch pasca products from Digiflazz
+    console.log('[sync] Step 2: Fetching pasca price list...');
+    let pascaProducts;
+    try {
+      pascaProducts = await digiflazz.getPascaList();
+    } catch (pascaErr: any) {
+      const msg = pascaErr.message || String(pascaErr);
+      console.error('[sync] Pasca fetch failed:', msg);
+      if (msg.includes('timeout')) {
+        return c.json({ success: false, message: 'Timeout saat mengambil data pascabayar dari Digiflazz. Proxy mungkin lambat, coba lagi.' }, 504);
+      }
+      return c.json({ success: false, message: `Gagal ambil data pasca: ${msg}` }, 502);
+    }
+
     if (pascaProducts && !Array.isArray(pascaProducts) && pascaProducts.rc) {
       return c.json({ 
         success: false, 
@@ -790,7 +827,9 @@ app.post('/sync-digiflazz', async (c) => {
       }, 429);
     }
     
-    let products = [];
+    // Step 3: Normalize responses
+    console.log('[sync] Step 3: Normalizing data...');
+    let products: any[] = [];
     
     // Digiflazz sometimes returns an object with numeric keys instead of an array
     const normalizeToArray = (data: any) => {
@@ -800,22 +839,47 @@ app.post('/sync-digiflazz', async (c) => {
       return [];
     };
 
-    products = products.concat(normalizeToArray(prepaidProducts));
-    products = products.concat(normalizeToArray(pascaProducts));
+    const prepaidArr = normalizeToArray(prepaidProducts);
+    const pascaArr = normalizeToArray(pascaProducts);
+    products = products.concat(prepaidArr);
+    products = products.concat(pascaArr);
+    console.log(`[sync] Got ${prepaidArr.length} prepaid + ${pascaArr.length} pasca = ${products.length} total`);
 
     if (products.length === 0) {
-      return c.json({ success: false, message: 'Invalid response from Digiflazz' }, 500)
+      return c.json({ success: false, message: `Tidak ada produk diterima dari Digiflazz. Prepaid type: ${typeof prepaidProducts}, Pasca type: ${typeof pascaProducts}` }, 500)
     }
 
+    // Step 4: Fetch existing products (with pagination to handle > 1000 rows)
+    console.log('[sync] Step 4: Fetching existing products from DB...');
     const supabaseService = getSupabaseService();
     
-    // Fetch existing products to preserve harga_jual and manual_override
-    const { data: existingData } = await supabaseService.from('products').select('sku_code, harga_jual, is_active, manual_override');
-    const existingProducts = new Map();
-    if (existingData) {
-      existingData.forEach(p => existingProducts.set(p.sku_code, p));
+    let existingData: any[] = [];
+    let existFrom = 0;
+    const existStep = 1000;
+    while (true) {
+      const { data: chunk, error: existErr } = await supabaseService
+        .from('products')
+        .select('sku_code, harga_jual, is_active, manual_override')
+        .range(existFrom, existFrom + existStep - 1);
+      if (existErr) {
+        console.error('[sync] Error fetching existing products:', existErr);
+        break;
+      }
+      if (chunk && chunk.length > 0) {
+        existingData = existingData.concat(chunk);
+        if (chunk.length < existStep) break;
+        existFrom += existStep;
+      } else {
+        break;
+      }
     }
+    console.log(`[sync] Found ${existingData.length} existing products in DB`);
 
+    const existingProducts = new Map();
+    existingData.forEach(p => existingProducts.set(p.sku_code, p));
+
+    // Step 5: Build upsert data
+    console.log('[sync] Step 5: Building upsert data...');
     const uniqueProductsMap = new Map();
     for (const item of products) {
       if (!item.buyer_sku_code) continue; // Skip invalid entries
@@ -846,6 +910,7 @@ app.post('/sync-digiflazz', async (c) => {
     }
 
     const productsToUpsert = Array.from(uniqueProductsMap.values());
+    console.log(`[sync] Step 6: Upserting ${productsToUpsert.length} products...`);
 
     const chunkSize = 500;
     let updatedCount = 0;
@@ -856,18 +921,19 @@ app.post('/sync-digiflazz', async (c) => {
       if (!error) {
         updatedCount += chunk.length;
       } else {
-        console.error('Bulk upsert error:', error);
+        console.error(`[sync] Bulk upsert error (chunk ${i}-${i+chunk.length}):`, error);
         lastError = error;
       }
     }
 
-    // Deactivate products that are no longer returned by Digiflazz
-    const skusToDeactivate = [];
+    // Step 7: Deactivate products that are no longer returned by Digiflazz
+    const skusToDeactivate: string[] = [];
     existingProducts.forEach((_, sku) => {
       if (sku !== 'SYSTEM_LAST_SYNC' && !uniqueProductsMap.has(sku)) {
         skusToDeactivate.push(sku);
       }
     });
+    console.log(`[sync] Step 7: Deactivating ${skusToDeactivate.length} removed products...`);
 
     for (let i = 0; i < skusToDeactivate.length; i += chunkSize) {
       const chunk = skusToDeactivate.slice(i, i + chunkSize);
@@ -876,7 +942,8 @@ app.post('/sync-digiflazz', async (c) => {
         .in('sku_code', chunk);
     }
 
-    // Log the sync time via RPC to avoid constraint errors
+    // Step 8: Log the sync time
+    console.log('[sync] Step 8: Logging sync time...');
     const { error: syncLogError } = await supabaseService.rpc('set_last_sync_time', { p_time: new Date().toISOString() })
     if (syncLogError) console.error('SYSTEM_LAST_SYNC Error (RPC):', syncLogError);
 
@@ -892,13 +959,22 @@ app.post('/sync-digiflazz', async (c) => {
     }, { onConflict: 'sku_code' })
 
     if (updatedCount === 0 && lastError) {
-       return c.json({ success: false, message: 'Upsert failed: ' + lastError.message, error: lastError }, 500)
+       return c.json({ success: false, message: 'Upsert gagal: ' + lastError.message, error: lastError }, 500)
     }
 
+    console.log(`[sync] Done! Synced ${updatedCount} products`);
     return c.json({ success: true, message: `Synced ${updatedCount} products from Digiflazz` })
-  } catch(e) {
-    console.error('Sync error:', e)
-    return c.json({ error: 'Internal error' }, 500)
+  } catch(e: any) {
+    const errMsg = e?.message || String(e);
+    console.error('[sync] Unhandled error:', errMsg, e);
+    
+    if (errMsg.includes('timeout')) {
+      return c.json({ success: false, message: `Timeout: Proxy atau Digiflazz tidak merespons dalam 30 detik. Coba lagi nanti.` }, 504);
+    }
+    if (errMsg.includes('connect') || errMsg.includes('ECONNREFUSED') || errMsg.includes('fetch failed')) {
+      return c.json({ success: false, message: `Koneksi gagal: Proxy sedang offline atau tidak bisa dijangkau. (${errMsg})` }, 502);
+    }
+    return c.json({ success: false, message: `Sync error: ${errMsg}` }, 500)
   }
 })
 
@@ -918,7 +994,7 @@ app.post('/mobile/transaction/purchase', async (c) => {
 
   try {
     const body = await c.req.json()
-    const { sku_code, customer_no, customer_name, pasca_ref_id, pasca_amount } = body
+    const { sku_code, customer_no, customer_name, pasca_ref_id, pasca_amount, pasca_sign } = body
 
     if (!sku_code || !customer_no) return c.json({ error: 'sku_code and customer_no are required' }, 400)
 
@@ -970,21 +1046,14 @@ app.post('/mobile/transaction/purchase', async (c) => {
       finalHargaModal = product.harga_modal // Superadmin pays Digiflazz cost directly
     }
 
-    // [SECURITY] Validate pasca_amount server-side when possible
+    // [SECURITY] Verify cryptographic signature from inquiry
     if (pasca_ref_id && pasca_amount !== undefined) {
-      let verifiedAmount = 0;
-      try {
-        const statusResponse = await digiflazz.statusPasca(sku_code, cleanCustomerNo, pasca_ref_id);
-        if (statusResponse && (statusResponse.rc === '00' || statusResponse.status?.toLowerCase() === 'sukses')) {
-          verifiedAmount = statusResponse.selling_price || statusResponse.price || 0;
-        }
-      } catch (inqErr: any) {
-        console.warn('Pasca status check failed, using client amount:', inqErr.message);
+      const expectedSign = await createPascaSignature(pasca_ref_id, pasca_amount);
+      if (!pasca_sign || pasca_sign !== expectedSign) {
+        return c.json({ error: 'Data tagihan tidak valid atau telah dimanipulasi' }, 400);
       }
-      // Use server-verified amount if available, otherwise trust client amount
-      // The final amount will be reconciled via Digiflazz webhook after payment
-      finalHargaModal = verifiedAmount > 0 ? verifiedAmount : pasca_amount;
-      finalHargaJual = finalHargaModal;
+      finalHargaModal = pasca_amount;
+      finalHargaJual = pasca_amount;
     }
 
     const refId = pasca_ref_id || generateRefId()
@@ -1506,3 +1575,7 @@ app.get('/debug-users', async (c) => {
 })
 
 Deno.serve(app.fetch)
+
+
+
+
