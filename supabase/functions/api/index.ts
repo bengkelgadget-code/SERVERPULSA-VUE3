@@ -473,10 +473,14 @@ app.post('/inquiry-pln', async (c) => {
   }
 
   const result = await digiflazz.inquiryPln(cleanCustomerNo)
-  if (result) {
+  if (result && result.success && result.name) {
     return c.json({ success: true, name: result.name, segment_power: result.segment_power })
   }
-  return c.json({ success: false, message: 'Gagal mengecek nomor PLN' }, 400)
+  return c.json({ 
+    success: false, 
+    message: result?.message || 'Nomor Pelanggan Tidak Ditemukan',
+    rc: result?.rc 
+  }, 400)
 })
 
 app.post('/inquiry-ewallet', async (c) => {

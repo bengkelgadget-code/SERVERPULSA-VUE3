@@ -117,7 +117,7 @@ export class DigiFlazzClient {
     return json.data;
   }
 
-  async inquiryPln(customer_no: string): Promise<{ name: string; segment_power: string } | null> {
+  async inquiryPln(customer_no: string): Promise<{ success: boolean; name?: string; segment_power?: string; message?: string; rc?: string } | null> {
     const signature = this.generateSignature(customer_no);
     try {
       const json = await this.fetchWithProxy('/inquiry-pln', {
@@ -126,16 +126,35 @@ export class DigiFlazzClient {
         sign: signature
       });
 
-      if (json && json.data && json.data.name) {
+      console.log(`[inquiryPln] Response for ${customer_no}:`, JSON.stringify(json?.data || json));
+
+      if (json && json.data) {
+        const name = json.data.name || json.data.customer_name;
+        const isSuccess = json.data.rc === '00' || (!json.data.rc && name) || json.data.status?.toLowerCase() === 'sukses';
+        
+        if (name && isSuccess) {
+          return {
+            success: true,
+            name: String(name).trim(),
+            segment_power: json.data.segment_power || '',
+            message: json.data.message || 'Sukses',
+            rc: json.data.rc || '00'
+          };
+        }
+
         return {
-          name: json.data.name,
-          segment_power: json.data.segment_power || '',
+          success: false,
+          message: json.data.message || 'Nomor Pelanggan Tidak Ditemukan',
+          rc: json.data.rc
         };
       }
       return null;
-    } catch (e) {
-      console.error('inquiryPln error:', e);
-      return null;
+    } catch (e: any) {
+      console.error('[inquiryPln] Error:', e?.message || e);
+      return {
+        success: false,
+        message: e?.message?.includes('timeout') ? 'Koneksi timeout, silakan coba lagi' : 'Gagal menghubungi server PLN'
+      };
     }
   }
 

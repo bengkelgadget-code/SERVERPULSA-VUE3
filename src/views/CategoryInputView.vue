@@ -50,7 +50,7 @@ onMounted(() => {
   if (route.query.phone) {
     customerNo.value = route.query.phone as string
     // if pln, we check it
-    if (categoryParam === 'pln' && customerNo.value.length >= 11) {
+    if (categoryParam === 'pln' && customerNo.value.replace(/\D/g, '').length >= 11) {
       checkPLN(customerNo.value)
     }
   }
@@ -130,7 +130,8 @@ const filteredProducts = computed(() => {
 
 let currentCheckId = 0
 const checkPLN = async (no: string) => {
-  if (categoryParam !== 'pln' || no.length < 11) {
+  const cleanNo = String(no || '').replace(/\D/g, '')
+  if (categoryParam !== 'pln' || cleanNo.length < 11) {
     plnName.value = ''
     plnLoading.value = false
     return
@@ -148,7 +149,7 @@ const checkPLN = async (no: string) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session?.access_token}`
       },
-      body: JSON.stringify({ customer_no: no })
+      body: JSON.stringify({ customer_no: cleanNo })
     })
     
     if (checkId !== currentCheckId) return;
@@ -177,7 +178,8 @@ const checkPLN = async (no: string) => {
 watch(customerNo, (newVal) => {
   if (categoryParam !== 'pln') return
   
-  if (newVal.length < 11) {
+  const cleanVal = (newVal || '').replace(/\D/g, '')
+  if (cleanVal.length < 11) {
     plnName.value = ''
     return
   }
