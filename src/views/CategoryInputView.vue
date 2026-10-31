@@ -23,6 +23,17 @@ const plnName = ref('')
 const plnLoading = ref(false)
 let checkTimeout: any = null
 
+const isPlnNameValid = computed(() => {
+  if (!plnName.value) return false
+  const lower = plnName.value.toLowerCase()
+  return !lower.includes('gagal') && 
+         !lower.includes('tidak') && 
+         !lower.includes('gangguan') && 
+         !lower.includes('timeout') && 
+         !lower.includes('salah') && 
+         !lower.includes('belum')
+})
+
 onUnmounted(() => {
   if (checkTimeout) clearTimeout(checkTimeout)
 })
@@ -187,8 +198,8 @@ watch(customerNo, (newVal) => {
   // Debounce the check
   if (checkTimeout) clearTimeout(checkTimeout)
   checkTimeout = setTimeout(() => {
-    checkPLN(newVal)
-  }, 500)
+    checkPLN(cleanVal)
+  }, 750)
 })
 
 const validatePhone = (phone: string, category: string): string | null => {
@@ -210,7 +221,7 @@ const selectProduct = (sku: string) => {
   }
 
   // Store customerNo in sessionStorage or pass via query params
-  if (categoryParam === 'pln' && plnName.value && !plnName.value.includes('Gagal') && !plnName.value.includes('Tidak Ditemukan')) {
+  if (categoryParam === 'pln' && isPlnNameValid.value) {
     router.push(`/transaction/${sku}?phone=${customerNo.value}&name=${encodeURIComponent(plnName.value)}`)
   } else {
     router.push(`/transaction/${sku}?phone=${customerNo.value}`)
@@ -277,21 +288,31 @@ const doSpeech = async () => {
           />
         </div>
 
-        <!-- Validation PLN -->
+                <!-- Validation PLN -->
         <div v-if="categoryParam === 'pln' && (plnLoading || plnName)" class="mt-3">
           <p v-if="plnLoading" class="text-xs text-primary-600 animate-pulse font-medium">Mengecek ID Pelanggan...</p>
-          <div v-else-if="plnName && !plnName.includes('Gagal') && !plnName.includes('Tidak Ditemukan')" class="p-2.5 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
+          <div v-else-if="isPlnNameValid" class="p-2.5 bg-green-50 border border-green-100 rounded-lg flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M20 6 9 17l-5-5"/></svg>
             <div>
               <p class="text-[10px] text-green-600 font-semibold leading-none">Pemilik Rekening</p>
               <p class="font-bold text-green-800 text-sm mt-0.5">{{ plnName }}</p>
             </div>
           </div>
-          <div v-else class="p-2.5 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2">
-             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-600"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            <div>
-               <p class="font-bold text-red-800 text-xs">{{ plnName }}</p>
+          <div v-else class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-2">
+            <div class="flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-600 shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <div>
+                <p class="text-amber-900 text-xs font-medium leading-snug">{{ plnName }}</p>
+              </div>
             </div>
+            <button 
+              type="button" 
+              @click="checkPLN(customerNo)" 
+              :disabled="plnLoading"
+              class="shrink-0 px-2.5 py-1 text-[11px] font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 active:bg-amber-300 rounded-lg transition-colors"
+            >
+              Cek Ulang
+            </button>
           </div>
         </div>
 

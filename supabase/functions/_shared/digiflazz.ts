@@ -142,9 +142,16 @@ export class DigiFlazzClient {
           };
         }
 
+        let failureMessage = json.data.message || 'Nomor Pelanggan Tidak Ditemukan';
+        if (json.data.rc === '02' || failureMessage.toLowerCase().includes('transaksi gagal')) {
+          failureMessage = 'Nama pelanggan tidak dapat dicek (Server PLN sedang gangguan). Pembelian token tetap dapat dilanjutkan.';
+        } else if (json.data.rc === '54' || failureMessage.toLowerCase().includes('tujuan salah')) {
+          failureMessage = 'Nomor ID / Meter salah. Mohon periksa kembali.';
+        }
+
         return {
           success: false,
-          message: json.data.message || 'Nomor Pelanggan Tidak Ditemukan',
+          message: failureMessage,
           rc: json.data.rc
         };
       }
@@ -153,7 +160,9 @@ export class DigiFlazzClient {
       console.error('[inquiryPln] Error:', e?.message || e);
       return {
         success: false,
-        message: e?.message?.includes('timeout') ? 'Koneksi timeout, silakan coba lagi' : 'Gagal menghubungi server PLN'
+        message: e?.message?.includes('timeout') 
+          ? 'Pengecekan nama timeout. Pembelian token tetap dapat dilanjutkan.' 
+          : 'Server PLN belum merespons. Pembelian token tetap dapat dilanjutkan.'
       };
     }
   }
