@@ -45,7 +45,9 @@ jobs:
 
 
       - name: Sync Capacitor to Android
-        run: npx cap sync android
+        run: |
+          rm -f dist/update.zip
+          npx cap sync android
 
       - name: Build APK (Release)
         working-directory: ./android

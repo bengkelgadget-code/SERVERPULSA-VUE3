@@ -5,13 +5,14 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
+  base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
-    target: ['es2020', 'chrome87', 'safari14'],
+    target: ['es2018', 'chrome70', 'safari12'],
     chunkSizeWarningLimit: 1000,
   }
 })

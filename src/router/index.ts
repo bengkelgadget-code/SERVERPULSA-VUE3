@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import LoginView from '@/views/LoginView.vue'
 import HomeView from '@/views/HomeView.vue'
@@ -13,7 +13,7 @@ import AllTransactions from '@/views/admin/AllTransactions.vue'
 import SuperadminLayout from '@/components/layout/SuperadminLayout.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes: [
     {
       path: '/login',
@@ -282,9 +282,9 @@ router.afterEach((to) => {
 })
 
 // Handle chunk load errors when Vercel deploys a new version
-router.onError((error, to) => {
+router.onError((error, _to) => {
   if (error.message.includes('Failed to fetch dynamically imported module') || error.name === 'ChunkLoadError') {
-    window.location.href = to.fullPath
+    window.location.reload()
   }
 })
 

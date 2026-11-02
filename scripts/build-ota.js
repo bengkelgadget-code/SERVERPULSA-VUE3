@@ -45,7 +45,10 @@ archive.on('error', (err) => {
 
 archive.pipe(output)
 
-// append files from a sub-directory, putting its contents at the root of archive
-archive.directory(distDir, false)
+// append files from dist, excluding any previous update.zip to prevent recursive zipping
+archive.glob('**/*', {
+  cwd: distDir,
+  ignore: ['update.zip']
+})
 
 archive.finalize()

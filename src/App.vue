@@ -27,7 +27,7 @@ onMounted(() => {
   auth.initialize()
   
   if (Capacitor.isNativePlatform()) {
-    CapacitorUpdater.notifyAppReady()
+
     
     // Check for self-hosted updates
     const checkForUpdates = async () => {
@@ -36,6 +36,10 @@ onMounted(() => {
         const data = await response.json()
         
         const currentVersion = localStorage.getItem('app_version')
+        if (!currentVersion) {
+          if (data.version) localStorage.setItem('app_version', data.version)
+          return
+        }
         if (data.version && data.version !== currentVersion) {
           console.log('New update found:', data.version)
           Toast.show({ text: 'Mengunduh pembaruan...', duration: 'short' })
