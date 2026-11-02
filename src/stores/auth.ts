@@ -16,13 +16,24 @@ export const useAuthStore = defineStore('auth', () => {
     if (isInitialized.value) return true
     if (initPromise) return initPromise
 
-    initPromise = new Promise((resolve) => {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        Promise.resolve().then(async () => {
-          try {
+    initPromise = new Promise(async (resolve) => {
+      // Safety timeout: ensure loading is never stuck indefinitely
+      const timeout = setTimeout(() => {
+        if (!isInitialized.value) {
+          console.warn('Auth initialization reached safety timeout, proceeding')
+          isInitialized.value = true
+          loading.value = false
+          resolve(true)
+        }
+      }, 3500)
+
+      try {
+        // Setup persistent auth state listener if not already attached
+        if (!authSubscription) {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             user.value = session?.user || null
             if (user.value) {
-              await fetchProfile(user.value.id, session?.access_token)
+              fetchProfile(user.value.id, session?.access_token).catch(() => {})
             } else {
               userProfile.value = null
               if (userSubscription) {
@@ -30,19 +41,35 @@ export const useAuthStore = defineStore('auth', () => {
                 userSubscription = null
               }
             }
-          } catch (err) {
-            console.error('Critical error in fetchProfile during init:', err)
-          } finally {
-            if (!isInitialized.value) {
-              isInitialized.value = true
-              loading.value = false
-              resolve(true)
-            }
-          }
-        })
-      })
-      authSubscription = subscription
+          })
+          authSubscription = subscription
+        }
+
+        // Get initial session immediately from local storage
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Error fetching initial session:', error)
+        }
+        
+        user.value = session?.user || null
+        if (user.value) {
+          await fetchProfile(user.value.id, session?.access_token)
+        } else {
+          userProfile.value = null
+        }
+      } catch (err) {
+        console.error('Critical error in auth initialization:', err)
+      } finally {
+        clearTimeout(timeout)
+        if (!isInitialized.value) {
+          isInitialized.value = true
+          loading.value = false
+          resolve(true)
+        }
+      }
     })
+
+    return initPromise
   }
 
   async function fetchProfile(userId: string, _providedToken?: string) {
