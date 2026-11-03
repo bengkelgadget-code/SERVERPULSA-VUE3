@@ -31,32 +31,58 @@ let staffChannel: any
 const fetchHistory = async () => {
   loading.value = true
   
-  let query = supabase
-    .from('transactions')
-    .select('*, products(product_name)')
-    .order('created_at', { ascending: false })
-    .limit(50)
+  try {
+    let query = supabase
+      .from('transactions')
+      .select('*, products(product_name)')
+      .order('created_at', { ascending: false })
+      .limit(50)
 
-  // If not superadmin, restrict to their own/mitra's transactions
-  if (auth.userProfile?.role !== 'superadmin') {
-    const mitraId = auth.userProfile?.mitra_id
-    if (mitraId) {
-      query = query.eq('mitra_id', mitraId)
+    // If not superadmin, restrict to their own/mitra's transactions
+    if (auth.userProfile?.role !== 'superadmin') {
+      const mitraId = auth.userProfile?.mitra_id
+      if (mitraId) {
+        query = query.eq('mitra_id', mitraId)
+      } else if (auth.user?.id) {
+        query = query.or('user_id.eq.' + auth.user.id + ',staff_id.eq.' + auth.user.id)
+      }
     }
-  }
 
-  const { data } = await query
-  
-  if (data) {
-    transactions.value = data
+    const { data, error } = await query
     
-    // Auto-check only truly pending transactions (not refunded) in the background
-    const pendingTrx = data.filter(t => t.status === 'pending')
-    if (pendingTrx.length > 0) {
-      checkPendingStatuses(pendingTrx)
+    if (error) {
+      console.warn('History primary query error, using fallback:', error)
+      let fallbackQuery = supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      if (auth.userProfile?.role !== 'superadmin') {
+        const mitraId = auth.userProfile?.mitra_id
+        if (mitraId) {
+          fallbackQuery = fallbackQuery.eq('mitra_id', mitraId)
+        } else if (auth.user?.id) {
+          fallbackQuery = fallbackQuery.or('user_id.eq.' + auth.user.id + ',staff_id.eq.' + auth.user.id)
+        }
+      }
+      const { data: fallbackData } = await fallbackQuery
+      if (fallbackData) {
+        transactions.value = fallbackData
+      }
+    } else if (data) {
+      transactions.value = data
+      
+      // Auto-check only truly pending transactions (not refunded) in the background
+      const pendingTrx = data.filter(t => t.status === 'pending')
+      if (pendingTrx.length > 0) {
+        checkPendingStatuses(pendingTrx)
+      }
     }
+  } catch (err) {
+    console.error('Exception in fetchHistory:', err)
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 const checkPendingStatuses = async (pendingTrx: any[]) => {

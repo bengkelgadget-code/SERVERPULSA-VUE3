@@ -224,3 +224,15 @@ const doLogout = async () => {
     <BottomNav />
   </div>
 </template>
+
+<style scoped>
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.input-field {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+</style>

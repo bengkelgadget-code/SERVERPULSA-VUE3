@@ -126,3 +126,19 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style>
+.mobile-app-wrapper {
+  width: 100%;
+  max-width: 480px;
+  min-height: 100vh;
+  position: relative;
+  box-sizing: border-box;
+}
+.desktop-outer {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+</style>

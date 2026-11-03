@@ -20,19 +20,19 @@ const handleRefresh = async () => {
     const { data: sessionData } = await supabase.auth.getSession()
     await Promise.all([
       auth.fetchProfile(auth.user.id, sessionData.session?.access_token),
-      productsStore.fetchProducts()
+      productsStore.fetchProducts(true)
     ])
   } else {
-    await productsStore.fetchProducts()
+    await productsStore.fetchProducts(true)
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   productsStore.fetchProducts()
+  await auth.initialize()
   if (auth.user?.id) {
-    supabase.auth.getSession().then(({ data }) => {
-      auth.fetchProfile(auth.user.id, data.session?.access_token)
-    })
+    const { data } = await supabase.auth.getSession()
+    await auth.fetchProfile(auth.user.id, data.session?.access_token)
   }
 })
 
@@ -74,62 +74,69 @@ const categories = [
     color: 'bg-orange-100 text-orange-600'
   }
 ]
-
 </script>
 
 <template>
   <PullToRefresh :onRefresh="handleRefresh">
     <div :class="['min-h-screen bg-neutral-50', isDisplayRole ? 'pb-8' : 'pb-24']">
       <!-- Header -->
-      <div class="bg-primary-600 text-white p-4 pt-5 rounded-b-[2rem] shadow-md relative">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <h2 class="text-sm opacity-80">Selamat datang,</h2>
-          <h1 class="text-xl font-bold">{{ auth.userProfile?.nama_toko || auth.user?.email }}</h1>
+      <div class="home-header bg-primary-600 text-white p-4 pt-5 rounded-b-[2rem] shadow-md relative">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h2 class="text-sm opacity-80">Selamat datang,</h2>
+            <h1 class="text-xl font-bold">{{ auth.userProfile?.nama_toko || auth.user?.email }}</h1>
+          </div>
+          
+          <!-- Back to TV Display Button -->
+          <button 
+            v-if="isDisplayRole" 
+            @click="router.push('/tv/vouchers')" 
+            class="bg-white/20 hover:bg-white/30 backdrop-blur text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 border border-white/20"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Kembali ke TV Display
+          </button>
         </div>
         
-        <!-- Back to TV Display Button -->
-        <button 
-          v-if="isDisplayRole" 
-          @click="router.push('/tv/vouchers')" 
-          class="bg-white/20 hover:bg-white/30 backdrop-blur text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors flex items-center gap-2 border border-white/20"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          Kembali ke TV Display
-        </button>
+        <div class="p-3.5 rounded-xl saldo-card mx-1">
+          <p class="text-[13px] opacity-90 mb-0.5 font-bold">Saldo Deposit</p>
+          <p class="text-3xl font-extrabold tracking-tight">{{ formatRp(auth.userProfile?.saldo || 0) }}</p>
+        </div>
       </div>
-      
-      <div class="p-3.5 rounded-xl saldo-card mx-1">
-        <p class="text-[13px] opacity-90 mb-0.5 font-bold">Saldo Deposit</p>
-        <p class="text-3xl font-extrabold tracking-tight">{{ formatRp(auth.userProfile?.saldo || 0) }}</p>
-      </div>
-    </div>
 
-    <!-- Main Content -->
-    <div :class="['px-5', isDisplayRole ? 'mt-12' : 'mt-5']">
-      <h3 class="font-bold text-lg text-neutral-800 mb-3" v-if="!isDisplayRole">Layanan Kami</h3>
-      
-      <div :class="['grid gap-y-4 gap-x-4 justify-items-center', isDisplayRole ? 'grid-cols-6' : 'grid-cols-3']">
-        <div 
-          v-for="cat in categories" 
-          :key="cat.name"
-          @click="router.push(cat.path)"
-          class="flex flex-col items-center w-full cursor-pointer active:scale-95 transition-transform"
-        >
-          <div :class="['w-[72px] h-[72px] rounded-2xl flex items-center justify-center mb-2 shadow-sm', cat.color]">
-            <div v-html="cat.icon"></div>
+      <!-- Main Content -->
+      <div :class="['px-5', isDisplayRole ? 'mt-12' : 'mt-5']">
+        <h3 class="font-bold text-lg text-neutral-800 mb-3" v-if="!isDisplayRole">Layanan Kami</h3>
+        
+        <div :class="['category-grid grid gap-y-4 gap-x-4 justify-items-center', isDisplayRole ? 'grid-cols-6 category-grid-display' : 'grid-cols-3']">
+          <div 
+            v-for="cat in categories" 
+            :key="cat.name"
+            @click="router.push(cat.path)"
+            class="flex flex-col items-center w-full cursor-pointer active:scale-95 transition-transform"
+          >
+            <div :class="['w-[72px] h-[72px] rounded-2xl flex items-center justify-center mb-2 shadow-sm', cat.color]">
+              <div v-html="cat.icon"></div>
+            </div>
+            <span :class="['font-semibold text-neutral-700 text-center', isDisplayRole ? 'text-[15px]' : 'text-[13px]']">{{ cat.name }}</span>
           </div>
-          <span :class="['font-semibold text-neutral-700 text-center', isDisplayRole ? 'text-[15px]' : 'text-[13px]']">{{ cat.name }}</span>
         </div>
       </div>
     </div>
-    </div>
-    </PullToRefresh>
+  </PullToRefresh>
 
-  
   <BottomNav v-if="!isDisplayRole" />
 </template>
 
 <style scoped>
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  justify-items: center;
+}
+.category-grid-display {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
 </style>

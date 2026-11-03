@@ -66,10 +66,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="pullContainer" class="relative w-full h-full">
+  <div ref="pullContainer" class="ptr-wrapper relative w-full min-h-screen">
     <!-- Refresh Indicator -->
     <div 
-      class="absolute left-0 right-0 flex justify-center z-50 overflow-hidden pointer-events-none transition-all duration-300 ease-out"
+      class="ptr-indicator absolute left-0 right-0 flex justify-center z-50 overflow-hidden pointer-events-none transition-all duration-300 ease-out"
       :style="{ 
         height: `${distance}px`,
         opacity: distance / maxDistance 
@@ -89,10 +89,31 @@ onUnmounted(() => {
 
     <!-- Content slot -->
     <div 
-      class="transition-transform duration-300 ease-out h-full"
+      class="ptr-slot transition-transform duration-300 ease-out w-full"
       :style="{ transform: `translateY(${distance}px)` }"
     >
       <slot></slot>
     </div>
   </div>
 </template>
+
+<style scoped>
+.ptr-wrapper {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+.ptr-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ptr-slot {
+  width: 100%;
+}
+</style>

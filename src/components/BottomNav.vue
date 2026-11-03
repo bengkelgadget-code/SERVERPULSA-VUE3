@@ -23,7 +23,7 @@ const navItems = [
 </script>
 
 <template>
-  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-neutral-200 p-3 flex justify-center items-center gap-[20px] pb-safe z-50">
+  <div class="bottom-nav-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-neutral-200 p-3 flex justify-center items-center gap-[20px] pb-safe z-50">
     <button 
       v-for="item in navItems" 
       :key="item.name"
@@ -38,5 +38,19 @@ const navItems = [
 </template>
 
 <style scoped>
+.bottom-nav-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  z-index: 50;
+  box-sizing: border-box;
+}
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
 </style>
