@@ -281,8 +281,8 @@ const closePopup = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
-    <div class="history-header bg-primary-600 text-white p-4 flex items-center shadow-sm sticky top-0 z-10 justify-between">
+  <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
+    <div class="history-header fixed top-0 inset-x-0 mx-auto w-full max-w-[480px] bg-primary-600 text-white p-4 flex items-center shadow-sm z-40 justify-between">
       <div class="flex items-center gap-4">
         <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -294,7 +294,7 @@ const closePopup = () => {
       </button>
     </div>
 
-    <div class="p-4 flex-1">
+    <div class="p-4 flex-1 pt-[76px]">
       <div v-if="loading" class="text-center py-10">
         <div class="animate-spin inline-block w-8 h-8 border-[3px] border-current border-t-transparent text-primary-600 rounded-full"></div>
       </div>
@@ -394,10 +394,18 @@ const closePopup = () => {
 
 <style scoped>
 .history-header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  max-width: 480px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  width: 100% !important;
+  z-index: 40 !important;
   box-sizing: border-box !important;
 }
 </style>

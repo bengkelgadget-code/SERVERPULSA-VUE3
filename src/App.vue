@@ -30,7 +30,9 @@ onMounted(() => {
 
     
     // Check for self-hosted updates
+    let isUpdating = false
     const checkForUpdates = async () => {
+      if (isUpdating) return
       try {
         const response = await fetch('https://serverpulsa-vue-3.vercel.app/version.json', { cache: 'no-store' })
         const data = await response.json()
@@ -41,6 +43,7 @@ onMounted(() => {
           return
         }
         if (data.version && data.version !== currentVersion) {
+          isUpdating = true
           console.log('New update found:', data.version)
           Toast.show({ text: 'Mengunduh pembaruan...', duration: 'short' })
           
@@ -50,12 +53,14 @@ onMounted(() => {
               version: data.version
             })
             
+            // Simpan versi sebelum set() karena set() langsung merefresh webview
+            localStorage.setItem('app_version', data.version)
             Toast.show({ text: 'Memuat pembaruan...', duration: 'short' })
             await CapacitorUpdater.set(version)
-            localStorage.setItem('app_version', data.version)
           } catch (updateErr) {
             console.error('Failed to apply OTA update:', updateErr)
             localStorage.removeItem('app_version')
+            isUpdating = false
           }
         }
       } catch (err) {

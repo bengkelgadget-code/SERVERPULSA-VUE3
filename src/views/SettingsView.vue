@@ -113,14 +113,14 @@ const doLogout = async () => {
 <template>
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
-    <div class="settings-header bg-primary-600 text-white p-4 flex items-center shadow-sm sticky top-0 z-10 justify-between">
+    <div class="settings-header fixed top-0 inset-x-0 mx-auto w-full max-w-[480px] bg-primary-600 text-white p-4 flex items-center shadow-sm z-40 justify-between">
       <h1 class="text-xl font-bold ml-2">Pengaturan</h1>
       <button @click="router.replace('/')" class="p-2 -mr-2 rounded-full hover:bg-white/20 transition-colors" title="Ke Beranda">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </button>
     </div>
 
-    <div class="p-4 space-y-6">
+    <div class="p-4 space-y-6 pt-[76px]">
       <!-- Profile Settings -->
       <div class="card p-5 shadow-sm bg-white rounded-2xl">
         <h3 class="font-bold text-lg text-neutral-800 mb-4 border-b pb-2">Profil Mitra</h3>
@@ -227,11 +227,19 @@ const doLogout = async () => {
 
 <style scoped>
 .settings-header {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  width: 100% !important;
+  max-width: 480px !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   justify-content: space-between !important;
-  width: 100% !important;
+  z-index: 40 !important;
   box-sizing: border-box !important;
 }
 label {
