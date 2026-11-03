@@ -44,14 +44,19 @@ onMounted(() => {
           console.log('New update found:', data.version)
           Toast.show({ text: 'Mengunduh pembaruan...', duration: 'short' })
           
-          const version = await CapacitorUpdater.download({
-            url: `https://serverpulsa-vue-3.vercel.app${data.url}`,
-            version: data.version
-          })
-          
-          localStorage.setItem('app_version', data.version)
-          Toast.show({ text: 'Memuat pembaruan...', duration: 'short' })
-          await CapacitorUpdater.set(version)
+          try {
+            const version = await CapacitorUpdater.download({
+              url: `https://serverpulsa-vue-3.vercel.app${data.url}`,
+              version: data.version
+            })
+            
+            Toast.show({ text: 'Memuat pembaruan...', duration: 'short' })
+            await CapacitorUpdater.set(version)
+            localStorage.setItem('app_version', data.version)
+          } catch (updateErr) {
+            console.error('Failed to apply OTA update:', updateErr)
+            localStorage.removeItem('app_version')
+          }
         }
       } catch (err) {
         console.error('Failed to check for updates', err)
@@ -111,8 +116,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div v-if="auth.loading" class="min-h-screen flex items-center justify-center">
-    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+  <div v-if="auth.loading" class="min-h-screen flex items-center justify-center" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #fafafa;">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" style="width: 32px; height: 32px; border-radius: 50%; border: 3px solid #e5e7eb; border-top-color: #2563eb; animation: spin 1s linear infinite;"></div>
   </div>
   <div v-else :class="!isAdminRoute ? 'min-h-screen w-full flex justify-center bg-gray-100 desktop-outer' : ''">
     <div 
