@@ -41,8 +41,8 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="card w-full max-w-sm space-y-6">
+  <div class="login-container min-h-screen flex items-center justify-center p-4">
+    <div class="login-card card w-full max-w-sm space-y-6">
       <div class="text-center">
         <h1 class="text-3xl font-bold text-primary-600">KONTER APP</h1>
         <p class="text-neutral-500 text-sm mt-1">Masuk untuk transaksi pulsa</p>
@@ -68,3 +68,33 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.login-card {
+  width: 100%;
+  max-width: 24rem;
+  box-sizing: border-box;
+}
+label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+input {
+  width: 100%;
+  box-sizing: border-box;
+}
+button {
+  width: 100%;
+  box-sizing: border-box;
+}
+</style>

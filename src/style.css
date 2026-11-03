@@ -31,22 +31,49 @@ html, body {
   }
 }
 
-/* Universal Fallback Base Rules (active in all engines including older WebViews) */
+/* Universal Fallback Base Rules (active in all engines including older WebViews without @layer support) */
 *, ::before, ::after {
   box-sizing: border-box;
 }
 
 label {
   display: block;
+  margin-bottom: 0.25rem;
+}
+
+.card {
+  box-sizing: border-box;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #f3f4f6;
 }
 
 .input-field {
   box-sizing: border-box;
   width: 100%;
+  display: block;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: #f9fafb;
 }
 
 .btn-primary {
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 700;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  text-align: center;
 }
 
 /* Neumorphism Theme Variables & Overrides */
@@ -230,27 +257,81 @@ label {
   text-transform: uppercase !important;
 }
 
-/* Bottom Navigation Buttons */
+/* Bottom Navigation Bar in Neumorph Theme */
+.theme-neumorph .bottom-nav-bar {
+  background-color: var(--bg-color) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 -4px 14px rgba(100, 90, 80, 0.12) !important;
+  padding-top: 8px !important;
+  padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  display: flex !important;
+  justify-content: space-around !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+
 .theme-neumorph .nav-btn {
   background-color: var(--bg-color) !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   box-shadow: var(--neu-flat) !important;
-  margin-bottom: 6px !important; /* Lowered, only small gap for shadow */
-  padding: 8px !important;
+  padding: 8px 12px !important;
+  min-width: 80px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  border: none !important;
 }
 
 .theme-neumorph .nav-btn-active {
   background-color: #6a7c64 !important; /* Hijau mate */
   color: #FFFFFF !important;
-  box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3), inset -2px -2px 4px rgba(255,255,255,0.2) !important;
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.35), inset -2px -2px 4px rgba(255,255,255,0.2) !important;
 }
 
-.theme-neumorph .bottom-nav-bar,
-.theme-neumorph .fixed.bottom-0 {
+/* Dedicated Neumorph buttons in SettingsView */
+.theme-neumorph .btn-connect {
   background-color: var(--bg-color) !important;
-  border: none !important; /* Remove separator line */
-  box-shadow: none !important; /* Remove top shadow to make it seamless */
-  padding-bottom: 12px !important; /* Reduced bottom padding */
+  color: var(--neu-accent) !important;
+  box-shadow: var(--neu-flat) !important;
+  border-radius: 12px !important;
+  padding: 8px 14px !important;
+  border: none !important;
+}
+.theme-neumorph .btn-connect:active {
+  box-shadow: var(--neu-pressed) !important;
+}
+
+.theme-neumorph .btn-logout {
+  background-color: var(--bg-color) !important;
+  color: #dc2626 !important;
+  box-shadow: var(--neu-flat) !important;
+  border-radius: 14px !important;
+  padding: 12px 16px !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.theme-neumorph .btn-logout:active {
+  box-shadow: var(--neu-pressed) !important;
+}
+
+.theme-neumorph .settings-header,
+.theme-neumorph .history-header {
+  background-color: #6a7c64 !important; /* Hijau mate */
+  color: #FFFFFF !important;
+  min-height: 52px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Desktop constraints for neumorphic theme */

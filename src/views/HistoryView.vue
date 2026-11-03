@@ -4,7 +4,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 import BottomNav from '@/components/BottomNav.vue'
-import PullToRefresh from '@/components/PullToRefresh.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -282,9 +281,8 @@ const closePopup = () => {
 </script>
 
 <template>
-  <PullToRefresh :onRefresh="fetchHistory">
-  <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
-    <div class="bg-primary-600 text-white p-4 flex items-center  shadow-sm sticky top-0 z-10 justify-between">
+    <div class="min-h-screen bg-neutral-50 flex flex-col pb-24 relative">
+    <div class="history-header bg-primary-600 text-white p-4 flex items-center shadow-sm sticky top-0 z-10 justify-between">
       <div class="flex items-center gap-4">
         <button @click="router.back()" class="p-2 -ml-2 rounded-full hover:bg-white/20 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -325,8 +323,7 @@ const closePopup = () => {
     </div>
 
   </div>
-  </PullToRefresh>
-  
+    
   <Teleport to="body">
     <div v-if="selectedTrx" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="closePopup">
       <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden flex flex-col relative">
@@ -394,3 +391,13 @@ const closePopup = () => {
 
   <BottomNav />
 </template>
+
+<style scoped>
+.history-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+</style>

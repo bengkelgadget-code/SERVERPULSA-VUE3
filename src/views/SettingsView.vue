@@ -113,7 +113,7 @@ const doLogout = async () => {
 <template>
   <div class="min-h-screen bg-neutral-50 pb-24">
     <!-- Header -->
-    <div class="bg-primary-600 text-white p-4 flex items-center  shadow-sm sticky top-0 z-10 justify-between">
+    <div class="settings-header bg-primary-600 text-white p-4 flex items-center shadow-sm sticky top-0 z-10 justify-between">
       <h1 class="text-xl font-bold ml-2">Pengaturan</h1>
       <button @click="router.replace('/')" class="p-2 -mr-2 rounded-full hover:bg-white/20 transition-colors" title="Ke Beranda">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -183,7 +183,7 @@ const doLogout = async () => {
               </p>
             </div>
           </div>
-          <button @click="connectPrinter" :disabled="bluetooth.isConnecting.value || bluetooth.isScanning.value" class="text-sm font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-lg disabled:opacity-50">
+          <button @click="connectPrinter" :disabled="bluetooth.isConnecting.value || bluetooth.isScanning.value" class="btn-connect text-sm font-bold text-primary-600 bg-primary-50 px-3.5 py-2 rounded-xl disabled:opacity-50">
             {{ bluetooth.isScanning.value ? 'Scanning...' : bluetooth.isConnecting.value ? 'Menghubungkan...' : printerStore.isConnected ? 'Putus' : 'Hubungkan' }}
           </button>
         </div>
@@ -211,8 +211,8 @@ const doLogout = async () => {
       </div>
 
       <!-- Account Actions -->
-      <div class="card p-5 shadow-sm bg-white rounded-2xl border border-red-50">
-        <button @click="doLogout" class="flex items-center justify-center w-full gap-2 text-red-600 font-bold py-2">
+      <div class="card p-4 shadow-sm bg-white rounded-2xl">
+        <button @click="doLogout" class="btn-logout flex items-center justify-center w-full gap-2 text-red-600 font-bold py-3 px-4 rounded-xl transition-all">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           Keluar Akun
         </button>
@@ -226,6 +226,14 @@ const doLogout = async () => {
 </template>
 
 <style scoped>
+.settings-header {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
 label {
   display: block;
   margin-bottom: 0.25rem;
@@ -233,6 +241,18 @@ label {
 .input-field {
   display: block;
   width: 100%;
+  box-sizing: border-box;
+}
+.btn-connect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.btn-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   box-sizing: border-box;
 }
 </style>
