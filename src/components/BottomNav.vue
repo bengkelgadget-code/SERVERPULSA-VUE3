@@ -23,7 +23,7 @@ const navItems = [
 </script>
 
 <template>
-  <div class="bottom-nav-bar fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] bg-white border-t border-neutral-200 px-4 py-2 flex justify-around items-center pb-safe z-50">
+  <div class="bottom-nav-bar fixed bottom-0 inset-x-0 mx-auto w-full max-w-[480px] bg-white border-t border-neutral-200 px-4 py-2 flex justify-around items-center pb-safe z-50">
     <button 
       v-for="item in navItems" 
       :key="item.name"
@@ -39,24 +39,27 @@ const navItems = [
 
 <style scoped>
 .bottom-nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  z-index: 50;
-  box-sizing: border-box;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  display: flex !important;
+  justify-content: space-around !important;
+  align-items: center !important;
+  z-index: 50 !important;
+  box-sizing: border-box !important;
 }
 .nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
 }
 .pb-safe {
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
