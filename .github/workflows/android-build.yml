@@ -39,10 +39,22 @@ jobs:
           echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
           echo "VITE_NEXTJS_API_URL=${{ secrets.VITE_SUPABASE_URL }}/functions/v1" >> .env
 
+      - name: Validate Supabase Environment Variables
+        run: |
+          grep -q '^VITE_SUPABASE_URL=https\?://[^[:space:]]' .env || { echo "❌ ERROR: VITE_SUPABASE_URL is empty or invalid in GitHub Secrets!"; exit 1; }
+          grep -q '^VITE_SUPABASE_ANON_KEY=[^[:space:]]\+' .env || { echo "❌ ERROR: VITE_SUPABASE_ANON_KEY is empty in GitHub Secrets!"; exit 1; }
+          echo "✅ Environment variables validated successfully."
+
       - name: Build Web Assets (Vite)
         run: npm run build
 
-
+      - name: Verify Supabase URL in Built Bundle
+        run: |
+          if ! grep -rq "supabase.co" dist/assets/index-*.js; then
+            echo "❌ ERROR: Supabase URL was not baked into dist/assets/index-*.js bundle! Aborting build."
+            exit 1
+          fi
+          echo "✅ Verified: Supabase URL is present in built bundle."
 
       - name: Sync Capacitor to Android
         run: |
