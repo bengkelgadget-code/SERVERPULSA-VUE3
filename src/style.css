@@ -76,7 +76,8 @@ label {
   text-align: center;
 }
 
-.bottom-nav-bar {
+.bottom-nav-bar,
+.checkout-action-bar {
   position: fixed !important;
   bottom: 0 !important;
   left: 0 !important;
@@ -185,7 +186,7 @@ label {
 }
 
 .theme-neumorph .input-field,
-.theme-neumorph input,
+.theme-neumorph input:not([type="radio"]):not([type="checkbox"]),
 .theme-neumorph textarea,
 .theme-neumorph select {
   display: block !important;
@@ -385,4 +386,43 @@ label {
 .theme-neumorph .mobile-app-wrapper {
   background-color: var(--bg-color) !important;
   box-shadow: 0 0 50px rgba(100, 90, 80, 0.2) !important;
+}
+
+
+.theme-neumorph .checkout-action-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  z-index: 50 !important;
+  background-color: var(--bg-color) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 -4px 14px rgba(100, 90, 80, 0.12) !important;
+  box-sizing: border-box !important;
+}
+
+.theme-neumorph .checkout-action-bar button {
+  background-color: #6a7c64 !important;
+  color: #FFFFFF !important;
+  box-shadow: 4px 4px 10px rgba(100, 90, 80, 0.3) !important;
+  border-radius: 1rem !important;
+}
+
+.theme-neumorph .checkout-action-bar button:disabled {
+  opacity: 0.5 !important;
+}
+
+.theme-neumorph .payment-method-card {
+  background-color: var(--bg-color) !important;
+  box-shadow: var(--neu-pressed) !important;
+}
+
+.theme-neumorph .saldo-badge {
+  background-color: var(--bg-color) !important;
+  box-shadow: var(--neu-flat) !important;
 }

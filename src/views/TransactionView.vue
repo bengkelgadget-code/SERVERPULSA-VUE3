@@ -204,7 +204,7 @@ const buyProduct = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-neutral-50 flex flex-col pb-24">
+  <div class="min-h-screen bg-neutral-50 flex flex-col pb-32">
     <!-- Header -->
     <div class="bg-primary-600 text-white py-2 px-3 flex items-center gap-2 shadow-sm sticky top-0 z-10 justify-between">
       <div class="flex items-center gap-4">
@@ -284,22 +284,24 @@ const buyProduct = async () => {
         <h3 class="text-xs font-bold text-neutral-500 uppercase tracking-wider mb-3">Pilih Pembayaran</h3>
         
         <div class="space-y-2">
-          <label v-for="method in paymentMethods" :key="method.id" 
+          <div v-for="method in paymentMethods" :key="method.id" 
+            @click="selectedPayment = method.id"
             :class="[
-              'flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all',
-              selectedPayment === method.id ? 'border-primary-500 bg-primary-50' : 'border-neutral-100 hover:border-primary-200'
+              'payment-method-card flex items-center justify-between p-3.5 rounded-2xl border-2 cursor-pointer transition-all',
+              selectedPayment === method.id ? 'border-primary-500 bg-primary-50/40' : 'border-neutral-100 hover:border-primary-200'
             ]">
-            <input type="radio" :value="method.id" v-model="selectedPayment" class="mt-1 w-4 h-4 text-primary-600 border-neutral-300 focus:ring-primary-500">
-            <div class="flex-1">
-              <div class="flex justify-between items-center">
-                <span class="font-bold text-sm text-neutral-800">{{ method.name }}</span>
-                <span v-if="method.id === 'saldo'" class="text-[10px] font-bold text-primary-600 bg-white px-2 py-0.5 rounded-full border border-primary-200">
-                  Sisa: {{ formatRp(authStore.userProfile?.saldo || 0) }}
-                </span>
-              </div>
-              <p class="text-[10px] text-neutral-500 mt-0.5">{{ method.description }}</p>
+            <input type="radio" :value="method.id" v-model="selectedPayment" class="sr-only">
+            <div>
+              <span class="font-bold text-sm text-neutral-800 block">{{ method.name }}</span>
+              <p class="text-xs text-neutral-500 mt-0.5">{{ method.description }}</p>
             </div>
-          </label>
+            <div v-if="method.id === 'saldo'">
+              <span class="saldo-badge text-xs font-semibold text-neutral-600 bg-white px-3 py-1.5 rounded-xl border border-primary-200 shadow-sm inline-flex items-center gap-1.5">
+                <span>Sisa:</span>
+                <span class="text-sm sm:text-base font-black text-primary-600">{{ formatRp(authStore.userProfile?.saldo || 0) }}</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -309,7 +311,7 @@ const buyProduct = async () => {
     </div>
 
     <!-- Bottom Sticky Button -->
-    <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto p-3 bg-white border-t border-neutral-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe z-20">
+    <div class="checkout-action-bar fixed bottom-0 inset-x-0 mx-auto w-full max-w-[480px] p-3 bg-white border-t border-neutral-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] pb-safe z-50">
       <button 
         @click="buyProduct" 
         :disabled="loading || isSubmitting || !customerNo || (isPasca && (!isPascaInquiryDone || pascaAmount === 0))"
@@ -326,7 +328,20 @@ const buyProduct = async () => {
     </div>
   </div>
 </template>
-<style>
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
+<style scoped>
+.checkout-action-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  z-index: 50 !important;
+  box-sizing: border-box !important;
+}
+.pb-safe { padding-bottom: max(14px, env(safe-area-inset-bottom, 14px)) !important; }
 </style>
 
